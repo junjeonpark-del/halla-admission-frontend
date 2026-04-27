@@ -748,12 +748,15 @@ function SignaturePad({
 function MaterialUploadCard({
   item,
   files,
-  existingFiles = [],
+  existingFiles,
   onFilesChange,
   onRemoveSelectedFile,
   onRemoveExistingFile,
+  passportCheckLoading = false,
+  passportWarnings = [],
   t,
 }) {
+
   const hasExistingFiles = existingFiles && existingFiles.length > 0;
   const hasNewFiles = files && files.length > 0;
 
@@ -783,6 +786,26 @@ function MaterialUploadCard({
     <div className="mb-3 rounded-xl bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-700">
       {t.common.uploadRule}
     </div>
+
+    {passportCheckLoading ? (
+  <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs leading-5 text-blue-700">
+    {t.common.passportChecking}
+  </div>
+) : null}
+
+{!passportCheckLoading && passportWarnings.length > 0 ? (
+  <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">
+    <div className="font-semibold">{t.common.passportReminderTitle}</div>
+    <ul className="mt-2 list-disc pl-5 space-y-1">
+      {passportWarnings.map((item, index) => (
+        <li key={`${item}-${index}`}>{item}</li>
+      ))}
+    </ul>
+    <div className="mt-2 text-xs text-amber-700">
+      {t.common.passportReminderDesc}
+    </div>
+  </div>
+) : null}
 
     <label className="inline-flex cursor-pointer items-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700">
       {t.common.chooseFile}
@@ -1591,6 +1614,8 @@ const passportCompareMessages = {
     ocrValue: "OCR识别",
     nameMismatch: "护照姓名与申请表姓名不一致",
     passportNoMismatch: "护照号与申请表填写不一致",
+    passportNoLikelyMatch:
+      "护照号疑似一致，但 OCR 可能把 1/I、0/O 等字符识别混淆，请人工确认",
     birthMismatch: "出生日期与护照信息不一致",
   },
   en: {
@@ -1598,6 +1623,8 @@ const passportCompareMessages = {
     ocrValue: "OCR",
     nameMismatch: "Passport name does not match the application form",
     passportNoMismatch: "Passport number does not match the application form",
+    passportNoLikelyMatch:
+      "Passport number looks likely to match, but OCR may have confused characters such as 1/I or 0/O. Please confirm manually",
     birthMismatch: "Date of birth does not match the passport",
   },
   ko: {
@@ -1605,6 +1632,8 @@ const passportCompareMessages = {
     ocrValue: "OCR 인식",
     nameMismatch: "여권 이름이 신청서와 일치하지 않습니다",
     passportNoMismatch: "여권번호가 신청서와 일치하지 않습니다",
+    passportNoLikelyMatch:
+      "여권번호가 일치하는 것으로 보이나 OCR이 1/I, 0/O 등의 문자를 혼동했을 수 있으니 수동 확인해 주세요",
     birthMismatch: "생년월일이 여권 정보와 일치하지 않습니다",
   },
 };
@@ -1612,8 +1641,14 @@ const passportCompareMessages = {
 const getPassportCompareMessages = () =>
   passportCompareMessages[language] || passportCompareMessages.zh;
 
+const toHalfWidth = (value) => {
+  return String(value || "").replace(/[！-～]/g, (char) =>
+    String.fromCharCode(char.charCodeAt(0) - 0xfee0)
+  );
+};
+
 const normalizePassportName = (value) => {
-  return String(value || "")
+  return toHalfWidth(value)
     .toUpperCase()
     .replace(/<+/g, " ")
     .replace(/[.,，。·'’`-]+/g, " ")
@@ -1621,17 +1656,19 @@ const normalizePassportName = (value) => {
     .trim();
 };
 
-const toHalfWidth = (value) => {
-  return String(value || "").replace(/[！-～]/g, (char) =>
-    String.fromCharCode(char.charCodeAt(0) - 0xfee0)
-  );
-};
-
 const normalizePassportNo = (value) => {
   return toHalfWidth(value)
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "")
     .trim();
+};
+
+const normalizePassportNoLoose = (value) => {
+  return normalizePassportNo(value)
+    .replace(/[I|L]/g, "1")
+    .replace(/O/g, "0")
+    .replace(/S/g, "5")
+    .replace(/B/g, "8");
 };
 
 const normalizeDateForCompare = (value) => {
@@ -1714,6 +1751,8 @@ const buildPassportWarnings = (ocrResult, currentForm) => {
   const rawOcrPassportNo = ocrResult.passport_no;
   const formPassportNo = normalizePassportNo(rawFormPassportNo);
   const ocrPassportNo = normalizePassportNo(rawOcrPassportNo);
+  const formPassportNoLoose = normalizePassportNoLoose(rawFormPassportNo);
+  const ocrPassportNoLoose = normalizePassportNoLoose(rawOcrPassportNo);
 
   const rawFormDob = currentForm.dateOfBirth;
   const rawOcrDob = ocrResult.date_of_birth;
@@ -1727,13 +1766,27 @@ const buildPassportWarnings = (ocrResult, currentForm) => {
   }
 
   if (ocrPassportNo && formPassportNo && ocrPassportNo !== formPassportNo) {
-    warnings.push(
-      buildMismatchMessage(
-        text.passportNoMismatch,
-        rawFormPassportNo,
-        rawOcrPassportNo
-      )
-    );
+    if (
+      formPassportNoLoose &&
+      ocrPassportNoLoose &&
+      formPassportNoLoose === ocrPassportNoLoose
+    ) {
+      warnings.push(
+        buildMismatchMessage(
+          text.passportNoLikelyMatch,
+          rawFormPassportNo,
+          rawOcrPassportNo
+        )
+      );
+    } else {
+      warnings.push(
+        buildMismatchMessage(
+          text.passportNoMismatch,
+          rawFormPassportNo,
+          rawOcrPassportNo
+        )
+      );
+    }
   }
 
   if (ocrDob && formDob && ocrDob !== formDob) {
@@ -3269,28 +3322,8 @@ onMethodChange={(value) =>
           desc={t.sections.step7Desc}
         >
           <div className="space-y-4">
-  {passportCheckLoading ? (
-    <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-      {t.common.passportChecking}
-    </div>
-  ) : null}
 
-  {!passportCheckLoading && displayedPassportWarnings.length > 0 ? (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-      <div className="font-semibold">{t.common.passportReminderTitle}</div>
-      <ul className="mt-2 list-disc pl-5 space-y-1">
-        {displayedPassportWarnings.map((item, index) => (
-          <li key={`${item}-${index}`}>{item}</li>
-        ))}
-      </ul>
-      <div className="mt-2 text-xs text-amber-700">
-  {t.common.passportReminderDesc}
-</div>
-    </div>
-  ) : null}
-
-
-  {materialItems.map((item) => (
+   {materialItems.map((item) => (
     <MaterialUploadCard
   key={item.key}
   item={item}
@@ -3299,9 +3332,12 @@ onMethodChange={(value) =>
   onFilesChange={setMaterialFiles}
   onRemoveSelectedFile={removeSelectedMaterialFile}
   onRemoveExistingFile={removeExistingUploadedFile}
+  passportCheckLoading={item.key === "passport" ? passportCheckLoading : false}
+  passportWarnings={item.key === "passport" ? displayedPassportWarnings : []}
   t={t}
 />
   ))}
+
 </div>
         </SectionCard>
       )}
