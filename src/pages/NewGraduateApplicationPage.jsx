@@ -980,6 +980,26 @@ const isClosedIntake = (intakeRow) => {
   return new Date() > new Date(intakeRow.close_at);
 };
 
+const fetchIntakeStatus = async (intakeId) => {
+  if (!intakeId) return { exists: false, closed: false, row: null };
+
+  const { data, error } = await supabase
+    .from("intakes")
+    .select("id, close_at, post_deadline_material_edit_enabled")
+    .eq("id", intakeId)
+    .single();
+
+  if (error) throw error;
+
+  const closed = data?.close_at ? new Date() > new Date(data.close_at) : false;
+
+  return {
+    exists: !!data,
+    closed,
+    row: data || null,
+  };
+};
+
   useEffect(() => {
   async function loadExistingApplication() {
     if (!editingPublicId) {
@@ -2060,6 +2080,36 @@ useEffect(() => {
 
 const handleSaveDraft = async () => {
   try {
+        if (applicationId && selectedIntakeId) {
+      const intakeStatus = await fetchIntakeStatus(selectedIntakeId);
+
+      if (intakeStatus.closed && !isMaterialOnlyMode) {
+        alert(
+          language === "en"
+            ? "This intake is already closed. You can no longer edit this application."
+            : language === "ko"
+            ? "해당 차수는 이미 마감되어 더 이상 이 지원서를 수정할 수 없습니다."
+            : "该批次已截止，不能继续修改这份申请。"
+        );
+        return;
+      }
+
+      if (
+        intakeStatus.closed &&
+        isMaterialOnlyMode &&
+        intakeStatus.row?.post_deadline_material_edit_enabled !== true
+      ) {
+        alert(
+          language === "en"
+            ? "Post-deadline material editing is not enabled for this application."
+            : language === "ko"
+            ? "이 지원서는 마감 후 서류 보완 권한이 활성화되어 있지 않습니다."
+            : "该申请当前未开启截止后补材料权限，无法继续保存。"
+        );
+        return;
+      }
+    }
+
     if (!agencySession?.agency_id || !agencySession?.agency_account_id) {
   alert("当前机构登录状态无效，请重新登录后再保存草稿");
   return;
@@ -2144,6 +2194,36 @@ clearUploadedMaterialSelections();
 
 const handleSubmit = async () => {
   try {
+        if (selectedIntakeId) {
+      const intakeStatus = await fetchIntakeStatus(selectedIntakeId);
+
+      if (intakeStatus.closed && !isMaterialOnlyMode) {
+        alert(
+          language === "en"
+            ? "This intake is already closed. Submission is no longer allowed."
+            : language === "ko"
+            ? "해당 차수는 이미 마감되어 더 이상 제출할 수 없습니다."
+            : "该批次已截止，不能继续提交申请。"
+        );
+        return;
+      }
+
+      if (
+        intakeStatus.closed &&
+        isMaterialOnlyMode &&
+        intakeStatus.row?.post_deadline_material_edit_enabled !== true
+      ) {
+        alert(
+          language === "en"
+            ? "Post-deadline material editing is not enabled for this application."
+            : language === "ko"
+            ? "이 지원서는 마감 후 서류 보완 권한이 활성화되어 있지 않습니다."
+            : "该申请当前未开启截止后补材料权限，无法继续提交。"
+        );
+        return;
+      }
+    }
+
     if (!agencySession?.agency_id || !agencySession?.agency_account_id) {
   alert("当前机构登录状态无效，请重新登录后再提交申请");
   return;

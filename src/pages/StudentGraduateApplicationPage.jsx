@@ -717,6 +717,24 @@ function saveLanguage(value) {
   }
 }
 
+async function fetchStudentIntakeStatus(intakeId) {
+  if (!intakeId) return { exists: false, closed: false, row: null };
+
+  const { data, error } = await supabase
+    .from("intakes")
+    .select("id, close_at")
+    .eq("id", intakeId)
+    .single();
+
+  if (error) throw error;
+
+  return {
+    exists: !!data,
+    closed: data?.close_at ? new Date() > new Date(data.close_at) : false,
+    row: data || null,
+  };
+}
+
 function StudentGraduateApplicationPage() {
   const { token } = useParams();
   const [language, setLanguage] = useState(() => readLanguage());
@@ -845,6 +863,20 @@ function StudentGraduateApplicationPage() {
         if (error) throw error;
         if (!data) {
           throw new Error(pageText.alerts.invalidLink);
+        }
+
+                if (data.intake_id) {
+          const intakeStatus = await fetchStudentIntakeStatus(data.intake_id);
+
+          if (intakeStatus.closed) {
+            throw new Error(
+              txt(
+                "该申请所属批次已截止，学生端不能继续填写。",
+                "This intake is already closed. Student editing is no longer available.",
+                "해당 차수는 이미 마감되어 학생이 더 이상 작성할 수 없습니다."
+              )
+            );
+          }
         }
 
         setApplicationId(data.id || "");
@@ -1125,6 +1157,21 @@ student_form_status: submitMode === "submitted" ? "submitted" : "draft",
 
   const handleSave = async (submitMode = "draft") => {
     try {
+            if (application?.intake_id) {
+        const intakeStatus = await fetchStudentIntakeStatus(application.intake_id);
+
+        if (intakeStatus.closed) {
+          alert(
+            txt(
+              "该申请所属批次已截止，不能继续保存或提交。",
+              "This intake is already closed. You can no longer save or submit.",
+              "해당 차수는 이미 마감되어 더 이상 저장하거나 제출할 수 없습니다."
+            )
+          );
+          return;
+        }
+      }
+
       if (!applicationId) {
         alert(pageText.alerts.missingApplicationId);
         return;
