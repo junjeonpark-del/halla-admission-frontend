@@ -409,37 +409,70 @@ function IntakesPage() {
     post_deadline_material_edit_enabled: false,
   });
 
+  const KST_OFFSET_MINUTES = 9 * 60;
+
+function parseKstLocalToUtcIso(value) {
+  if (!value) return "";
+
+  const [datePart, timePart = "00:00"] = String(value).split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute] = timePart.split(":").map(Number);
+
+  if (
+    !year || !month || !day ||
+    Number.isNaN(hour) || Number.isNaN(minute)
+  ) {
+    return "";
+  }
+
+  const utcMs =
+    Date.UTC(year, month - 1, day, hour, minute) -
+    KST_OFFSET_MINUTES * 60 * 1000;
+
+  return new Date(utcMs).toISOString();
+}
+
+function formatUtcToKstDateTime(value) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const kstMs = date.getTime() + KST_OFFSET_MINUTES * 60 * 1000;
+  const kstDate = new Date(kstMs);
+
+  const y = kstDate.getUTCFullYear();
+  const m = String(kstDate.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(kstDate.getUTCDate()).padStart(2, "0");
+  const hh = String(kstDate.getUTCHours()).padStart(2, "0");
+  const mm = String(kstDate.getUTCMinutes()).padStart(2, "0");
+
+  return `${y}-${m}-${d} ${hh}:${mm}`;
+}
+
+function formatUtcToKstDateTimeLocal(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const kstMs = date.getTime() + KST_OFFSET_MINUTES * 60 * 1000;
+  const kstDate = new Date(kstMs);
+
+  const y = kstDate.getUTCFullYear();
+  const m = String(kstDate.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(kstDate.getUTCDate()).padStart(2, "0");
+  const hh = String(kstDate.getUTCHours()).padStart(2, "0");
+  const mm = String(kstDate.getUTCMinutes()).padStart(2, "0");
+
+  return `${y}-${m}-${d}T${hh}:${mm}`;
+}
+
   const [form, setForm] = useState(getInitialForm());
 
-  const formatDateTime = (value) => {
-    if (!value) return "-";
+  const formatDateTime = (value) => formatUtcToKstDateTime(value);
 
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    const hh = String(date.getHours()).padStart(2, "0");
-    const mm = String(date.getMinutes()).padStart(2, "0");
-
-    return `${y}-${m}-${d} ${hh}:${mm}`;
-  };
-
-  const toDateTimeLocalValue = (value) => {
-    if (!value) return "";
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    const hh = String(date.getHours()).padStart(2, "0");
-    const mm = String(date.getMinutes()).padStart(2, "0");
-
-    return `${y}-${m}-${d}T${hh}:${mm}`;
-  };
+  const toDateTimeLocalValue = (value) => formatUtcToKstDateTimeLocal(value);
 
   const getApplicationTypeLabel = (applicationType) => {
     if (applicationType === "language") return t.typeLanguage;
@@ -740,10 +773,13 @@ function IntakesPage() {
         return;
       }
 
-      const openAt = new Date(form.open_at);
-      const closeAt = new Date(form.close_at);
+            const openAtIso = parseKstLocalToUtcIso(form.open_at);
+      const closeAtIso = parseKstLocalToUtcIso(form.close_at);
 
-      if (Number.isNaN(openAt.getTime()) || Number.isNaN(closeAt.getTime())) {
+      const openAt = openAtIso ? new Date(openAtIso) : null;
+      const closeAt = closeAtIso ? new Date(closeAtIso) : null;
+
+      if (!openAt || !closeAt || Number.isNaN(openAt.getTime()) || Number.isNaN(closeAt.getTime())) {
         alert(t.alerts.invalidTime);
         return;
       }
@@ -787,8 +823,8 @@ function IntakesPage() {
           form.title && String(form.title).trim() !== ""
             ? String(form.title).trim()
             : buildDefaultTitle(form),
-        open_at: openAt.toISOString(),
-        close_at: closeAt.toISOString(),
+                open_at: openAtIso,
+        close_at: closeAtIso,
         is_active: form.is_active,
         post_deadline_material_edit_enabled:
           form.post_deadline_material_edit_enabled === true,
