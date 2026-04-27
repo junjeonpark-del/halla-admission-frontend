@@ -13,26 +13,37 @@ function normalizeEndpoint(value) {
 function getFieldText(field) {
   if (!field) return "";
 
-  if (typeof field.valueString === "string" && field.valueString.trim()) {
-    return field.valueString.trim();
+  const candidates = [
+    field.valueString,
+    field.content,
+    field.valueDate,
+    field.valueCountryRegion,
+    field.valuePhoneNumber,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
   }
 
-  if (typeof field.content === "string" && field.content.trim()) {
-    return field.content.trim();
-  }
-
-  if (typeof field.valueDate === "string" && field.valueDate.trim()) {
-    return field.valueDate.trim();
-  }
-
-  if (
-    typeof field.valueCountryRegion === "string" &&
-    field.valueCountryRegion.trim()
-  ) {
-    return field.valueCountryRegion.trim();
+  if (typeof field.valueNumber === "number") {
+    return String(field.valueNumber);
   }
 
   return "";
+}
+
+function buildFieldDebug(fields) {
+  return Object.entries(fields || {}).reduce((acc, [key, field]) => {
+    acc[key] = {
+      value: getFieldText(field),
+      content: typeof field?.content === "string" ? field.content : "",
+      confidence:
+        typeof field?.confidence === "number" ? field.confidence : null,
+    };
+    return acc;
+  }, {});
 }
 
 function pickField(fields, names) {
@@ -42,17 +53,125 @@ function pickField(fields, names) {
       if (value) return value;
     }
   }
+
+  const normalizedNames = names.map((name) =>
+    String(name).toLowerCase().replace(/[^a-z0-9]/g, "")
+  );
+
+  for (const [key, field] of Object.entries(fields || {})) {
+    const normalizedKey = String(key).toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (normalizedNames.includes(normalizedKey)) {
+      const value = getFieldText(field);
+      if (value) return value;
+    }
+  }
+
   return "";
 }
 
-function buildPassportName(fields) {
-  const fullName = pickField(fields, ["FullName", "FullGivenName", "Name"]);
+function normalizeMrzName(value) {
+  return String(value || "")
+    .replace(/</g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseMrzFromText(text) {
+  const lines = String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/\s+/g, ""))
+    .filter(Boolean);
+
+  const mrzStartIndex = lines.findIndex((line) => /^P[A-Z0-9<]/i.test(line));
+  if (mrzStartIndex === -1 || !lines[mrzStartIndex + 1]) {
+    return {};
+  }
+
+  const line1 = lines[mrzStartIndex].toUpperCase();
+  const line2 = lines[mrzStartIndex + 1].toUpperCase();
+
+  const namePart = line1.slice(5);
+  const [surname = "", given = ""] = namePart.split("<<");
+  const passportName = [normalizeMrzName(surname), normalizeMrzName(given)]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  const passportNo = line2.slice(0, 9).replace(/</g, "").trim();
+  const dobRaw = line2.slice(13, 19);
+
+  let dateOfBirth = "";
+  if (/^\d{6}$/.test(dobRaw)) {
+    const yy = Number(dobRaw.slice(0, 2));
+    const yyyy = yy > 30 ? 1900 + yy : 2000 + yy;
+    dateOfBirth = `${yyyy}-${dobRaw.slice(2, 4)}-${dobRaw.slice(4, 6)}`;
+  }
+
+  return {
+    passportName,
+    passportNo,
+    dateOfBirth,
+  };
+}
+
+function buildPassportName(fields, fullText) {
+  const fullName = pickField(fields, [
+    "FullName",
+    "FullGivenName",
+    "Name",
+    "NameOfHolder",
+    "HolderName",
+    "DocumentName",
+  ]);
   if (fullName) return fullName;
 
-  const given = pickField(fields, ["GivenNames", "GivenName", "FirstName"]);
-  const surname = pickField(fields, ["Surname", "LastName", "FamilyName"]);
+  const surname = pickField(fields, [
+    "LastName",
+    "Surname",
+    "FamilyName",
+    "PrimaryIdentifier",
+  ]);
+  const given = pickField(fields, [
+    "FirstName",
+    "GivenName",
+    "GivenNames",
+    "SecondaryIdentifier",
+  ]);
 
-  return [given, surname].filter(Boolean).join(" ").trim();
+  const normalName = [surname, given].filter(Boolean).join(" ").trim();
+  if (normalName) return normalName;
+
+  return parseMrzFromText(fullText).passportName || "";
+}
+
+function buildPassportNo(fields, fullText) {
+  return (
+    pickField(fields, [
+      "DocumentNumber",
+      "PassportNumber",
+      "PassportNo",
+      "PassportNum",
+      "IdNumber",
+      "IDNumber",
+      "Number",
+    ]) ||
+    parseMrzFromText(fullText).passportNo ||
+    ""
+  );
+}
+
+function buildDateOfBirth(fields, fullText) {
+  return (
+    pickField(fields, [
+      "DateOfBirth",
+      "BirthDate",
+      "DOB",
+      "DateBirth",
+      "Birth",
+    ]) ||
+    parseMrzFromText(fullText).dateOfBirth ||
+    ""
+  );
 }
 
 async function pollAnalyzeResult(operationLocation, key) {
@@ -140,7 +259,8 @@ export default async function handler(req, res) {
     if (binary.byteLength > MAX_OCR_FILE_BYTES) {
       return json(res, 413, {
         success: false,
-        message: "Passport OCR file is too large. Please upload a PDF under 3MB or check the passport manually.",
+        message:
+          "Passport OCR file is too large. Please upload a PDF under 3MB or check the passport manually.",
       });
     }
 
@@ -174,23 +294,19 @@ export default async function handler(req, res) {
 
     const result = await pollAnalyzeResult(operationLocation, key);
 
-    const document =
-      result &&
-      result.analyzeResult &&
-      result.analyzeResult.documents &&
-      result.analyzeResult.documents[0]
-        ? result.analyzeResult.documents[0]
-        : null;
+    const analyzeResult = result?.analyzeResult || {};
+    const document = analyzeResult.documents?.[0] || null;
+    const fields = document?.fields || {};
+    const fullText = [
+      analyzeResult.content || "",
+      document?.content || "",
+    ]
+      .filter(Boolean)
+      .join("\n");
 
-    const fields = (document && document.fields) || {};
-
-    const passportName = buildPassportName(fields);
-    const passportNo = pickField(fields, [
-      "DocumentNumber",
-      "PassportNumber",
-      "IdNumber",
-    ]);
-    const dateOfBirth = pickField(fields, ["DateOfBirth", "BirthDate"]);
+    const passportName = buildPassportName(fields, fullText);
+    const passportNo = buildPassportNo(fields, fullText);
+    const dateOfBirth = buildDateOfBirth(fields, fullText);
 
     return json(res, 200, {
       success: true,
@@ -199,6 +315,11 @@ export default async function handler(req, res) {
       passport_no: passportNo || "",
       date_of_birth: dateOfBirth || "",
       raw_fields: Object.keys(fields || {}),
+      field_debug: buildFieldDebug(fields),
+      content_preview: fullText.slice(0, 1200),
+      document_type: document?.docType || "",
+      confidence:
+        typeof document?.confidence === "number" ? document.confidence : null,
     });
   } catch (error) {
     console.error("passport-ocr-check error:", error);
