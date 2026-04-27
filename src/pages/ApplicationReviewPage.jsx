@@ -73,6 +73,9 @@ const messages = {
       saved: "申请信息已更新",
 ocrPrefix: "OCR识别",
 noOcrResult: "暂无识别信息",
+ocrStatusMatch: "一致",
+ocrStatusCheck: "需确认",
+ocrStatusMismatch: "不一致",
 fields: {
         englishName: "英文姓名",
         gender: "性别",
@@ -250,6 +253,9 @@ fields: {
       saved: "Application information updated",
 ocrPrefix: "OCR",
 noOcrResult: "No OCR result",
+ocrStatusMatch: "Match",
+ocrStatusCheck: "Check",
+ocrStatusMismatch: "Mismatch",
 fields: {
         englishName: "English Name",
         gender: "Gender",
@@ -428,6 +434,9 @@ fields: {
       saved: "지원 정보가 업데이트되었습니다",
 ocrPrefix: "OCR 인식",
 noOcrResult: "인식 정보 없음",
+ocrStatusMatch: "일치",
+ocrStatusCheck: "확인 필요",
+ocrStatusMismatch: "불일치",
 fields: {
         englishName: "영문 이름",
         gender: "성별",
@@ -984,7 +993,7 @@ function ApplicationReviewPage() {
       ? String(student.intake_year) + "-" + String(student.intake_month) + " " + String(student.intake_round_number)
       : student?.intake_id || "-");
 
-        const latestPassportFile = useMemo(() => {
+      const latestPassportFile = useMemo(() => {
     const passportFiles = uploadedFiles.filter(
       (file) => file.file_type === "passport"
     );
@@ -998,18 +1007,199 @@ function ApplicationReviewPage() {
     );
   }, [uploadedFiles]);
 
-  const ocrPassportInfo = {
-    name: latestPassportFile?.ocr_passport_name || "",
-    birth: latestPassportFile?.ocr_date_of_birth || "",
-    passportNo: latestPassportFile?.ocr_passport_no || "",
+  const toHalfWidth = (value) => {
+    return String(value || "").replace(/[！-～]/g, (char) =>
+      String.fromCharCode(char.charCodeAt(0) - 0xfee0)
+    );
   };
 
-  const renderOcrInlineValue = (value) => {
+  const normalizeOcrName = (value) => {
+    return toHalfWidth(value)
+      .toUpperCase()
+      .replace(/<+/g, " ")
+      .replace(/[.,，。·'’`-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  };
+
+  const normalizeOcrPassportNo = (value) => {
+    return toHalfWidth(value)
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .trim();
+  };
+
+  const normalizeOcrPassportNoLoose = (value) => {
+    return normalizeOcrPassportNo(value)
+      .replace(/[I|L]/g, "1")
+      .replace(/O/g, "0")
+      .replace(/S/g, "5")
+      .replace(/B/g, "8");
+  };
+
+  const normalizeOcrDate = (value) => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+
+    const monthMap = {
+      JAN: "01",
+      FEB: "02",
+      MAR: "03",
+      APR: "04",
+      MAY: "05",
+      JUN: "06",
+      JUL: "07",
+      AUG: "08",
+      SEP: "09",
+      SEPT: "09",
+      OCT: "10",
+      NOV: "11",
+      DEC: "12",
+    };
+
+    const normalized = raw
+      .toUpperCase()
+      .replace(/[年月.]/g, "/")
+      .replace(/日/g, "")
+      .replace(/-/g, "/")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(normalized)) {
+      const [year, month, day] = normalized.split("/");
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+
+    if (/^\d{8}$/.test(normalized)) {
+      return `${normalized.slice(0, 4)}-${normalized.slice(4, 6)}-${normalized.slice(6, 8)}`;
+    }
+
+    const dayMonthYearMatch = normalized.match(
+      /^(\d{1,2})\s+([A-Z]{3,4})\s+(\d{4})$/
+    );
+
+    if (dayMonthYearMatch) {
+      const [, day, monthText, year] = dayMonthYearMatch;
+      const month = monthMap[monthText];
+
+      if (month) {
+        return `${year}-${month}-${String(day).padStart(2, "0")}`;
+      }
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return raw;
+
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, "0");
+    const d = String(parsed.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  const getOcrCompareStatus = (field, formValue, ocrValue) => {
+    const rawFormValue = String(formValue || "").trim();
+    const rawOcrValue = String(ocrValue || "").trim();
+
+    if (!rawOcrValue) return "empty";
+    if (!rawFormValue) return "check";
+
+    if (field === "name") {
+      return normalizeOcrName(rawFormValue) === normalizeOcrName(rawOcrValue)
+        ? "match"
+        : "mismatch";
+    }
+
+    if (field === "birth") {
+      return normalizeOcrDate(rawFormValue) === normalizeOcrDate(rawOcrValue)
+        ? "match"
+        : "mismatch";
+    }
+
+    if (field === "passportNo") {
+      const formNo = normalizeOcrPassportNo(rawFormValue);
+      const ocrNo = normalizeOcrPassportNo(rawOcrValue);
+
+      if (formNo && ocrNo && formNo === ocrNo) return "match";
+
+      const formNoLoose = normalizeOcrPassportNoLoose(rawFormValue);
+      const ocrNoLoose = normalizeOcrPassportNoLoose(rawOcrValue);
+
+      if (formNoLoose && ocrNoLoose && formNoLoose === ocrNoLoose) {
+        return "check";
+      }
+
+      return "mismatch";
+    }
+
+    return "check";
+  };
+
+  const ocrPassportInfo = {
+    name: {
+      value: latestPassportFile?.ocr_passport_name || "",
+      status: getOcrCompareStatus(
+        "name",
+        applicationForm.english_name,
+        latestPassportFile?.ocr_passport_name
+      ),
+    },
+    birth: {
+      value: latestPassportFile?.ocr_date_of_birth || "",
+      status: getOcrCompareStatus(
+        "birth",
+        applicationForm.date_of_birth,
+        latestPassportFile?.ocr_date_of_birth
+      ),
+    },
+    passportNo: {
+      value: latestPassportFile?.ocr_passport_no || "",
+      status: getOcrCompareStatus(
+        "passportNo",
+        applicationForm.passport_no,
+        latestPassportFile?.ocr_passport_no
+      ),
+    },
+  };
+
+  const renderOcrInlineValue = (info) => {
     if (!latestPassportFile) return null;
 
+    const statusMap = {
+      match: {
+        label: formTexts.ocrStatusMatch,
+        className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+        dotClassName: "bg-emerald-500",
+      },
+      check: {
+        label: formTexts.ocrStatusCheck,
+        className: "border-amber-200 bg-amber-50 text-amber-700",
+        dotClassName: "bg-amber-500",
+      },
+      mismatch: {
+        label: formTexts.ocrStatusMismatch,
+        className: "border-red-200 bg-red-50 text-red-700",
+        dotClassName: "bg-red-500",
+      },
+      empty: {
+        label: formTexts.noOcrResult,
+        className: "border-slate-200 bg-slate-50 text-slate-500",
+        dotClassName: "bg-slate-400",
+      },
+    };
+
+    const value = info?.value || "";
+    const status = info?.status || "empty";
+    const meta = statusMap[status] || statusMap.empty;
+
     return (
-      <span className="inline-flex rounded-lg bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
-        {formTexts.ocrPrefix}：{value || formTexts.noOcrResult}
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium ${meta.className}`}
+      >
+        <span className={`h-1.5 w-1.5 rounded-full ${meta.dotClassName}`} />
+        <span>
+          {formTexts.ocrPrefix}：{value || formTexts.noOcrResult}
+        </span>
+        <span className="opacity-80">· {meta.label}</span>
       </span>
     );
   };
