@@ -71,7 +71,9 @@ const messages = {
       save: "保存申请信息",
       saving: "保存中...",
       saved: "申请信息已更新",
-      fields: {
+ocrPrefix: "OCR识别",
+noOcrResult: "暂无识别信息",
+fields: {
         englishName: "英文姓名",
         gender: "性别",
         nationality: "国籍",
@@ -246,7 +248,9 @@ const messages = {
       save: "Save Application Info",
       saving: "Saving...",
       saved: "Application information updated",
-      fields: {
+ocrPrefix: "OCR",
+noOcrResult: "No OCR result",
+fields: {
         englishName: "English Name",
         gender: "Gender",
         nationality: "Nationality",
@@ -422,7 +426,9 @@ const messages = {
       save: "지원 정보 저장",
       saving: "저장 중...",
       saved: "지원 정보가 업데이트되었습니다",
-      fields: {
+ocrPrefix: "OCR 인식",
+noOcrResult: "인식 정보 없음",
+fields: {
         englishName: "영문 이름",
         gender: "성별",
         nationality: "국적",
@@ -977,6 +983,36 @@ function ApplicationReviewPage() {
     (student?.intake_year && student?.intake_month && student?.intake_round_number
       ? String(student.intake_year) + "-" + String(student.intake_month) + " " + String(student.intake_round_number)
       : student?.intake_id || "-");
+
+        const latestPassportFile = useMemo(() => {
+    const passportFiles = uploadedFiles.filter(
+      (file) => file.file_type === "passport"
+    );
+
+    return (
+      passportFiles.sort(
+        (a, b) =>
+          new Date(b.created_at || 0).getTime() -
+          new Date(a.created_at || 0).getTime()
+      )[0] || null
+    );
+  }, [uploadedFiles]);
+
+  const ocrPassportInfo = {
+    name: latestPassportFile?.ocr_passport_name || "",
+    birth: latestPassportFile?.ocr_date_of_birth || "",
+    passportNo: latestPassportFile?.ocr_passport_no || "",
+  };
+
+  const renderOcrInlineValue = (value) => {
+    if (!latestPassportFile) return null;
+
+    return (
+      <span className="inline-flex rounded-lg bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+        {formTexts.ocrPrefix}：{value || formTexts.noOcrResult}
+      </span>
+    );
+  };
 
   const withLinkedIntakeTitle = async (row) => {
     if (!row?.intake_id) return row;
@@ -2559,7 +2595,10 @@ function ApplicationReviewPage() {
 
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">{formFieldTexts.englishName}</label>
+            <label className="mb-2 flex flex-wrap items-center gap-2 text-sm font-medium text-slate-700">
+  <span>{formFieldTexts.englishName}</span>
+  {renderOcrInlineValue(ocrPassportInfo.name)}
+</label>
             <input
               value={applicationForm.english_name}
               onChange={(e) => handleApplicationFormChange("english_name", e.target.value)}
@@ -2593,7 +2632,10 @@ function ApplicationReviewPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">{formFieldTexts.birth}</label>
+            <label className="mb-2 flex flex-wrap items-center gap-2 text-sm font-medium text-slate-700">
+  <span>{formFieldTexts.birth}</span>
+  {renderOcrInlineValue(ocrPassportInfo.birth)}
+</label>
             <input
               type="date"
               value={applicationForm.date_of_birth}
@@ -2634,7 +2676,10 @@ function ApplicationReviewPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">{formFieldTexts.passportNo}</label>
+            <label className="mb-2 flex flex-wrap items-center gap-2 text-sm font-medium text-slate-700">
+  <span>{formFieldTexts.passportNo}</span>
+  {renderOcrInlineValue(ocrPassportInfo.passportNo)}
+</label>
             <input
               value={applicationForm.passport_no}
               onChange={(e) => handleApplicationFormChange("passport_no", e.target.value)}
