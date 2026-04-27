@@ -777,7 +777,7 @@ function PreviewPlaceholder({
               <iframe
                 src={previewUrl}
                 title={item.fileName || item.label}
-                className="h-[calc(100vh-340px)] min-h-[760px] w-full rounded-xl border border-slate-200 bg-white"
+                className="h-[calc(100vh-220px)] min-h-[920px] w-full rounded-xl border border-slate-200 bg-white"
               />
             </div>
           ) : item.statusType === "uploaded" ? (
@@ -2727,7 +2727,7 @@ function ApplicationReviewPage() {
       </div>
 
       <div className="grid items-start gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <div className="h-[calc(100vh-220px)] overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+        <div className="h-[calc(100vh-140px)] overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
           <div className="mb-4">
             <h4 className="text-lg font-bold text-slate-900">{t.materials.title}</h4>
             <p className="mt-1 text-sm text-slate-500">
