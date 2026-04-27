@@ -335,7 +335,7 @@ function AdminLayout() {
         },
       }}
     >
-      <div className="h-screen overflow-hidden bg-slate-100 text-slate-900">
+      <div className="min-h-screen bg-slate-100 text-slate-900">
         <div className="flex h-full min-h-0">
           <aside className="flex h-full w-64 shrink-0 flex-col bg-slate-900 px-5 py-6 text-white">
             <div className="mb-10">
@@ -429,7 +429,7 @@ function AdminLayout() {
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-8">
+            <div className="flex-1 p-8">
               <Outlet />
             </div>
           </main>
