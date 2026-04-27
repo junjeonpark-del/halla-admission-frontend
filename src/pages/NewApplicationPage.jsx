@@ -1621,10 +1621,16 @@ const normalizePassportName = (value) => {
     .trim();
 };
 
+const toHalfWidth = (value) => {
+  return String(value || "").replace(/[！-～]/g, (char) =>
+    String.fromCharCode(char.charCodeAt(0) - 0xfee0)
+  );
+};
+
 const normalizePassportNo = (value) => {
-  return String(value || "")
+  return toHalfWidth(value)
     .toUpperCase()
-    .replace(/[\s-]+/g, "")
+    .replace(/[^A-Z0-9]/g, "")
     .trim();
 };
 
