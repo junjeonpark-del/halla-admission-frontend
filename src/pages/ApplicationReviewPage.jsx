@@ -698,7 +698,7 @@ function PreviewPlaceholder({
   const canReview = !!item.fileId;
 
   return (
-    <div className="flex h-[calc(100vh-220px)] min-h-[720px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="shrink-0 flex items-center justify-between border-b border-slate-100 px-6 py-5">
         <div>
           <h3 className="text-lg font-bold text-slate-900">{item.label}</h3>
@@ -722,7 +722,7 @@ function PreviewPlaceholder({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-6">
+      <div className="p-6">
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <StatusBadge type={item.statusType}>{item.statusLabel}</StatusBadge>
           {item.required ? (
