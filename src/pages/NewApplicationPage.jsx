@@ -1925,6 +1925,19 @@ const uploadApplicationFiles = async (applicationId, publicId) => {
         );
       }
 
+      const passportOcrFields =
+        fileType === "passport" && passportOcrResult?.success
+          ? {
+              ocr_passport_name: passportOcrResult.passport_name || null,
+              ocr_passport_no: passportOcrResult.passport_no || null,
+              ocr_date_of_birth: passportOcrResult.date_of_birth || null,
+              ocr_checked_at: new Date().toISOString(),
+              ocr_raw_fields: Array.isArray(passportOcrResult.raw_fields)
+                ? passportOcrResult.raw_fields
+                : [],
+            }
+          : {};
+
       const { error: insertFileError } = await supabase
         .from("application_files")
         .insert([
@@ -1936,6 +1949,7 @@ const uploadApplicationFiles = async (applicationId, publicId) => {
             file_path: filePath,
             review_status: "uploaded",
             review_note: "",
+            ...passportOcrFields,
           },
         ]);
 
