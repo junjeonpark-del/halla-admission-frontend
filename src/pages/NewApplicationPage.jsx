@@ -1585,10 +1585,38 @@ const readFileAsBase64 = (file) =>
     reader.readAsDataURL(file);
   });
 
+const passportCompareMessages = {
+  zh: {
+    formValue: "申请表",
+    ocrValue: "OCR识别",
+    nameMismatch: "护照姓名与申请表姓名不一致",
+    passportNoMismatch: "护照号与申请表填写不一致",
+    birthMismatch: "出生日期与护照信息不一致",
+  },
+  en: {
+    formValue: "Form",
+    ocrValue: "OCR",
+    nameMismatch: "Passport name does not match the application form",
+    passportNoMismatch: "Passport number does not match the application form",
+    birthMismatch: "Date of birth does not match the passport",
+  },
+  ko: {
+    formValue: "신청서",
+    ocrValue: "OCR 인식",
+    nameMismatch: "여권 이름이 신청서와 일치하지 않습니다",
+    passportNoMismatch: "여권번호가 신청서와 일치하지 않습니다",
+    birthMismatch: "생년월일이 여권 정보와 일치하지 않습니다",
+  },
+};
+
+const getPassportCompareMessages = () =>
+  passportCompareMessages[language] || passportCompareMessages.zh;
+
 const normalizePassportName = (value) => {
   return String(value || "")
     .toUpperCase()
-    .replace(/[,，]/g, " ")
+    .replace(/<+/g, " ")
+    .replace(/[.,，。·'’`-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 };
@@ -1604,7 +1632,49 @@ const normalizeDateForCompare = (value) => {
   const raw = String(value || "").trim();
   if (!raw) return "";
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const monthMap = {
+    JAN: "01",
+    FEB: "02",
+    MAR: "03",
+    APR: "04",
+    MAY: "05",
+    JUN: "06",
+    JUL: "07",
+    AUG: "08",
+    SEP: "09",
+    SEPT: "09",
+    OCT: "10",
+    NOV: "11",
+    DEC: "12",
+  };
+
+  const normalized = raw
+    .toUpperCase()
+    .replace(/[年月.]/g, "/")
+    .replace(/日/g, "")
+    .replace(/-/g, "/")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(normalized)) {
+    const [year, month, day] = normalized.split("/");
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+
+  if (/^\d{8}$/.test(normalized)) {
+    return `${normalized.slice(0, 4)}-${normalized.slice(4, 6)}-${normalized.slice(6, 8)}`;
+  }
+
+  const dayMonthYearMatch = normalized.match(
+    /^(\d{1,2})\s+([A-Z]{3,4})\s+(\d{4})$/
+  );
+  if (dayMonthYearMatch) {
+    const [, day, monthText, year] = dayMonthYearMatch;
+    const month = monthMap[monthText];
+    if (month) {
+      return `${year}-${month}-${String(day).padStart(2, "0")}`;
+    }
+  }
 
   const parsed = new Date(raw);
   if (Number.isNaN(parsed.getTime())) return raw;
@@ -1615,30 +1685,55 @@ const normalizeDateForCompare = (value) => {
   return `${y}-${m}-${d}`;
 };
 
+const buildMismatchMessage = (message, formValue, ocrValue) => {
+  const text = getPassportCompareMessages();
+
+  return `${message}：${text.formValue} ${formValue || "-"}，${text.ocrValue} ${
+    ocrValue || "-"
+  }`;
+};
+
 const buildPassportWarnings = (ocrResult, currentForm) => {
   if (!ocrResult) return [];
 
+  const text = getPassportCompareMessages();
   const warnings = [];
 
-  const formName = normalizePassportName(currentForm.fullNamePassport);
-  const ocrName = normalizePassportName(ocrResult.passport_name);
+  const rawFormName = currentForm.fullNamePassport;
+  const rawOcrName = ocrResult.passport_name;
+  const formName = normalizePassportName(rawFormName);
+  const ocrName = normalizePassportName(rawOcrName);
 
-  const formPassportNo = normalizePassportNo(currentForm.passportNo);
-  const ocrPassportNo = normalizePassportNo(ocrResult.passport_no);
+  const rawFormPassportNo = currentForm.passportNo;
+  const rawOcrPassportNo = ocrResult.passport_no;
+  const formPassportNo = normalizePassportNo(rawFormPassportNo);
+  const ocrPassportNo = normalizePassportNo(rawOcrPassportNo);
 
-  const formDob = normalizeDateForCompare(currentForm.dateOfBirth);
-  const ocrDob = normalizeDateForCompare(ocrResult.date_of_birth);
+  const rawFormDob = currentForm.dateOfBirth;
+  const rawOcrDob = ocrResult.date_of_birth;
+  const formDob = normalizeDateForCompare(rawFormDob);
+  const ocrDob = normalizeDateForCompare(rawOcrDob);
 
   if (ocrName && formName && ocrName !== formName) {
-    warnings.push("护照姓名与申请表姓名不一致，请检查。");
+    warnings.push(
+      buildMismatchMessage(text.nameMismatch, rawFormName, rawOcrName)
+    );
   }
 
   if (ocrPassportNo && formPassportNo && ocrPassportNo !== formPassportNo) {
-    warnings.push("护照号与申请表填写不一致，请检查。");
+    warnings.push(
+      buildMismatchMessage(
+        text.passportNoMismatch,
+        rawFormPassportNo,
+        rawOcrPassportNo
+      )
+    );
   }
 
   if (ocrDob && formDob && ocrDob !== formDob) {
-    warnings.push("出生日期与护照信息不一致，请检查。");
+    warnings.push(
+      buildMismatchMessage(text.birthMismatch, rawFormDob, rawOcrDob)
+    );
   }
 
   return warnings;
