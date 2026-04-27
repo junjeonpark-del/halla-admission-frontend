@@ -299,6 +299,33 @@ function AgencyDashboardPage() {
     return "本科";
   };
 
+    const buildApplicationPath = (applicationType) => {
+    const pathMap = {
+      undergraduate: "/agency/new-application",
+      language: "/agency/new-language-application",
+      graduate: "/agency/new-graduate-application",
+    };
+
+    return pathMap[applicationType] || pathMap.undergraduate;
+  };
+
+  const buildEditApplicationUrl = (item) => {
+    const applicationType = String(
+      item?.application_type || "undergraduate"
+    ).toLowerCase();
+    const publicId = item?.public_id || "";
+    const params = new URLSearchParams();
+
+    params.set("public_id", publicId);
+    params.set("application_type", applicationType);
+
+    if (item?.intake_id) {
+      params.set("intake_id", item.intake_id);
+    }
+
+    return `${buildApplicationPath(applicationType)}?${params.toString()}`;
+  };
+
   const getIntakeLabel = (intake) => {
     if (!intake) return "-";
 
@@ -678,10 +705,11 @@ function AgencyDashboardPage() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               {publicId ? (
-                                <Link
-                                  to={`/agency/new-application?public_id=${publicId}`}
-                                  className="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
-                                >
+                                                                  <Link
+                                    to={buildEditApplicationUrl(student)}
+                                    className="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                                  >
+
                                   {t.table.continueEdit}
                                 </Link>
                               ) : (

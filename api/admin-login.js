@@ -41,9 +41,20 @@ export default async function handler(req, res) {
       return json(res, 400, { success: false, message: "密码错误" });
     }
 
-    if (admin.is_active !== true) {
+      if (admin.is_active !== true) {
       return json(res, 403, { success: false, message: "管理员账号已停用" });
     }
+
+    const nextSessionVersion = Number(admin.session_version || 0) + 1;
+
+    const { error: sessionVersionError } = await supabaseAdmin
+      .from("admin_accounts")
+      .update({
+        session_version: nextSessionVersion,
+      })
+      .eq("id", admin.id);
+
+    if (sessionVersionError) throw sessionVersionError;
 
     const sessionPayload = {
       admin_id: admin.id,
@@ -51,10 +62,12 @@ export default async function handler(req, res) {
       name: admin.name || "",
       email: admin.email || "",
       role: "admin",
+      session_version: nextSessionVersion,
       exp: Date.now() + 1000 * 60 * 60 * 24 * 7,
     };
 
     const token = signSession(sessionPayload);
+
     setSessionCookie(res, token, ADMIN_SESSION_COOKIE);
 
     return json(res, 200, {

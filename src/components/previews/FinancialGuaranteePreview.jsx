@@ -1,3 +1,63 @@
+function getApplicationFormDate(student) {
+  return (
+    student?.application_form_updated_at ||
+    student?.student_fill_updated_at ||
+    student?.created_at ||
+    ""
+  );
+}
+
+function getDateParts(value) {
+  const source = value ? new Date(value) : null;
+
+  if (!source || Number.isNaN(source.getTime())) {
+    return { year: "", month: "", day: "" };
+  }
+
+  return {
+    year: String(source.getFullYear()),
+    month: String(source.getMonth() + 1).padStart(2, "0"),
+    day: String(source.getDate()).padStart(2, "0"),
+  };
+}
+
+function buildAutoSignature(name) {
+  if (!name || typeof document === "undefined") return "";
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 320;
+  canvas.height = 90;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "36px cursive";
+  ctx.textBaseline = "middle";
+  ctx.fillText(String(name), 12, canvas.height / 2);
+
+  return canvas.toDataURL("image/png");
+}
+
+function getGuarantorSignatureImage(student, guarantorName) {
+  const method = String(student?.guarantor_signature_method || "auto");
+
+  if (method === "upload" && student?.guarantor_uploaded_signature) {
+    return student.guarantor_uploaded_signature;
+  }
+
+  if (method === "draw" && student?.guarantor_drawn_signature) {
+    return student.guarantor_drawn_signature;
+  }
+
+  if (method === "auto") {
+    return buildAutoSignature(guarantorName);
+  }
+
+  return "";
+}
+
 export default function FinancialGuaranteePreview({ student }) {
   if (!student) return null;
 
@@ -41,6 +101,10 @@ export default function FinancialGuaranteePreview({ student }) {
     student.email ||
     "";
   const guarantorWork = student.guarantor_work || "";
+
+    const applicationFormDate = getApplicationFormDate(student);
+  const dateParts = getDateParts(applicationFormDate);
+  const guarantorSignatureImage = getGuarantorSignatureImage(student, guarantorName);
 
   return (
     <div className="mx-auto w-full max-w-[980px] bg-[#f3f3f3] p-4 text-black">
@@ -234,17 +298,33 @@ export default function FinancialGuaranteePreview({ student }) {
           </div>
         </div>
 
-        {/* 签字区 */}
+                {/* 签字区 */}
         <div className="mt-14 flex justify-end text-[11px]">
-          <div>
-            보증인 (Guarantor) ： ____________________ （인）
+          <div className="flex items-center gap-2">
+            <span>보증인 (Guarantor) ：</span>
+
+            <div className="flex min-w-[180px] items-center border-b border-black px-1">
+              <span>{guarantorName || "____________________"}</span>
+            </div>
+
+            <div className="flex h-[36px] min-w-[60px] items-center justify-center">
+              {guarantorSignatureImage ? (
+                <img
+                  src={guarantorSignatureImage}
+                  alt="guarantor-signature"
+                  className="max-h-[32px] max-w-[56px] object-contain"
+                />
+              ) : (
+                <span>（인）</span>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="mt-14 flex justify-center gap-10 text-[11px]">
-          <div>년(Year)</div>
-          <div>월(Month)</div>
-          <div>일(Day)</div>
+          <div>{dateParts.year}년(Year)</div>
+          <div>{dateParts.month}월(Month)</div>
+          <div>{dateParts.day}일(Day)</div>
         </div>
 
         <div className="mt-10 text-center text-[16px] font-semibold">

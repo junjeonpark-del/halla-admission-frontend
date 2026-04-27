@@ -65,9 +65,20 @@ export default async function handler(req, res) {
       return json(res, 403, { success: false, message: "机构已停用" });
     }
 
-    if (account.is_active !== true) {
-      return json(res, 403, { success: false, message: "账号尚未启用" });
+        if (account.is_active !== true) {
+      return json(res, 403, { success: false, message: "登录尚未启用" });
     }
+
+    const nextSessionVersion = Number(account.session_version || 0) + 1;
+
+    const { error: sessionVersionError } = await supabaseAdmin
+      .from("agency_accounts")
+      .update({
+        session_version: nextSessionVersion,
+      })
+      .eq("id", account.id);
+
+    if (sessionVersionError) throw sessionVersionError;
 
     const sessionPayload = {
       agency_id: agency.id,
@@ -76,10 +87,12 @@ export default async function handler(req, res) {
       account_name: account.account_name || "",
       agency_name: agency.agency_name || "",
       role: "agency",
+      session_version: nextSessionVersion,
       exp: Date.now() + 1000 * 60 * 60 * 24 * 7,
     };
 
     const token = signSession(sessionPayload);
+
     setSessionCookie(res, token, AGENCY_SESSION_COOKIE);
 
     return json(res, 200, {

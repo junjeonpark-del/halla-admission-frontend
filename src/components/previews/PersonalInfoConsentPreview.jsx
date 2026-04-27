@@ -14,6 +14,66 @@ function TableCell({ children, center = false, head = false, className = "" }) {
   );
 }
 
+function getApplicationFormDate(student) {
+  return (
+    student?.application_form_updated_at ||
+    student?.student_fill_updated_at ||
+    student?.created_at ||
+    ""
+  );
+}
+
+function getDateParts(value) {
+  const source = value ? new Date(value) : null;
+
+  if (!source || Number.isNaN(source.getTime())) {
+    return { year: "", month: "", day: "" };
+  }
+
+  return {
+    year: String(source.getFullYear()),
+    month: String(source.getMonth() + 1).padStart(2, "0"),
+    day: String(source.getDate()).padStart(2, "0"),
+  };
+}
+
+function buildAutoSignature(name) {
+  if (!name || typeof document === "undefined") return "";
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 320;
+  canvas.height = 90;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "36px cursive";
+  ctx.textBaseline = "middle";
+  ctx.fillText(String(name), 12, canvas.height / 2);
+
+  return canvas.toDataURL("image/png");
+}
+
+function getApplicantSignatureImage(student, fullName) {
+  const method = String(student?.applicant_signature_method || "auto");
+
+  if (method === "upload" && student?.applicant_uploaded_signature) {
+    return student.applicant_uploaded_signature;
+  }
+
+  if (method === "draw" && student?.applicant_drawn_signature) {
+    return student.applicant_drawn_signature;
+  }
+
+  if (method === "auto") {
+    return buildAutoSignature(fullName);
+  }
+
+  return "";
+}
+
 export default function PersonalInfoConsentPreview({ student }) {
   if (!student) return null;
 
@@ -48,6 +108,18 @@ export default function PersonalInfoConsentPreview({ student }) {
     acknowledgeRaw.includes("확인") ||
     acknowledgeRaw === "yes" ||
     acknowledgeRaw === "true";
+
+      const fullName =
+    student.english_name ||
+    student.full_name_passport ||
+    student.fullNamePassport ||
+    student.chinese_name ||
+    "-";
+
+  const applicationFormDate = getApplicationFormDate(student);
+  const dateParts = getDateParts(applicationFormDate);
+  const applicantSignatureImage = getApplicantSignatureImage(student, fullName);
+  const autoSignatureImage = buildAutoSignature(fullName);
 
   return (
     <div className="personal-info-consent-form mx-auto w-full max-w-[980px] space-y-8 bg-[#f3f3f3] p-4 text-black">
@@ -354,12 +426,36 @@ export default function PersonalInfoConsentPreview({ student }) {
           </div>
 
           <div className="px-3 py-8 text-[11px] leading-6">
-            <div>
-              년(Year) ________ 월(Month) ________ 일(Day) ________
+                        <div>
+              {dateParts.year}년(Year) {dateParts.month}월(Month) {dateParts.day}일(Day)
             </div>
 
-            <div className="mt-8">
-              신청인(Applicant) ： __________________ （인）
+                        <div className="mt-8 flex items-center gap-2">
+              <span>신청인(Applicant) ：</span>
+
+              <div className="flex h-[36px] min-w-[150px] items-center border-b border-black">
+                {autoSignatureImage ? (
+                  <img
+                    src={autoSignatureImage}
+                    alt="auto-signature"
+                    className="max-h-[32px] max-w-[145px] object-contain"
+                  />
+                ) : (
+                  <span>__________________</span>
+                )}
+              </div>
+
+              <div className="flex h-[36px] min-w-[60px] items-center justify-center">
+                {applicantSignatureImage ? (
+                  <img
+                    src={applicantSignatureImage}
+                    alt="manual-signature"
+                    className="max-h-[32px] max-w-[56px] object-contain"
+                  />
+                ) : (
+                  <span>（인）</span>
+                )}
+              </div>
             </div>
           </div>
         </div>

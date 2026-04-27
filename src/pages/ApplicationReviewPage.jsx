@@ -1957,7 +1957,7 @@ function ApplicationReviewPage() {
     }
 
     .school-application-form .page-1 {
-      zoom: 1.07;
+      zoom: 1.16;
     }
 
     .print-page {
@@ -2011,7 +2011,7 @@ function ApplicationReviewPage() {
     }
 
     .personal-statement-form {
-      zoom: 0.95;
+      zoom: 1.42;
     }
 
     .personal-statement-form * {
@@ -2079,7 +2079,7 @@ function ApplicationReviewPage() {
     }
 
     .personal-info-consent-form {
-      zoom: 1.02;
+      zoom: 1.42;
       background: #ffffff !important;
     }
 

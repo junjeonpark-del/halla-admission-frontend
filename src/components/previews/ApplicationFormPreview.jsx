@@ -41,6 +41,30 @@ function formatDateYMD(value) {
   return s;
 }
 
+function getApplicationFormDate(student) {
+  return (
+    student?.application_form_updated_at ||
+    student?.student_fill_updated_at ||
+    student?.created_at ||
+    ""
+  );
+}
+
+function getDateParts(value) {
+  const source = value ? new Date(value) : null;
+
+  if (!source || Number.isNaN(source.getTime())) {
+    return { year: "", month: "", day: "", ymd: "" };
+  }
+
+  return {
+    year: String(source.getFullYear()),
+    month: String(source.getMonth() + 1).padStart(2, "0"),
+    day: String(source.getDate()).padStart(2, "0"),
+    ymd: `${source.getFullYear()}/${String(source.getMonth() + 1).padStart(2, "0")}/${String(source.getDate()).padStart(2, "0")}`,
+  };
+}
+
 function splitAddress(student) {
   const raw = student.address || "";
   const city = student.beneficiaryCity || "";
@@ -134,6 +158,42 @@ function PhotoBox({ photoUrl = "" }) {
   );
 }
 
+function buildAutoSignature(name) {
+  if (!name || typeof document === "undefined") return "";
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 320;
+  canvas.height = 90;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "36px cursive";
+  ctx.textBaseline = "middle";
+  ctx.fillText(String(name), 12, canvas.height / 2);
+
+  return canvas.toDataURL("image/png");
+}
+
+function getApplicantSignatureImage(student, fullName) {
+  const method = String(student?.applicant_signature_method || "auto");
+
+  if (method === "upload" && student?.applicant_uploaded_signature) {
+    return student.applicant_uploaded_signature;
+  }
+
+  if (method === "draw" && student?.applicant_drawn_signature) {
+    return student.applicant_drawn_signature;
+  }
+
+  if (method === "auto") {
+    return buildAutoSignature(fullName);
+  }
+
+  return "";
+}
 
 export default function ApplicationFormPreview({ student, photoUrl = "" }) {
   if (!student) return null;
@@ -144,6 +204,8 @@ export default function ApplicationFormPreview({ student, photoUrl = "" }) {
     student.fullNamePassport ||
     student.chinese_name ||
     "-";
+
+      const applicantSignatureImage = getApplicantSignatureImage(student, fullName);
 
   const major = student.major || "-";
   const applicantNationality =
@@ -179,7 +241,9 @@ export default function ApplicationFormPreview({ student, photoUrl = "" }) {
   const newTeps = student.newTeps || "";
 
   const refundName = student.refundName || "";
-  const refundDob = formatDateYMD(student.refundDob);
+    const refundDob = formatDateYMD(student.refundDob);
+  const applicationFormDate = getApplicationFormDate(student);
+  const dateParts = getDateParts(applicationFormDate);
   const refundEmail = student.refundEmail || "";
   const accountHolder = student.accountHolder || "";
   const relationship = student.relationship || "";
@@ -529,15 +593,25 @@ export default function ApplicationFormPreview({ student, photoUrl = "" }) {
       I hereby apply for admission under the international student special admission track at your university and submit the required documents as attached.
     </div>
 
-    <div className="mt-3 flex justify-end gap-8">
+        <div className="mt-3 flex justify-end gap-8">
       <div>지원자(Applicant): {fullName}</div>
-      <div>(인)</div>
+      <div className="flex h-[40px] min-w-[90px] items-center justify-center">
+        {applicantSignatureImage ? (
+          <img
+            src={applicantSignatureImage}
+            alt="applicant-signature"
+            className="max-h-[36px] max-w-[88px] object-contain"
+          />
+        ) : (
+          <div>(인)</div>
+        )}
+      </div>
     </div>
 
-    <div className="mt-3 flex justify-center gap-8">
-      <span>년(Year)</span>
-      <span>월(Month)</span>
-      <span>일(Day)</span>
+        <div className="mt-3 flex justify-center gap-8">
+      <span>{dateParts.year}년(Year)</span>
+      <span>{dateParts.month}월(Month)</span>
+      <span>{dateParts.day}일(Day)</span>
     </div>
 
     <div className="mt-3 text-[16px] font-bold">한라대학교 총장 귀하</div>
@@ -625,8 +699,21 @@ export default function ApplicationFormPreview({ student, photoUrl = "" }) {
               I confirm that the above account information is provided for tuition refund purposes, and I take full responsibility for any issues arising from incorrect or mismatched account information.
             </div>
 
-            <div className="mt-6">신청일 (Date): __________________________</div>
-            <div className="mt-3">신청자 서명 (Signature): __________________________</div>
+                         <div className="mt-6">신청일 (Date): {dateParts.ymd || "__________________________"}</div>
+            <div className="mt-3 flex items-center gap-2">
+              <span>신청자 서명 (Signature):</span>
+              <div className="flex h-[36px] min-w-[140px] items-center">
+                {applicantSignatureImage ? (
+                  <img
+                    src={applicantSignatureImage}
+                    alt="applicant-signature"
+                    className="max-h-[34px] max-w-[140px] object-contain"
+                  />
+                ) : (
+                  <span>__________________________</span>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

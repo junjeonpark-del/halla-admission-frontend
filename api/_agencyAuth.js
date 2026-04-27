@@ -137,3 +137,59 @@ export function requireSession(req, role) {
 
   return session;
 }
+
+export async function validateAgencySession(req) {
+  const session = requireSession(req, "agency");
+
+  if (!session || !session.agency_account_id) {
+    return null;
+  }
+
+  const { data: account, error } = await supabaseAdmin
+    .from("agency_accounts")
+    .select("id, agency_id, is_active, session_version")
+    .eq("id", session.agency_account_id)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  if (!account || account.is_active !== true) {
+    return null;
+  }
+
+  if (String(account.agency_id) !== String(session.agency_id)) {
+    return null;
+  }
+
+  if (Number(account.session_version || 0) !== Number(session.session_version || 0)) {
+    return null;
+  }
+
+  return session;
+}
+
+export async function validateAdminSession(req) {
+  const session = requireSession(req, "admin");
+
+  if (!session || !session.admin_id) {
+    return null;
+  }
+
+  const { data: admin, error } = await supabaseAdmin
+    .from("admin_accounts")
+    .select("id, is_active, session_version")
+    .eq("id", session.admin_id)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  if (!admin || admin.is_active !== true) {
+    return null;
+  }
+
+  if (Number(admin.session_version || 0) !== Number(session.session_version || 0)) {
+    return null;
+  }
+
+  return session;
+}

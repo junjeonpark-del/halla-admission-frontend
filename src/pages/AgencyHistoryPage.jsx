@@ -420,6 +420,37 @@ const getApplicationTypeLabel = (item) => {
   return "本科";
 };
 
+const buildApplicationPath = (applicationType) => {
+  const pathMap = {
+    undergraduate: "/agency/new-application",
+    language: "/agency/new-language-application",
+    graduate: "/agency/new-graduate-application",
+  };
+
+  return pathMap[applicationType] || pathMap.undergraduate;
+};
+
+const buildEditApplicationUrl = (item, mode = "") => {
+  const applicationType = String(
+    item?.application_type || "undergraduate"
+  ).toLowerCase();
+  const publicId = item?.public_id || item?.publicId || "";
+  const params = new URLSearchParams();
+
+  params.set("public_id", publicId);
+  params.set("application_type", applicationType);
+
+  if (item?.intake_id) {
+    params.set("intake_id", item.intake_id);
+  }
+
+  if (mode) {
+    params.set("mode", mode);
+  }
+
+  return `${buildApplicationPath(applicationType)}?${params.toString()}`;
+};
+
 const getMonthDisplay = (itemOrMonth, applicationType) => {
   const rawMonth =
     typeof itemOrMonth === "object" && itemOrMonth !== null
@@ -766,6 +797,8 @@ if (selectedNode.type === "year") {
       return {
   student,
   publicId,
+  application_type: student.application_type || "undergraduate",
+intake_id: student.intake_id || "",
   studentName: getStudentName(student),
   year: getIntakeYear(linkedIntake || student),
   intake: getIntakeLabel(linkedIntake || student),
@@ -1219,10 +1252,11 @@ const toggleMonth = (year, applicationType, month) => {
                             <span className="text-xs text-red-500">{t.table.noPublicId}</span>
                           ) : row.isClosed ? (
                             row.canPostDeadlineMaterialEdit ? (
-                              <Link
-                                to={`/agency/new-application?public_id=${row.publicId}&mode=material_only`}
-                                className="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
-                              >
+                                                              <Link
+                                  to={buildEditApplicationUrl(row, "material_only")}
+                                  className="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                                >
+
                                 {t.table.supplementMaterials}
                               </Link>
                             ) : (
@@ -1231,10 +1265,11 @@ const toggleMonth = (year, applicationType, month) => {
                               </span>
                             )
                           ) : (
-                            <Link
-                              to={`/agency/new-application?public_id=${row.publicId}`}
-                              className="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
-                            >
+                                                          <Link
+                                to={buildEditApplicationUrl(row)}
+                                className="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                              >
+
                               {t.table.continueEdit}
                             </Link>
                           )}

@@ -23,7 +23,7 @@ const sexOptions = ["Male", "Female"];
 const yesNoOptions = ["YES", "NO"];
 
 const signatureMethods = [
-  { value: "auto", label: "自动生成签字" },
+  { value: "auto", label: "自动生成名字" },
   { value: "draw", label: "手写签字" },
   { value: "upload", label: "上传签字图片" },
 ];
@@ -393,32 +393,33 @@ function RadioGroup({
   return (
     <div>
       <Label required={required}>{label}</Label>
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3" role="radiogroup" aria-label={label}>
         {options.map((option) => {
           const optionValue = typeof option === "string" ? option : option.value;
           const optionLabel = typeof option === "string" ? option : option.label;
+          const checked = value === optionValue;
 
           return (
-            <label
+            <button
               key={optionValue}
+              type="button"
+              role="radio"
+              aria-checked={checked}
+              disabled={disabled}
+              onClick={() => {
+                if (!disabled) onChange(optionValue);
+              }}
               className={[
                 "inline-flex items-center rounded-xl border px-4 py-3 text-sm font-medium transition",
                 disabled
                   ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-                  : value === optionValue
+                  : checked
                   ? "cursor-pointer border-emerald-500 bg-emerald-50 text-emerald-700"
                   : "cursor-pointer border-slate-300 bg-white text-slate-700 hover:border-slate-400",
               ].join(" ")}
             >
-              <input
-                type="radio"
-                className="sr-only"
-                checked={value === optionValue}
-                onChange={() => !disabled && onChange(optionValue)}
-                disabled={disabled}
-              />
               {optionLabel}
-            </label>
+            </button>
           );
         })}
       </div>
@@ -440,7 +441,7 @@ function SignaturePad({
   text = {
     confirm: "请选择签字方式。提交后会同步到机构端。",
     methodLabel: "签字方式",
-    autoDesc: "自动生成签字将基于当前姓名字段生成：",
+        autoDesc: "自动生成名字将基于当前姓名字段生成：",
     autoEmpty: "请先填写姓名后自动生成",
     noPreview: "暂无签字预览",
     drawDesc: "请在下方区域手写签字。",
@@ -466,18 +467,86 @@ function SignaturePad({
     return canvas.toDataURL("image/png");
   }, [signerName]);
 
-  const getPoint = (e) => {
+    const exportTrimmedSignature = () => {
     const canvas = canvasRef.current;
+    if (!canvas) return "";
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+
+    const { width, height } = canvas;
+    const imageData = ctx.getImageData(0, 0, width, height).data;
+
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const alpha = imageData[(y * width + x) * 4 + 3];
+        if (alpha > 0) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    if (maxX === -1 || maxY === -1) return "";
+
+    const padding = 8;
+    minX = Math.max(0, minX - padding);
+    minY = Math.max(0, minY - padding);
+    maxX = Math.min(width - 1, maxX + padding);
+    maxY = Math.min(height - 1, maxY + padding);
+
+    const trimmedWidth = maxX - minX + 1;
+    const trimmedHeight = maxY - minY + 1;
+
+    const outCanvas = document.createElement("canvas");
+    outCanvas.width = trimmedWidth;
+    outCanvas.height = trimmedHeight;
+
+    const outCtx = outCanvas.getContext("2d");
+    if (!outCtx) return "";
+
+    outCtx.clearRect(0, 0, trimmedWidth, trimmedHeight);
+    outCtx.drawImage(
+      canvas,
+      minX,
+      minY,
+      trimmedWidth,
+      trimmedHeight,
+      0,
+      0,
+      trimmedWidth,
+      trimmedHeight
+    );
+
+    return outCanvas.toDataURL("image/png");
+  };
+
+    const getPoint = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+
     const rect = canvas.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
     };
   };
 
-  const startDraw = (e) => {
+    const startDraw = (e) => {
+    e.preventDefault();
     if (disabled) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -491,7 +560,8 @@ function SignaturePad({
     setDrawing(true);
   };
 
-  const moveDraw = (e) => {
+    const moveDraw = (e) => {
+    e.preventDefault();
     if (disabled || !drawing) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -501,12 +571,10 @@ function SignaturePad({
     ctx.stroke();
   };
 
-  const endDraw = () => {
+    const endDraw = () => {
     if (disabled || !drawing) return;
     setDrawing(false);
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    onDrawnImageChange(canvas.toDataURL("image/png"));
+    onDrawnImageChange(exportTrimmedSignature());
   };
 
   const clearCanvas = () => {
@@ -568,7 +636,7 @@ function SignaturePad({
               ref={canvasRef}
               width={600}
               height={180}
-              className="w-full rounded-xl border border-slate-300 bg-white"
+              className="touch-none w-full rounded-xl border border-slate-300 bg-white"
               onMouseDown={startDraw}
               onMouseMove={moveDraw}
               onMouseUp={endDraw}
@@ -685,9 +753,9 @@ function StudentGraduateApplicationPage() {
     [txt]
   );
 
-  const signatureMethodOptions = useMemo(
+    const signatureMethodOptions = useMemo(
     () => [
-      { value: "auto", label: txt("自动生成签字", "Auto-generate signature", "서명 자동 생성") },
+      { value: "auto", label: txt("自动生成名字", "Generate Name", "이름 자동 생성") },
       { value: "draw", label: txt("手写签字", "Draw signature", "직접 서명") },
       { value: "upload", label: txt("上传签字图片", "Upload signature image", "서명 이미지 업로드") },
     ],
@@ -721,7 +789,7 @@ function StudentGraduateApplicationPage() {
       signaturePad: {
         confirm: txt("请选择签字方式。提交后会同步到机构端。", "Choose a signature method. It will sync to the agency portal after submission.", "서명 방식을 선택하세요. 제출 후 기관 포털에 동기화됩니다."),
         methodLabel: txt("签字方式", "Signature Method", "서명 방식"),
-        autoDesc: txt("自动生成签字将基于当前姓名字段生成：", "The auto-generated signature is based on the current name field:", "자동 생성 서명은 현재 이름 입력값을 기준으로 생성됩니다."),
+                autoDesc: txt("自动生成名字将基于当前姓名字段生成：", "The generated name will be based on the current name field:", "자동 생성 이름은 현재 이름 입력값을 기준으로 생성됩니다."),
         autoEmpty: txt("请先填写姓名后自动生成", "Enter a name first to generate a signature", "먼저 이름을 입력하면 서명이 생성됩니다"),
         noPreview: txt("暂无签字预览", "No signature preview yet", "서명 미리보기가 없습니다"),
         drawDesc: txt("请在下方区域手写签字。", "Draw your signature in the area below.", "아래 영역에 직접 서명해 주세요."),
@@ -1044,7 +1112,8 @@ function StudentGraduateApplicationPage() {
       guarantor_drawn_signature: guarantorDrawnSignature,
 
       student_fill_updated_at: new Date().toISOString(),
-      student_form_status: submitMode === "submitted" ? "submitted" : "draft",
+application_form_updated_at: new Date().toISOString(),
+student_form_status: submitMode === "submitted" ? "submitted" : "draft",
     };
 
     if (submitMode === "submitted") {
