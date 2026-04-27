@@ -2726,7 +2726,7 @@ function ApplicationReviewPage() {
         </div>
       </div>
 
-      <div className="grid min-h-0 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+      <div className="grid items-start gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <div className="h-[calc(100vh-220px)] overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
           <div className="mb-4">
             <h4 className="text-lg font-bold text-slate-900">{t.materials.title}</h4>
@@ -2749,20 +2749,21 @@ function ApplicationReviewPage() {
           </div>
         </div>
 
-                <PreviewPlaceholder
-          item={selectedItem}
-          previewUrl={previewUrl}
-          previewLoading={previewLoading}
-          onDownload={handleDownloadCurrent}
-          reviewNote={reviewNote}
-          setReviewNote={setReviewNote}
-          onApprove={() => handleSaveReview("approved")}
-          onRequestMore={() => handleSaveReview("missing_documents")}
-          onSaveNote={() => handleSaveReview("")}
-          savingReview={savingReview}
-          applicationPhotoUrl={applicationPhotoUrl}
-          t={t}
-        />
+          <div className="min-w-0 self-start">
+  <PreviewPlaceholder
+    item={selectedItem}
+    previewUrl={previewUrl}
+    previewLoading={previewLoading}
+    onDownload={handleDownloadCurrent}
+    reviewNote={reviewNote}
+    setReviewNote={setReviewNote}
+    onApprove={() => handleSaveReview("approved")}
+    onRequestMore={() => handleSaveReview("missing_documents")}
+    onSaveNote={() => handleSaveReview("")}
+    savingReview={savingReview}
+    t={t}
+  />
+</div>
       </div>
     </div>
   );
