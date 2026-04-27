@@ -1752,7 +1752,7 @@ function ApplicationReviewPage() {
       .eq("id", student.id)
       .eq("updated_at", loadedUpdatedAt)
       .select(
-        "updated_at, admin_editing_by_account_id, admin_editing_by_account_name, admin_editing_started_at"
+        "id, updated_at, admin_editing_by_account_id, admin_editing_by_account_name, admin_editing_started_at"
       )
       .maybeSingle();
 
@@ -1782,6 +1782,27 @@ function ApplicationReviewPage() {
     }
 
     await updateApplicationFileReview(selectedItem.fileId, payload);
+
+    const { data: refreshedApplication, error: refreshedApplicationError } = await supabase
+      .from("applications")
+      .select(
+        "id, updated_at, admin_editing_by_account_id, admin_editing_by_account_name, admin_editing_started_at"
+      )
+      .eq("id", student.id)
+      .single();
+
+    if (refreshedApplicationError) throw refreshedApplicationError;
+
+    setLoadedUpdatedAt(refreshedApplication.updated_at || "");
+    setStudent((prev) =>
+      prev
+        ? {
+            ...prev,
+            ...refreshedApplication,
+          }
+        : prev
+    );
+
     await reloadFiles();
 
     alert(t.materials.saveSuccess);
