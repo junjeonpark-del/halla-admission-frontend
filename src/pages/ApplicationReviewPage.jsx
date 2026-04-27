@@ -1726,61 +1726,72 @@ function ApplicationReviewPage() {
   };
 
   const handleSaveReview = async (nextStatus) => {
-    try {
-      if (!student?.id) {
-        alert(t.materials.missingApplication);
-        return;
-      }
-
-      const { data: latestApplication, error: latestApplicationError } = await supabase
-        .from("applications")
-        .select("id, updated_at")
-        .eq("id", student.id)
-        .single();
-
-      if (latestApplicationError) throw latestApplicationError;
-
-      if ((latestApplication?.updated_at || "") !== (loadedUpdatedAt || "")) {
-        alert(t.alerts.saveStatusConflict);
-        return;
-      }
-
-      await supabase
-        .from("applications")
-        .update({
-          admin_editing_by_account_id: adminSession?.admin_id || null,
-          admin_editing_by_account_name:
-            adminSession?.name || adminSession?.username || "Admin",
-          admin_editing_started_at: new Date().toISOString(),
-        })
-        .eq("id", student.id);
-
-      if (!selectedItem?.fileId) {
-        alert(t.materials.cannotReview);
-        return;
-      }
-
-      setSavingReview(true);
-
-      const payload = {
-        review_note: reviewNote || null,
-      };
-
-      if (nextStatus) {
-        payload.review_status = nextStatus;
-      }
-
-      await updateApplicationFileReview(selectedItem.fileId, payload);
-      await reloadFiles();
-
-      alert(t.materials.saveSuccess);
-    } catch (error) {
-      console.error("save review error:", error);
-      alert(t.materials.saveFailed);
-    } finally {
-      setSavingReview(false);
+  try {
+    if (!student?.id) {
+      alert(t.materials.missingApplication);
+      return;
     }
-  };
+
+    if (!selectedItem?.fileId) {
+      alert(t.materials.cannotReview);
+      return;
+    }
+
+    setSavingReview(true);
+
+    const lockPayload = {
+      admin_editing_by_account_id: adminSession?.admin_id || null,
+      admin_editing_by_account_name:
+        adminSession?.name || adminSession?.username || "Admin",
+      admin_editing_started_at: new Date().toISOString(),
+    };
+
+    const { data: lockedApplication, error: lockError } = await supabase
+      .from("applications")
+      .update(lockPayload)
+      .eq("id", student.id)
+      .eq("updated_at", loadedUpdatedAt)
+      .select(
+        "updated_at, admin_editing_by_account_id, admin_editing_by_account_name, admin_editing_started_at"
+      )
+      .maybeSingle();
+
+    if (lockError) throw lockError;
+
+    if (!lockedApplication) {
+      alert(t.alerts.saveStatusConflict);
+      return;
+    }
+
+    setLoadedUpdatedAt(lockedApplication.updated_at || "");
+    setStudent((prev) =>
+      prev
+        ? {
+            ...prev,
+            ...lockedApplication,
+          }
+        : prev
+    );
+
+    const payload = {
+      review_note: reviewNote || null,
+    };
+
+    if (nextStatus) {
+      payload.review_status = nextStatus;
+    }
+
+    await updateApplicationFileReview(selectedItem.fileId, payload);
+    await reloadFiles();
+
+    alert(t.materials.saveSuccess);
+  } catch (error) {
+    console.error("save review error:", error);
+    alert(t.materials.saveFailed);
+  } finally {
+    setSavingReview(false);
+  }
+};
 
   useEffect(() => {
     const handleBeforeUnload = () => {
