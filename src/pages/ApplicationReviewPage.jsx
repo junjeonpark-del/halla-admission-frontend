@@ -2727,7 +2727,7 @@ function ApplicationReviewPage() {
       </div>
 
       <div className="grid items-start gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <div className="h-[calc(100vh-80px)] overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+        <div className="h-full self-stretch overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
           <div className="mb-4">
             <h4 className="text-lg font-bold text-slate-900">{t.materials.title}</h4>
             <p className="mt-1 text-sm text-slate-500">
