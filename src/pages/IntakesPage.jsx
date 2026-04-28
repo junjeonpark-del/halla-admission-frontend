@@ -386,10 +386,11 @@ function IntakesPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-  const [yearFilter, setYearFilter] = useState("all");
+    const [yearFilter, setYearFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedNode, setSelectedNode] = useState({ type: "all" });
 
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState("create");
@@ -513,7 +514,7 @@ function formatUtcToKstDateTimeLocal(value) {
     return String(month || "");
   };
 
-  const getIntakeTitle = (item) => {
+    const getIntakeTitle = (item) => {
     if (item?.title && String(item.title).trim() !== "") {
       return item.title;
     }
@@ -537,6 +538,67 @@ function formatUtcToKstDateTimeLocal(value) {
 
     return item?.id || "-";
   };
+
+  const getTreeText = (key) => {
+    const text = {
+      zh: {
+        title: "批次分类",
+        desc: "按年份、申请类型、月份和批次快速筛选",
+        all: "全部批次",
+        empty: "暂无批次",
+      },
+      en: {
+        title: "Intake Tree",
+        desc: "Filter by year, application type, month, and intake",
+        all: "All Intakes",
+        empty: "No intakes",
+      },
+      ko: {
+        title: "차수 분류",
+        desc: "연도, 지원 유형, 월, 차수별로 빠르게 필터링",
+        all: "전체 차수",
+        empty: "차수 없음",
+      },
+    };
+
+    return text[language]?.[key] || text.zh[key];
+  };
+
+  const getTreeYearLabel = (year) => {
+    if (language === "en") return String(year);
+    return `${year}${t.yearSuffix}`;
+  };
+
+  const isTreeNodeActive = (node) => {
+    if (!selectedNode || selectedNode.type !== node.type) return false;
+
+    if (node.type === "all") return true;
+    if (node.type === "year") return selectedNode.year === node.year;
+    if (node.type === "applicationType") {
+      return (
+        selectedNode.year === node.year &&
+        selectedNode.applicationType === node.applicationType
+      );
+    }
+    if (node.type === "month") {
+      return (
+        selectedNode.year === node.year &&
+        selectedNode.applicationType === node.applicationType &&
+        selectedNode.month === node.month
+      );
+    }
+    if (node.type === "intake") return selectedNode.intakeId === node.intakeId;
+
+    return false;
+  };
+
+  const getTreeButtonClass = (active) =>
+    [
+      "flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition",
+      active
+        ? "bg-blue-600 font-semibold text-white shadow-sm"
+        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+    ].join(" ");
 
   const getIntakeStatus = (item) => {
     const now = new Date();
@@ -648,10 +710,101 @@ function formatUtcToKstDateTimeLocal(value) {
     ).sort((a, b) => Number(a) - Number(b));
   }, [intakes, typeFilter]);
 
+    const intakeTree = useMemo(() => {
+    const grouped = {};
+
+    intakes.forEach((item) => {
+      const year = String(item.year || "").trim() || "-";
+      const applicationType = item.application_type || "undergraduate";
+      const month = String(item.intake_month || "").trim() || "-";
+
+      if (!grouped[year]) grouped[year] = {};
+      if (!grouped[year][applicationType]) grouped[year][applicationType] = {};
+      if (!grouped[year][applicationType][month]) {
+        grouped[year][applicationType][month] = [];
+      }
+
+      grouped[year][applicationType][month].push(item);
+    });
+
+    const typeOrder = ["undergraduate", "language", "graduate"];
+
+    return Object.keys(grouped)
+      .sort((a, b) => Number(b) - Number(a))
+      .map((year) => ({
+        year,
+        count: Object.values(grouped[year]).reduce(
+          (sum, months) =>
+            sum +
+            Object.values(months).reduce(
+              (monthSum, rows) => monthSum + rows.length,
+              0
+            ),
+          0
+        ),
+        types: Object.keys(grouped[year])
+          .sort((a, b) => typeOrder.indexOf(a) - typeOrder.indexOf(b))
+          .map((applicationType) => ({
+            applicationType,
+            label: getApplicationTypeLabel(applicationType),
+            count: Object.values(grouped[year][applicationType]).reduce(
+              (sum, rows) => sum + rows.length,
+              0
+            ),
+            months: Object.keys(grouped[year][applicationType])
+              .sort((a, b) => Number(a) - Number(b))
+              .map((month) => ({
+                month,
+                label: getMonthLabel(month, applicationType),
+                intakes: grouped[year][applicationType][month].sort((a, b) => {
+                  const aOpen = a.open_at ? new Date(a.open_at).getTime() : 0;
+                  const bOpen = b.open_at ? new Date(b.open_at).getTime() : 0;
+                  return bOpen - aOpen;
+                }),
+              })),
+          })),
+      }));
+  }, [intakes, language]);
+
+  const matchesSelectedTreeNode = (item) => {
+    if (!selectedNode || selectedNode.type === "all") return true;
+
+    const year = String(item.year || "").trim();
+    const applicationType = item.application_type || "undergraduate";
+    const month = String(item.intake_month || "").trim();
+
+    if (selectedNode.type === "year") {
+      return year === selectedNode.year;
+    }
+
+    if (selectedNode.type === "applicationType") {
+      return (
+        year === selectedNode.year &&
+        applicationType === selectedNode.applicationType
+      );
+    }
+
+    if (selectedNode.type === "month") {
+      return (
+        year === selectedNode.year &&
+        applicationType === selectedNode.applicationType &&
+        month === selectedNode.month
+      );
+    }
+
+    if (selectedNode.type === "intake") {
+      return item.id === selectedNode.intakeId;
+    }
+
+    return true;
+  };
+
   const filteredIntakes = useMemo(() => {
     return intakes.filter((item) => {
       const status = getIntakeStatus(item);
       const applicationType = item.application_type || "undergraduate";
+
+      const matchTree = matchesSelectedTreeNode(item);
 
       const matchYear =
         yearFilter === "all" || String(item.year || "") === yearFilter;
@@ -665,9 +818,17 @@ function formatUtcToKstDateTimeLocal(value) {
       const matchStatus =
         statusFilter === "all" || status.label === statusFilter;
 
-      return matchYear && matchType && matchMonth && matchStatus;
+      return matchTree && matchYear && matchType && matchMonth && matchStatus;
     });
-  }, [intakes, yearFilter, typeFilter, monthFilter, statusFilter]);
+  }, [
+    intakes,
+    selectedNode,
+    yearFilter,
+    typeFilter,
+    monthFilter,
+    statusFilter,
+    language,
+  ]);
 
   const handleChange = (field, value) => {
     setForm((prev) => {
@@ -1036,7 +1197,168 @@ function formatUtcToKstDateTimeLocal(value) {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-5 py-4">
+            <h3 className="text-lg font-bold text-slate-900">
+              {getTreeText("title")}
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              {getTreeText("desc")}
+            </p>
+          </div>
+
+          <div className="max-h-[720px] overflow-y-auto p-4">
+            <button
+              type="button"
+              onClick={() => setSelectedNode({ type: "all" })}
+              className={getTreeButtonClass(isTreeNodeActive({ type: "all" }))}
+            >
+              <span>{getTreeText("all")}</span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                {intakes.length}
+              </span>
+            </button>
+
+            {intakeTree.length === 0 ? (
+              <div className="mt-4 rounded-xl bg-slate-50 px-3 py-4 text-sm text-slate-500">
+                {getTreeText("empty")}
+              </div>
+            ) : (
+              <div className="mt-4 space-y-2">
+                {intakeTree.map((yearNode) => {
+                  const yearActive = isTreeNodeActive({
+                    type: "year",
+                    year: yearNode.year,
+                  });
+
+                  return (
+                    <div key={yearNode.year} className="space-y-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedNode({
+                            type: "year",
+                            year: yearNode.year,
+                          })
+                        }
+                        className={getTreeButtonClass(yearActive)}
+                      >
+                        <span>{getTreeYearLabel(yearNode.year)}</span>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                          {yearNode.count}
+                        </span>
+                      </button>
+
+                      <div className="ml-3 space-y-1 border-l border-slate-200 pl-3">
+                        {yearNode.types.map((typeNode) => {
+                          const typeActive = isTreeNodeActive({
+                            type: "applicationType",
+                            year: yearNode.year,
+                            applicationType: typeNode.applicationType,
+                          });
+
+                          return (
+                            <div
+                              key={`${yearNode.year}-${typeNode.applicationType}`}
+                              className="space-y-1"
+                            >
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedNode({
+                                    type: "applicationType",
+                                    year: yearNode.year,
+                                    applicationType: typeNode.applicationType,
+                                  })
+                                }
+                                className={getTreeButtonClass(typeActive)}
+                              >
+                                <span>{typeNode.label}</span>
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                                  {typeNode.count}
+                                </span>
+                              </button>
+
+                              <div className="ml-3 space-y-1 border-l border-slate-100 pl-3">
+                                {typeNode.months.map((monthNode) => {
+                                  const monthActive = isTreeNodeActive({
+                                    type: "month",
+                                    year: yearNode.year,
+                                    applicationType: typeNode.applicationType,
+                                    month: monthNode.month,
+                                  });
+
+                                  return (
+                                    <div
+                                      key={`${yearNode.year}-${typeNode.applicationType}-${monthNode.month}`}
+                                      className="space-y-1"
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setSelectedNode({
+                                            type: "month",
+                                            year: yearNode.year,
+                                            applicationType:
+                                              typeNode.applicationType,
+                                            month: monthNode.month,
+                                          })
+                                        }
+                                        className={getTreeButtonClass(monthActive)}
+                                      >
+                                        <span>{monthNode.label}</span>
+                                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                                          {monthNode.intakes.length}
+                                        </span>
+                                      </button>
+
+                                      <div className="ml-3 space-y-1 border-l border-slate-100 pl-3">
+                                        {monthNode.intakes.map((intake) => {
+                                          const intakeActive = isTreeNodeActive({
+                                            type: "intake",
+                                            intakeId: intake.id,
+                                          });
+
+                                          return (
+                                            <button
+                                              key={intake.id}
+                                              type="button"
+                                              onClick={() =>
+                                                setSelectedNode({
+                                                  type: "intake",
+                                                  intakeId: intake.id,
+                                                })
+                                              }
+                                              className={getTreeButtonClass(
+                                                intakeActive
+                                              )}
+                                            >
+                                              <span className="truncate">
+                                                {getIntakeTitle(intake)}
+                                              </span>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
         <div className="border-b border-slate-100 px-6 py-5">
           <h3 className="text-lg font-bold text-slate-900">{t.tableTitle}</h3>
           <p className="mt-1 text-sm text-slate-500">{t.tableDesc}</p>
@@ -1194,7 +1516,8 @@ function formatUtcToKstDateTimeLocal(value) {
               </tbody>
             </table>
           </div>
-        )}
+                )}
+        </div>
       </div>
 
       {showModal ? (
