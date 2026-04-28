@@ -2215,7 +2215,126 @@ const releaseEditLock = async () => {
   }
 };
 
+const reacquireEditLockIfAvailable = async () => {
+  if (!applicationId || !agencySession?.agency_account_id) {
+    return { ok: false, reason: "missing_context" };
+  }
+
+  const { data: currentRow, error: currentError } = await supabase
+    .from("applications")
+    .select(
+      "id, updated_at, editing_by_account_id, editing_by_account_name, editing_started_at"
+    )
+    .eq("id", applicationId)
+    .maybeSingle();
+
+  if (currentError) throw currentError;
+  if (!currentRow) {
+    return { ok: false, reason: "missing_row" };
+  }
+
+  const lockedByOther =
+    currentRow.editing_by_account_id &&
+    currentRow.editing_by_account_id !== agencySession.agency_account_id &&
+    !isLockExpired(currentRow.editing_started_at);
+
+  if (lockedByOther) {
+    return {
+      ok: false,
+      reason: "locked_by_other",
+      name: currentRow.editing_by_account_name || "",
+    };
+  }
+
+  const { data: relockedRow, error: relockError } = await supabase
+    .from("applications")
+    .update({
+      editing_by_account_id: agencySession.agency_account_id,
+      editing_by_account_name: getCurrentEditorName(),
+      editing_started_at: new Date().toISOString(),
+    })
+    .eq("id", applicationId)
+    .select("updated_at")
+    .maybeSingle();
+
+  if (relockError) throw relockError;
+
+  if (relockedRow?.updated_at) {
+    setLoadedUpdatedAt(relockedRow.updated_at);
+  }
+
+  return {
+    ok: !!relockedRow,
+    reason: relockedRow ? "relocked" : "relock_failed",
+  };
+};
+
+const runUpdateWithAgencyLock = async (updatePayload) => {
+  const attemptUpdate = async () => {
+    const { data, error } = await supabase
+      .from("applications")
+      .update(updatePayload)
+      .eq("id", applicationId)
+      .eq("editing_by_account_id", agencySession.agency_account_id)
+      .select("updated_at")
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  };
+
+  let data = await attemptUpdate();
+  if (data) {
+    return { ok: true, data };
+  }
+
+  const relockResult = await reacquireEditLockIfAvailable();
+
+  if (!relockResult.ok) {
+    return {
+      ok: false,
+      reason: relockResult.reason,
+      name: relockResult.name || "",
+    };
+  }
+
+  data = await attemptUpdate();
+  if (data) {
+    return { ok: true, data, recovered: true };
+  }
+
+  return { ok: false, reason: "lock_lost" };
+};
+
+const alertAgencyLockFailure = (mode = "edit", name = "") => {
+  if (name) {
+    alert(
+      language === "en"
+        ? `This application is currently being edited by ${name}. Please try again later.`
+        : language === "ko"
+        ? `이 지원서는 현재 ${name} 계정이 편집 중입니다. 잠시 후 다시 시도하세요.`
+        : `该申请当前正在由 ${name} 编辑，请稍后再试。`
+    );
+    return;
+  }
+
+  alert(
+    language === "en"
+      ? mode === "submit"
+        ? "Your edit lock was lost. Please refresh this page and submit again."
+        : "Your edit lock was lost. Please refresh this page and continue editing."
+      : language === "ko"
+      ? mode === "submit"
+        ? "편집 잠금이 해제되었습니다. 페이지를 새로고침한 뒤 다시 제출하세요."
+        : "편집 잠금이 해제되었습니다. 페이지를 새로고침한 뒤 다시 수정하세요."
+      : mode === "submit"
+      ? "当前编辑锁已失效，请刷新页面后重新提交。"
+      : "当前编辑锁已失效，请刷新页面后继续编辑。"
+  );
+};
+
 const loadExistingUploadedFiles = async (publicId) => {
+
   if (!publicId) return;
 
   const { data: fileRows, error } = await supabase
@@ -2376,7 +2495,7 @@ clearUploadedMaterialSelections();
       return;
     }
 
-    const payload = buildApplicationPayload("draft");
+      const payload = buildApplicationPayload("draft");
 
 const updatePayload = {
   ...payload,
@@ -2387,22 +2506,18 @@ const updatePayload = {
   last_saved_by_account_name: getCurrentEditorName(),
 };
 
-const { data, error } = await supabase
-  .from("applications")
-  .update(updatePayload)
-  .eq("id", applicationId)
-  .eq("editing_by_account_id", agencySession.agency_account_id)
-  .select("updated_at")
-  .maybeSingle();
+const updateResult = await runUpdateWithAgencyLock(updatePayload);
 
-if (error) throw error;
-
-if (!data) {
-  alert(language === "en" ? "This application was updated by another account. Please refresh and continue editing." : language === "ko" ? "다른 계정이 이 지원서를 업데이트했습니다. 새로고침 후 다시 수정하세요." : "该申请已被其他账号更新，请刷新后再继续编辑。");
+if (!updateResult.ok) {
+  if (updateResult.reason === "locked_by_other") {
+    alertAgencyLockFailure("edit", updateResult.name);
+  } else {
+    alertAgencyLockFailure("edit");
+  }
   return;
 }
 
-setLoadedUpdatedAt(data.updated_at || "");
+setLoadedUpdatedAt(updateResult.data?.updated_at || "");
 
 await uploadApplicationFiles(
   applicationId,
@@ -2411,7 +2526,8 @@ await uploadApplicationFiles(
 await loadExistingUploadedFiles(applicationPublicId || editingPublicId);
 clearUploadedMaterialSelections();
 
-    alert(language === "en" ? "Draft updated." : language === "ko" ? "초안이 업데이트되었습니다." : "草稿已更新");
+    alert(language === "en" ? "Draft updated." : language === "ko" ? "초안이 업데이트되었습니다." : "草稿已更新。");
+
   } catch (error) {
     console.error(error);
     alert(`保存草稿失败：${error.message}`);
@@ -2514,7 +2630,7 @@ clearUploadedMaterialSelections();
       return;
     }
 
-    const payload = buildApplicationPayload("submitted");
+      const payload = buildApplicationPayload("submitted");
 
 const updatePayload = {
   ...payload,
@@ -2525,22 +2641,18 @@ const updatePayload = {
   last_saved_by_account_name: getCurrentEditorName(),
 };
 
-const { data, error } = await supabase
-  .from("applications")
-  .update(updatePayload)
-  .eq("id", applicationId)
-  .eq("editing_by_account_id", agencySession.agency_account_id)
-  .select("updated_at")
-  .maybeSingle();
+const updateResult = await runUpdateWithAgencyLock(updatePayload);
 
-if (error) throw error;
-
-if (!data) {
-  alert(language === "en" ? "This application was updated by another account. Please refresh before submission." : language === "ko" ? "다른 계정이 이 지원서를 업데이트했습니다. 새로고침 후 다시 제출하세요." : "该申请已被其他账号更新，请刷新后再提交。");
+if (!updateResult.ok) {
+  if (updateResult.reason === "locked_by_other") {
+    alertAgencyLockFailure("submit", updateResult.name);
+  } else {
+    alertAgencyLockFailure("submit");
+  }
   return;
 }
 
-setLoadedUpdatedAt(data.updated_at || "");
+setLoadedUpdatedAt(updateResult.data?.updated_at || "");
 setLoadedApplicationStatus("submitted");
 
     await uploadApplicationFiles(
@@ -2550,7 +2662,8 @@ setLoadedApplicationStatus("submitted");
 await loadExistingUploadedFiles(applicationPublicId || editingPublicId);
 clearUploadedMaterialSelections();
 
-    alert(language === "en" ? "Application submitted." : language === "ko" ? "지원서가 제출되었습니다." : "申请已提交");
+    alert(language === "en" ? "Application submitted." : language === "ko" ? "지원서가 제출되었습니다." : "申请已提交。");
+
   } catch (error) {
     console.error(error);
     alert((language === "en" ? "Submission failed: " : language === "ko" ? "제출 실패: " : "提交失败：") + error.message);
