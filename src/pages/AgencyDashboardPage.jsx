@@ -598,6 +598,8 @@ function AgencyDashboardPage() {
         desc: "See ongoing and upcoming intakes by application type",
         empty: "No intake information available right now",
         emptyType: "No available intake for this type",
+                notePrefix: "Note",
+        noNote: "No additional note",
       };
     }
 
@@ -607,6 +609,8 @@ function AgencyDashboardPage() {
         desc: "지원 유형별로 진행 중이거나 예정된 차수를 확인하세요",
         empty: "현재 표시할 차수 정보가 없습니다",
         emptyType: "해당 유형의 차수가 없습니다",
+                notePrefix: "안내",
+        noNote: "추가 안내 없음",
       };
     }
 
@@ -615,6 +619,8 @@ function AgencyDashboardPage() {
       desc: "按申请类型查看进行中与即将开放的批次",
       empty: "当前没有可展示的批次信息",
       emptyType: "该类型暂无可用批次",
+              notePrefix: "备注",
+        noNote: "暂无备注信息",
     };
   }, [language]);
 
@@ -883,7 +889,7 @@ function AgencyDashboardPage() {
                           </div>
                         ) : (
                           group.items.map((intake) => (
-                            <div
+                                                        <div
                               key={intake.id}
                               className="rounded-xl border border-slate-100 px-3 py-3"
                             >
@@ -897,6 +903,14 @@ function AgencyDashboardPage() {
                                 <StatusBadge type={getIntakeProgressType(intake)}>
                                   {getIntakeProgressLabel(intake)}
                                 </StatusBadge>
+                              </div>
+                              <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs leading-6 text-slate-600 whitespace-pre-line">
+                                <span className="font-semibold text-slate-700">
+                                  {batchInfoCardText.notePrefix}：
+                                </span>
+                                {intake.agency_note && String(intake.agency_note).trim() !== ""
+                                  ? ` ${intake.agency_note}`
+                                  : ` ${batchInfoCardText.noNote}`}
                               </div>
                             </div>
                           ))

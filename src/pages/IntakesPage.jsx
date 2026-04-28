@@ -90,6 +90,8 @@ const messages = {
       postDeadlineNo: "关闭",
       cancel: "取消",
       createConfirm: "确认新建",
+            agencyNote: "机构端备注",
+      agencyNotePlaceholder: "例如：材料审核时间、面试时间、录取通知时间、缴费时间等",
       editConfirm: "保存修改",
       creating: "创建中...",
       saving: "保存中...",
@@ -206,6 +208,8 @@ const messages = {
       postDeadline: "Allow agencies to upload materials after deadline",
       postDeadlineYes: "Enable",
       postDeadlineNo: "Disable",
+            agencyNote: "Agency Note",
+      agencyNotePlaceholder: "For example: document review time, interview date, admission notice date, payment deadline, etc.",
       cancel: "Cancel",
       createConfirm: "Create",
       editConfirm: "Save Changes",
@@ -324,6 +328,8 @@ const messages = {
       postDeadline: "마감 후 기관의 서류 보완 허용 여부",
       postDeadlineYes: "허용",
       postDeadlineNo: "차단",
+            agencyNote: "기관 안내 메모",
+      agencyNotePlaceholder: "예: 서류 심사 일정, 면접 일정, 합격 발표일, 등록금 납부 일정 등",
       cancel: "취소",
       createConfirm: "추가",
       editConfirm: "저장",
@@ -400,13 +406,14 @@ function IntakesPage() {
   const [saving, setSaving] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState("");
 
-  const getInitialForm = () => ({
+    const getInitialForm = () => ({
     id: "",
     year: String(new Date().getFullYear()),
     application_type: "undergraduate",
     intake_month: "9",
     round_number: "1",
     title: "",
+    agency_note: "",
     open_at: "",
     close_at: "",
     is_active: true,
@@ -901,7 +908,7 @@ function formatUtcToKstDateTimeLocal(value) {
     setShowModal(true);
   };
 
-  const handleOpenEdit = (item) => {
+    const handleOpenEdit = (item) => {
     setModalMode("edit");
     setForm({
       id: item.id || "",
@@ -910,6 +917,7 @@ function formatUtcToKstDateTimeLocal(value) {
       intake_month: String(item.intake_month || ""),
       round_number: String(item.round_number || ""),
       title: item.title || "",
+      agency_note: item.agency_note || "",
       open_at: toDateTimeLocalValue(item.open_at),
       close_at: toDateTimeLocalValue(item.close_at),
       is_active: item.is_active === true,
@@ -1017,7 +1025,7 @@ function formatUtcToKstDateTimeLocal(value) {
         return;
       }
 
-      const payload = {
+            const payload = {
         year,
         application_type: applicationType,
         intake_month: intakeMonth,
@@ -1026,7 +1034,11 @@ function formatUtcToKstDateTimeLocal(value) {
           form.title && String(form.title).trim() !== ""
             ? String(form.title).trim()
             : buildDefaultTitle(form),
-                open_at: openAtIso,
+        agency_note:
+          form.agency_note && String(form.agency_note).trim() !== ""
+            ? String(form.agency_note).trim()
+            : null,
+        open_at: openAtIso,
         close_at: closeAtIso,
         is_active: form.is_active,
         post_deadline_material_edit_enabled:
@@ -1522,8 +1534,10 @@ function formatUtcToKstDateTimeLocal(value) {
                             : t.postDeadline.disabled}
                         </StatusBadge>
                       </td>
-                      <td className="px-6 py-4 text-slate-600">
-                        {item.title && String(item.title).trim() !== ""
+                                            <td className="px-6 py-4 text-slate-600">
+                        {item.agency_note && String(item.agency_note).trim() !== ""
+                          ? item.agency_note
+                          : item.title && String(item.title).trim() !== ""
                           ? t.description.custom
                           : t.description.auto}
                       </td>
@@ -1696,7 +1710,7 @@ function formatUtcToKstDateTimeLocal(value) {
                 />
               </div>
 
-              <div>
+                            <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   {t.modal.title}
                 </label>
@@ -1705,6 +1719,19 @@ function formatUtcToKstDateTimeLocal(value) {
                   onChange={(e) => handleChange("title", e.target.value)}
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                   placeholder={buildDefaultTitle(form) || t.modal.titlePlaceholder}
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  {t.modal.agencyNote}
+                </label>
+                <textarea
+                  value={form.agency_note}
+                  onChange={(e) => handleChange("agency_note", e.target.value)}
+                  rows={5}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  placeholder={t.modal.agencyNotePlaceholder}
                 />
               </div>
 
