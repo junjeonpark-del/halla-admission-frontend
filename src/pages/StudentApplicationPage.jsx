@@ -843,21 +843,6 @@ function StudentApplicationPage() {
     [txt]
   );
 
-  const majorOptions = useMemo(() => {
-    return getMajorOptions({
-      applicationType: "undergraduate",
-      programTrack: form.programTrack,
-      language,
-    });
-  }, [form.programTrack, language]);
-
-  const admissionTypeOptions = useMemo(() => {
-    return filterAdmissionTypeOptions(rawAdmissionTypeOptions, {
-      applicationType: "undergraduate",
-      programTrack: form.programTrack,
-    });
-  }, [rawAdmissionTypeOptions, form.programTrack]);
-
   const pageText = useMemo(
     () => ({
       common: {
@@ -910,7 +895,22 @@ function StudentApplicationPage() {
   const [guarantorUploadedSignature, setGuarantorUploadedSignature] = useState("");
   const [guarantorDrawnSignature, setGuarantorDrawnSignature] = useState("");
 
-  const [form, setForm] = useState(initialForm);
+    const [form, setForm] = useState(initialForm);
+
+  const majorOptions = useMemo(() => {
+    return getMajorOptions({
+      applicationType: "undergraduate",
+      programTrack: form.programTrack,
+      language,
+    });
+  }, [form.programTrack, language]);
+
+  const admissionTypeOptions = useMemo(() => {
+    return filterAdmissionTypeOptions(rawAdmissionTypeOptions, {
+      applicationType: "undergraduate",
+      programTrack: form.programTrack,
+    });
+  }, [rawAdmissionTypeOptions, form.programTrack]);
 
   const isReadOnly = saving || application?.student_fill_enabled === false;
   const financialGuaranteeRequired = form.bank_certificate_holder_type === "guarantor";
