@@ -923,7 +923,7 @@ function NewGraduateApplicationPage() {
   const yesNoOptions = t.options.yesNo;
   const bankHolderTypes = t.options.bankHolderTypes;
   const residenceOptions = t.options.residenceOptions;
-  const degreeLevelOptions = t.options.degreeLevels;
+  const degreeLevelOptions = t.degreeLevels;
   const admissionTypeOptions = t.options.admissionTypes;
   const programTrackOptions = t.options.programTracks;
   const [searchParams] = useSearchParams();
