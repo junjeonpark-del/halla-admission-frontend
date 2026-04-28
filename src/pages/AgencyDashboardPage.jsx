@@ -458,13 +458,27 @@ function AgencyDashboardPage() {
     loadData();
   }, [agencySession?.agency_id, t.defaultLoadError]);
 
-    const intakeOptions = useMemo(() => {
-    const labels = new Set();
+      const intakeOptions = useMemo(() => {
+    const map = new Map();
+
     applications.forEach((item) => {
-      const label = `${getApplicationTypeLabel(item)} / ${getApplicationIntakeLabel(item)}`;
-      if (label && label !== "-") labels.add(label);
+      const status = String(item.status || "").toLowerCase();
+      if (!status || status === "draft") return;
+
+      const intakeLabel = getApplicationIntakeLabel(item);
+      if (!intakeLabel || intakeLabel === "-") return;
+
+      const applicationType = getApplicationType(item);
+      const label = `${getApplicationTypeLabel(item)} / ${intakeLabel}`;
+
+      map.set(label, {
+        value: label,
+        label,
+        applicationType,
+      });
     });
-    return Array.from(labels.values());
+
+    return Array.from(map.values());
   }, [applications, language]);
 
     const filteredApplications = useMemo(() => {
@@ -542,17 +556,94 @@ function AgencyDashboardPage() {
       .slice(0, 5);
   }, [totalApplications]);
 
-  const currentOpenIntakes = useMemo(() => {
-    return intakes.filter((item) => {
-      const now = new Date();
-      const openAt = item.open_at ? new Date(item.open_at) : null;
-      const closeAt = item.close_at ? new Date(item.close_at) : null;
-      if (!item.is_active) return false;
-      if (openAt && now < openAt) return true;
-      if (closeAt && now > closeAt) return false;
-      return true;
+    const MAX_BATCH_INFO_ITEMS_PER_TYPE = 2;
+
+  const batchInfoCardText = useMemo(() => {
+    if (language === "en") {
+      return {
+        title: "Application Intake Info",
+        desc: "See ongoing and upcoming intakes by application type",
+        empty: "No intake information available right now",
+        emptyType: "No available intake for this type",
+      };
+    }
+
+    if (language === "ko") {
+      return {
+        title: "지원 차수 안내",
+        desc: "지원 유형별로 진행 중이거나 예정된 차수를 확인하세요",
+        empty: "현재 표시할 차수 정보가 없습니다",
+        emptyType: "해당 유형의 차수가 없습니다",
+      };
+    }
+
+    return {
+      title: "申请批次信息",
+      desc: "按申请类型查看进行中与即将开放的批次",
+      empty: "当前没有可展示的批次信息",
+      emptyType: "该类型暂无可用批次",
+    };
+  }, [language]);
+
+  const intakeInfoGroups = useMemo(() => {
+    const now = Date.now();
+
+    const toTime = (value) => {
+      if (!value) return 0;
+      const time = new Date(value).getTime();
+      return Number.isNaN(time) ? 0 : time;
+    };
+
+    const getPhase = (item) => {
+      const openAt = toTime(item.open_at);
+      const closeAt = toTime(item.close_at);
+
+      if (closeAt && closeAt < now) return "closed";
+      if (openAt && openAt > now) return "upcoming";
+      return "ongoing";
+    };
+
+    const visibleIntakes = intakes.filter((item) => {
+      if (item.is_active === false) return false;
+      return getPhase(item) !== "closed";
     });
-  }, [intakes]);
+
+    const sortByPriority = (a, b) => {
+      const phaseRank = {
+        ongoing: 2,
+        upcoming: 1,
+      };
+
+      const aPhase = getPhase(a);
+      const bPhase = getPhase(b);
+
+      const phaseDiff = phaseRank[bPhase] - phaseRank[aPhase];
+      if (phaseDiff !== 0) return phaseDiff;
+
+      if (aPhase === "ongoing" && bPhase === "ongoing") {
+        const aClose = toTime(a.close_at) || Number.MAX_SAFE_INTEGER;
+        const bClose = toTime(b.close_at) || Number.MAX_SAFE_INTEGER;
+        if (aClose !== bClose) return aClose - bClose;
+      }
+
+      if (aPhase === "upcoming" && bPhase === "upcoming") {
+        const aOpen = toTime(a.open_at) || Number.MAX_SAFE_INTEGER;
+        const bOpen = toTime(b.open_at) || Number.MAX_SAFE_INTEGER;
+        if (aOpen !== bOpen) return aOpen - bOpen;
+      }
+
+      return toTime(b.created_at) - toTime(a.created_at);
+    };
+
+    return ["undergraduate", "graduate", "language"].map((applicationType) => ({
+      type: applicationType,
+      label: getApplicationTypeLabel({ application_type: applicationType }),
+      items: visibleIntakes
+        .filter((item) => getApplicationType(item) === applicationType)
+        .sort(sortByPriority)
+        .slice(0, MAX_BATCH_INFO_ITEMS_PER_TYPE),
+    }));
+  }, [intakes, language]);
 
   return (
     <div className="space-y-6">
@@ -594,16 +685,14 @@ function AgencyDashboardPage() {
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
               >
                 <option value="all">{t.allIntakes}</option>
-                {intakeOptions
+                                {intakeOptions
                   .filter((option) => {
                     if (selectedApplicationType === "all") return true;
-                    return option.startsWith(
-                      `${getApplicationTypeLabel({ application_type: selectedApplicationType })} / `
-                    );
+                    return option.applicationType === selectedApplicationType;
                   })
                   .map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+                    <option key={option.value} value={option.value}>
+                      {option.label}
                     </option>
                   ))}
               </select>
@@ -725,28 +814,54 @@ function AgencyDashboardPage() {
               )}
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900">{t.currentOpenTitle}</h3>
-              <p className="mt-1 text-sm text-slate-500">{t.currentOpenDesc}</p>
+                        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="text-lg font-bold text-slate-900">
+                {batchInfoCardText.title}
+              </h3>
+              <p className="mt-1 text-sm text-slate-500">
+                {batchInfoCardText.desc}
+              </p>
 
               <div className="mt-5 space-y-4">
-                {currentOpenIntakes.length === 0 ? (
+                {intakeInfoGroups.every((group) => group.items.length === 0) ? (
                   <div className="rounded-2xl border border-slate-200 p-4 text-sm text-slate-500">
-                    {t.noOpenIntakes}
+                    {batchInfoCardText.empty}
                   </div>
                 ) : (
-                  currentOpenIntakes.map((intake) => (
-                    <div key={intake.id} className="rounded-2xl border border-slate-200 p-4">
-                      <div className="font-semibold text-slate-900">
-  {getApplicationTypeLabel(intake)} / {getIntakeLabel(intake)}
-</div>
-                      <div className="mt-2 text-sm text-slate-500">
-                        {t.openTime}：{formatDateTime(intake.open_at)} ~ {formatDateTime(intake.close_at)}
+                  intakeInfoGroups.map((group) => (
+                    <div
+                      key={group.type}
+                      className="rounded-2xl border border-slate-200 p-4"
+                    >
+                      <div className="text-sm font-semibold text-slate-900">
+                        {group.label}
                       </div>
-                      <div className="mt-3">
-                        <StatusBadge type={getIntakeProgressType(intake)}>
-                          {getIntakeProgressLabel(intake)}
-                        </StatusBadge>
+
+                      <div className="mt-3 space-y-3">
+                        {group.items.length === 0 ? (
+                          <div className="rounded-xl bg-slate-50 px-3 py-3 text-sm text-slate-500">
+                            {batchInfoCardText.emptyType}
+                          </div>
+                        ) : (
+                          group.items.map((intake) => (
+                            <div
+                              key={intake.id}
+                              className="rounded-xl border border-slate-100 px-3 py-3"
+                            >
+                              <div className="font-medium text-slate-900">
+                                {getIntakeLabel(intake)}
+                              </div>
+                              <div className="mt-2 text-xs text-slate-500">
+                                {t.openTime}：{formatDateTime(intake.open_at)} ~ {formatDateTime(intake.close_at)}
+                              </div>
+                              <div className="mt-2">
+                                <StatusBadge type={getIntakeProgressType(intake)}>
+                                  {getIntakeProgressLabel(intake)}
+                                </StatusBadge>
+                              </div>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   ))
