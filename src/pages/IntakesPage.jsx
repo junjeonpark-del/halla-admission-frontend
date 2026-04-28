@@ -1534,12 +1534,23 @@ function formatUtcToKstDateTimeLocal(value) {
                             : t.postDeadline.disabled}
                         </StatusBadge>
                       </td>
-                                            <td className="px-6 py-4 text-slate-600">
-                        {item.agency_note && String(item.agency_note).trim() !== ""
-                          ? item.agency_note
-                          : item.title && String(item.title).trim() !== ""
-                          ? t.description.custom
-                          : t.description.auto}
+                                                                  <td className="px-6 py-4 text-slate-600">
+                        <div
+                          className="max-w-[320px] truncate"
+                          title={
+                            item.agency_note && String(item.agency_note).trim() !== ""
+                              ? item.agency_note
+                              : item.title && String(item.title).trim() !== ""
+                              ? t.description.custom
+                              : t.description.auto
+                          }
+                        >
+                          {item.agency_note && String(item.agency_note).trim() !== ""
+                            ? item.agency_note
+                            : item.title && String(item.title).trim() !== ""
+                            ? t.description.custom
+                            : t.description.auto}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-2">
