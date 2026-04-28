@@ -2353,7 +2353,7 @@ const { data, error } = await supabase
   .from("applications")
   .update(updatePayload)
   .eq("id", applicationId)
-  .eq("updated_at", loadedUpdatedAt)
+  .eq("editing_by_account_id", agencySession.agency_account_id)
   .select("updated_at")
   .maybeSingle();
 
@@ -2468,7 +2468,7 @@ const { data, error } = await supabase
   .from("applications")
   .update(updatePayload)
   .eq("id", applicationId)
-  .eq("updated_at", loadedUpdatedAt)
+  .eq("editing_by_account_id", agencySession.agency_account_id)
   .select("updated_at")
   .maybeSingle();
 
