@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import {
+  filterAdmissionTypeOptions,
+  getMajorOptions,
+  isAdmissionTypeAllowedForTrack,
+  isMajorAllowedForTrack,
+} from "../data/majorCatalog";
 import { supabase } from "../lib/supabase";
+
 
 const admissionTypes = [
   "Freshman",
@@ -780,13 +787,76 @@ function StudentApplicationPage() {
     [txt]
   );
 
-  const residenceOptionsTranslated = useMemo(
+    const residenceOptionsTranslated = useMemo(
     () => [
       { value: "abroad", label: txt("海外居住", "Living overseas", "해외 거주") },
       { value: "korea", label: txt("在韩国居住", "Living in Korea", "한국 거주") },
     ],
     [txt]
   );
+
+  const programTrackOptions = useMemo(
+    () => [
+      {
+        value: "Korean Track",
+        label: txt("韩语授课", "Korean Track", "한국어 트랙"),
+      },
+      {
+        value: "English Track",
+        label: txt("英语授课", "English Track", "영어 트랙"),
+      },
+      {
+        value: "Bilingual Program (Chinese)",
+        label: txt("双语授课（中文）", "Bilingual Program (Chinese)", "이중언어 트랙(중국어)"),
+      },
+    ],
+    [txt]
+  );
+
+  const rawAdmissionTypeOptions = useMemo(
+    () => [
+      {
+        value: "Freshman",
+        label: txt("新入", "Freshman", "신입"),
+      },
+      {
+        value: "Transfer (2nd Year)",
+        label: txt("插班大二", "Transfer (Year 2)", "편입 2학년"),
+      },
+      {
+        value: "Transfer (3rd Year)",
+        label: txt("插班大三", "Transfer (Year 3)", "편입 3학년"),
+      },
+      {
+        value: "Transfer (4th Year)",
+        label: txt("插班大四", "Transfer (Year 4)", "편입 4학년"),
+      },
+      {
+        value: "Dual Degree (2+2)",
+        label: txt("双学位 (2+2)", "Dual Degree (2+2)", "복수학위 (2+2)"),
+      },
+      {
+        value: "Dual Degree (3+1)",
+        label: txt("双学位 (3+1)", "Dual Degree (3+1)", "복수학위 (3+1)"),
+      },
+    ],
+    [txt]
+  );
+
+  const majorOptions = useMemo(() => {
+    return getMajorOptions({
+      applicationType: "undergraduate",
+      programTrack: form.programTrack,
+      language,
+    });
+  }, [form.programTrack, language]);
+
+  const admissionTypeOptions = useMemo(() => {
+    return filterAdmissionTypeOptions(rawAdmissionTypeOptions, {
+      applicationType: "undergraduate",
+      programTrack: form.programTrack,
+    });
+  }, [rawAdmissionTypeOptions, form.programTrack]);
 
   const pageText = useMemo(
     () => ({
@@ -992,12 +1062,75 @@ function StudentApplicationPage() {
     }
   }, [token, pageText]);
 
-  const updateField = (field, value) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    const updateField = (field, value) => {
+    setForm((prev) => {
+      const next = {
+        ...prev,
+        [field]: value,
+      };
+
+      if (field === "programTrack") {
+        if (
+          prev.major &&
+          !isMajorAllowedForTrack({
+            applicationType: "undergraduate",
+            programTrack: value,
+            major: prev.major,
+          })
+        ) {
+          next.major = "";
+        }
+
+        if (
+          prev.admissionType &&
+          !isAdmissionTypeAllowedForTrack({
+            applicationType: "undergraduate",
+            programTrack: value,
+            admissionType: prev.admissionType,
+          })
+        ) {
+          next.admissionType = "";
+        }
+      }
+
+      return next;
+    });
   };
+
+  useEffect(() => {
+    if (!form.programTrack) return;
+
+    setForm((prev) => {
+      let changed = false;
+      const next = { ...prev };
+
+      if (
+        prev.major &&
+        !isMajorAllowedForTrack({
+          applicationType: "undergraduate",
+          programTrack: prev.programTrack,
+          major: prev.major,
+        })
+      ) {
+        next.major = "";
+        changed = true;
+      }
+
+      if (
+        prev.admissionType &&
+        !isAdmissionTypeAllowedForTrack({
+          applicationType: "undergraduate",
+          programTrack: prev.programTrack,
+          admissionType: prev.admissionType,
+        })
+      ) {
+        next.admissionType = "";
+        changed = true;
+      }
+
+      return changed ? next : prev;
+    });
+  }, [form.programTrack]);
 
   const updateCountryField = (field, value) => {
     setForm((prev) => ({
@@ -1281,35 +1414,36 @@ student_form_status: submitMode === "submitted" ? "submitted" : "draft",
             title={txt("第1步：申请基本信息", "Step 1: Basic Application Info", "1단계: 지원 기본 정보")}
             desc={txt("请填写申请专业、申请类型、项目轨道及宿舍申请。", "Enter intended major, admission type, program track, and dormitory request.", "지원 전공, 지원 구분, 지원 트랙 및 생활관 신청 여부를 입력하세요.")}
           >
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <Input
-                label="지원학과 (Major)"
-                required
-                disabled={isReadOnly}
-                value={form.major}
-                onChange={(e) => updateField("major", e.target.value)}
-                placeholder={txt("请输入申请专业", "Enter intended major", "지원 전공을 입력하세요")}
-              />
+                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <Select
-                label="지원구분 (Admission Type)"
-                required
-                disabled={isReadOnly}
-                value={form.admissionType}
-                onChange={(e) => updateField("admissionType", e.target.value)}
-                options={admissionTypes}
-                placeholder={pageText.common.select}
-              />
-              <Select
-                label="지원트랙 (Program Track)"
+                label="申请轨道(Program Track)"
                 required
                 disabled={isReadOnly}
                 value={form.programTrack}
                 onChange={(e) => updateField("programTrack", e.target.value)}
-                options={programTracks}
+                options={programTrackOptions}
+                placeholder={pageText.common.select}
+              />
+              <Select
+                label="申请专业(Major)"
+                required
+                disabled={isReadOnly}
+                value={form.major}
+                onChange={(e) => updateField("major", e.target.value)}
+                options={majorOptions}
+                placeholder={pageText.common.select}
+              />
+              <Select
+                label="申请区分(Admission Type)"
+                required
+                disabled={isReadOnly}
+                value={form.admissionType}
+                onChange={(e) => updateField("admissionType", e.target.value)}
+                options={admissionTypeOptions}
                 placeholder={pageText.common.select}
               />
               <RadioGroup
-                label="생활관 신청 (Dormitory)"
+                label="宿舍申请 (Dormitory)"
                 required
                 disabled={isReadOnly}
                 value={form.dormitory}

@@ -2,6 +2,12 @@ import { Link, useParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { fetchApplicationById } from "../data/applicationsApi";
+import {
+  filterAdmissionTypeOptions,
+  getMajorOptions,
+  isAdmissionTypeAllowedForTrack,
+  isMajorAllowedForTrack,
+} from "../data/majorCatalog";
 import PersonalStatementPreview from "../components/previews/PersonalStatementPreview";
 import PersonalInfoConsentPreview from "../components/previews/PersonalInfoConsentPreview";
 import FinancialGuaranteeFormPreview from "../components/previews/FinancialGuaranteePreview";
@@ -938,7 +944,7 @@ function ApplicationReviewPage() {
     { value: "master", label: language === "en" ? "Master" : language === "ko" ? "\uc11d\uc0ac" : "\u7855\u58eb" },
     { value: "doctor", label: language === "en" ? "Doctor" : language === "ko" ? "\ubc15\uc0ac" : "\u535a\u58eb" },
   ];
-  const admissionTypeOptions =
+    const rawAdmissionTypeOptions =
     applicationType === "graduate"
       ? [
           { value: "Freshman", label: formAdmissionTexts.freshman },
@@ -948,8 +954,8 @@ function ApplicationReviewPage() {
               language === "en"
                 ? "Transfer (2nd Semester)"
                 : language === "ko"
-                  ? "\ud3b8\uc785 2\ud559\uae30"
-                  : "\u63d2\u73ed\u7b2c\u4e8c\u5b66\u671f",
+                  ? "편입 2학기"
+                  : "插班第二学期",
           },
           {
             value: "Transfer (3rd Semester)",
@@ -957,8 +963,8 @@ function ApplicationReviewPage() {
               language === "en"
                 ? "Transfer (3rd Semester)"
                 : language === "ko"
-                  ? "\ud3b8\uc785 3\ud559\uae30"
-                  : "\u63d2\u73ed\u7b2c\u4e09\u5b66\u671f",
+                  ? "편입 3학기"
+                  : "插班第三学期",
           },
         ]
       : [
@@ -974,11 +980,11 @@ function ApplicationReviewPage() {
       ? [
           {
             value: "Korean Language Program",
-            label: language === "en" ? "Korean Language Program" : language === "ko" ? "\ud55c\uad6d\uc5b4 \uc5b8\uc5b4\ubc18" : "\u97e9\u8bed\u8bed\u8a00\u73ed",
+            label: language === "en" ? "Korean Language Program" : language === "ko" ? "한국어 언어반" : "韩语语言班",
           },
           {
             value: "English Language Program",
-            label: language === "en" ? "English Language Program" : language === "ko" ? "\uc601\uc5b4 \uc5b8\uc5b4\ubc18" : "\u82f1\u8bed\u8bed\u8a00\u73ed",
+            label: language === "en" ? "English Language Program" : language === "ko" ? "영어 언어반" : "英语语言班",
           },
         ]
       : [
@@ -986,6 +992,31 @@ function ApplicationReviewPage() {
           { value: "English Track", label: formTrackTexts.english },
           { value: "Bilingual Program (Chinese)", label: formTrackTexts.bilingual },
         ];
+
+  const majorOptions = useMemo(() => {
+    if (isLanguageApplication) return [];
+
+    return getMajorOptions({
+      applicationType,
+      programTrack: applicationForm.program_track,
+      language,
+    });
+  }, [applicationType, applicationForm.program_track, isLanguageApplication, language]);
+
+  const admissionTypeOptions = useMemo(() => {
+    if (isLanguageApplication) return rawAdmissionTypeOptions;
+
+    return filterAdmissionTypeOptions(rawAdmissionTypeOptions, {
+      applicationType,
+      programTrack: applicationForm.program_track,
+    });
+  }, [
+    applicationType,
+    applicationForm.program_track,
+    isLanguageApplication,
+    rawAdmissionTypeOptions,
+  ]);
+
   const intakeDisplayLabel =
     student?.intake_title ||
     student?.intake_name ||
@@ -1865,12 +1896,75 @@ function ApplicationReviewPage() {
     }));
   };
 
-  const handleApplicationFormChange = (field, value) => {
-    setApplicationForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    const handleApplicationFormChange = (field, value) => {
+    setApplicationForm((prev) => {
+      const next = {
+        ...prev,
+        [field]: value,
+      };
+
+      if (field === "program_track" && !isLanguageApplication) {
+        if (
+          prev.major &&
+          !isMajorAllowedForTrack({
+            applicationType,
+            programTrack: value,
+            major: prev.major,
+          })
+        ) {
+          next.major = "";
+        }
+
+        if (
+          prev.admission_type &&
+          !isAdmissionTypeAllowedForTrack({
+            applicationType,
+            programTrack: value,
+            admissionType: prev.admission_type,
+          })
+        ) {
+          next.admission_type = "";
+        }
+      }
+
+      return next;
+    });
   };
+
+  useEffect(() => {
+    if (isLanguageApplication || !applicationForm.program_track) return;
+
+    setApplicationForm((prev) => {
+      let changed = false;
+      const next = { ...prev };
+
+      if (
+        prev.major &&
+        !isMajorAllowedForTrack({
+          applicationType,
+          programTrack: prev.program_track,
+          major: prev.major,
+        })
+      ) {
+        next.major = "";
+        changed = true;
+      }
+
+      if (
+        prev.admission_type &&
+        !isAdmissionTypeAllowedForTrack({
+          applicationType,
+          programTrack: prev.program_track,
+          admissionType: prev.admission_type,
+        })
+      ) {
+        next.admission_type = "";
+        changed = true;
+      }
+
+      return changed ? next : prev;
+    });
+  }, [applicationForm.program_track, applicationType, isLanguageApplication]);
 
   const handleSaveApplicationForm = async () => {
     try {
@@ -2946,15 +3040,22 @@ function ApplicationReviewPage() {
             />
           </div>
 
-          {!isLanguageApplication ? (
+                    {!isLanguageApplication ? (
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">{formFieldTexts.major}</label>
-              <input
+              <select
                 value={applicationForm.major}
                 onChange={(e) => handleApplicationFormChange("major", e.target.value)}
                 disabled={!isEditingApplication}
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition disabled:bg-slate-50"
-              />
+              >
+                <option value="">{t.common.select}</option>
+                {majorOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
           ) : null}
 
@@ -2977,7 +3078,7 @@ function ApplicationReviewPage() {
             </div>
           ) : null}
 
-          {!isLanguageApplication ? (
+                    {!isLanguageApplication ? (
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">{formFieldTexts.admissionType}</label>
               <select

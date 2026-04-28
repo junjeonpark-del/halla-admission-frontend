@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
+import {
+  getMajorOptions,
+  isMajorAllowedForTrack,
+} from "../data/majorCatalog";
 import { supabase } from "../lib/supabase";
 import { useAgencySession } from "../contexts/AgencySessionContext";
 
@@ -914,12 +918,12 @@ function NewGraduateApplicationPage() {
   const agencySession = agencyContext?.session || null;
   const language = agencyContext?.language || "zh";
   const t = messages[language] || messages.zh;
-  const steps = t.steps;
+    const steps = t.steps;
   const sexOptions = t.options.sex;
   const yesNoOptions = t.options.yesNo;
-const degreeLevelOptions = t.options.degreeLevels || t.degreeLevels || [];
   const bankHolderTypes = t.options.bankHolderTypes;
   const residenceOptions = t.options.residenceOptions;
+  const degreeLevelOptions = t.options.degreeLevels;
   const admissionTypeOptions = t.options.admissionTypes;
   const programTrackOptions = t.options.programTracks;
   const [searchParams] = useSearchParams();
@@ -929,6 +933,14 @@ const isMaterialOnlyMode = pageMode === "material_only";
 
   const [currentStep, setCurrentStep] = useState(0);
   const [form, setForm] = useState(initialForm);
+
+  const majorOptions = useMemo(() => {
+    return getMajorOptions({
+      applicationType: "graduate",
+      programTrack: form.programTrack,
+      language,
+    });
+  }, [form.programTrack, language]);
 
   const [applicantUploadedSignature, setApplicantUploadedSignature] =
     useState("");
@@ -1544,12 +1556,51 @@ if (lockError) throw lockError;
     ];
   }, [bilingualTrack, inKorea, financialGuaranteeRequired]);
 
-  const updateField = (field, value) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    const updateField = (field, value) => {
+    setForm((prev) => {
+      const next = {
+        ...prev,
+        [field]: value,
+      };
+
+      if (field === "programTrack") {
+        if (
+          prev.major &&
+          !isMajorAllowedForTrack({
+            applicationType: "graduate",
+            programTrack: value,
+            major: prev.major,
+          })
+        ) {
+          next.major = "";
+        }
+      }
+
+      return next;
+    });
   };
+
+  useEffect(() => {
+    if (!form.programTrack) return;
+
+    setForm((prev) => {
+      if (
+        prev.major &&
+        !isMajorAllowedForTrack({
+          applicationType: "graduate",
+          programTrack: prev.programTrack,
+          major: prev.major,
+        })
+      ) {
+        return {
+          ...prev,
+          major: "",
+        };
+      }
+
+      return prev;
+    });
+  }, [form.programTrack]);
 
   const updateCountryField = (field, value) => {
   setForm((prev) => ({
@@ -2767,13 +2818,22 @@ if (sessionLoading) {
     </div>
   ) : null}
 </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <Input
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <Select
+              label={t.fields.programTrack}
+              required
+              value={form.programTrack}
+              onChange={(e) => updateField("programTrack", e.target.value)}
+              options={programTrackOptions}
+              t={t}
+            />
+            <Select
               label={t.fields.major}
               required
               value={form.major}
               onChange={(e) => updateField("major", e.target.value)}
-              placeholder={t.fields.majorPlaceholder}
+              options={majorOptions}
+              t={t}
             />
             <Select
               label={t.fields.degreeLevel}
@@ -2781,7 +2841,7 @@ if (sessionLoading) {
               value={form.degreeLevel}
               onChange={(e) => updateField("degreeLevel", e.target.value)}
               options={degreeLevelOptions}
-            t={t}
+              t={t}
             />
             <Select
               label={t.fields.admissionType}
@@ -2789,15 +2849,7 @@ if (sessionLoading) {
               value={form.admissionType}
               onChange={(e) => updateField("admissionType", e.target.value)}
               options={admissionTypeOptions}
-            t={t}
-            />
-            <Select
-              label={t.fields.programTrack}
-              required
-              value={form.programTrack}
-              onChange={(e) => updateField("programTrack", e.target.value)}
-              options={programTrackOptions}
-            t={t}
+              t={t}
             />
             <RadioGroup
               label={t.fields.dormitory}

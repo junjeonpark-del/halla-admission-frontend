@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import {
+  getMajorOptions,
+  isMajorAllowedForTrack,
+} from "../data/majorCatalog";
 import { supabase } from "../lib/supabase";
 
 const admissionTypes = [
@@ -780,7 +784,7 @@ function StudentGraduateApplicationPage() {
     [txt]
   );
 
-  const residenceOptionsTranslated = useMemo(
+    const residenceOptionsTranslated = useMemo(
     () => [
       { value: "abroad", label: txt("海外居住", "Living overseas", "해외 거주") },
       { value: "korea", label: txt("在韩国居住", "Living in Korea", "한국 거주") },
@@ -788,7 +792,58 @@ function StudentGraduateApplicationPage() {
     [txt]
   );
 
-  const degreeLevelOptions = useMemo(() => degreeLevels.map((item) => ({ value: item.value, label: txt(item.label.zh, item.label.en, item.label.ko) })), [txt]);
+  const programTrackOptions = useMemo(
+    () => [
+      {
+        value: "Korean Track",
+        label: txt("韩语授课", "Korean Track", "한국어 트랙"),
+      },
+      {
+        value: "English Track",
+        label: txt("英语授课", "English Track", "영어 트랙"),
+      },
+      {
+        value: "Bilingual Program (Chinese)",
+        label: txt("双语授课（中文）", "Bilingual Program (Chinese)", "이중언어 트랙(중국어)"),
+      },
+    ],
+    [txt]
+  );
+
+  const admissionTypeOptions = useMemo(
+    () => [
+      {
+        value: "Freshman",
+        label: txt("新入", "Freshman", "신입"),
+      },
+      {
+        value: "Transfer (2nd Semester)",
+        label: txt("插班第2学期", "Transfer (2nd Semester)", "편입 2학기"),
+      },
+      {
+        value: "Transfer (3rd Semester)",
+        label: txt("插班第3学期", "Transfer (3rd Semester)", "편입 3학기"),
+      },
+    ],
+    [txt]
+  );
+
+  const degreeLevelOptions = useMemo(
+    () =>
+      degreeLevels.map((item) => ({
+        value: item.value,
+        label: txt(item.label.zh, item.label.en, item.label.ko),
+      })),
+    [txt]
+  );
+
+  const majorOptions = useMemo(() => {
+    return getMajorOptions({
+      applicationType: "graduate",
+      programTrack: form.programTrack,
+      language,
+    });
+  }, [form.programTrack, language]);
 
   const pageText = useMemo(
     () => ({
@@ -995,12 +1050,51 @@ function StudentGraduateApplicationPage() {
     }
   }, [token, pageText]);
 
-  const updateField = (field, value) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    const updateField = (field, value) => {
+    setForm((prev) => {
+      const next = {
+        ...prev,
+        [field]: value,
+      };
+
+      if (field === "programTrack") {
+        if (
+          prev.major &&
+          !isMajorAllowedForTrack({
+            applicationType: "graduate",
+            programTrack: value,
+            major: prev.major,
+          })
+        ) {
+          next.major = "";
+        }
+      }
+
+      return next;
+    });
   };
+
+  useEffect(() => {
+    if (!form.programTrack) return;
+
+    setForm((prev) => {
+      if (
+        prev.major &&
+        !isMajorAllowedForTrack({
+          applicationType: "graduate",
+          programTrack: prev.programTrack,
+          major: prev.major,
+        })
+      ) {
+        return {
+          ...prev,
+          major: "",
+        };
+      }
+
+      return prev;
+    });
+  }, [form.programTrack]);
 
   const updateCountryField = (field, value) => {
     setForm((prev) => ({
@@ -1286,14 +1380,24 @@ student_form_status: submitMode === "submitted" ? "submitted" : "draft",
             title={txt("第1步：申请基本信息", "Step 1: Basic Application Info", "1단계: 지원 기본 정보")}
             desc={txt("请填写申请专业、学位课程、申请类型、项目轨道及宿舍申请。", "Enter intended major, degree level, admission type, program track, and dormitory request.", "지원 전공, 학위 과정, 지원 구분, 지원 트랙 및 생활관 신청 여부를 입력하세요.")}
           >
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              <Input
-                label="지원학과 (Major)"
+                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+              <Select
+                label="申请轨道(Program Track)"
+                required
+                disabled={isReadOnly}
+                value={form.programTrack}
+                onChange={(e) => updateField("programTrack", e.target.value)}
+                options={programTrackOptions}
+                placeholder={pageText.common.select}
+              />
+              <Select
+                label="申请专业(Major)"
                 required
                 disabled={isReadOnly}
                 value={form.major}
                 onChange={(e) => updateField("major", e.target.value)}
-                placeholder={txt("请输入申请专业", "Enter intended major", "지원 전공을 입력하세요")}
+                options={majorOptions}
+                placeholder={pageText.common.select}
               />
               <Select
                 label={txt("学位课程 (Degree Level)", "Degree Level", "학위 과정")}
@@ -1305,25 +1409,16 @@ student_form_status: submitMode === "submitted" ? "submitted" : "draft",
                 placeholder={pageText.common.select}
               />
               <Select
-                label="지원구분 (Admission Type)"
+                label="申请区分(Admission Type)"
                 required
                 disabled={isReadOnly}
                 value={form.admissionType}
                 onChange={(e) => updateField("admissionType", e.target.value)}
-                options={admissionTypes}
-                placeholder={pageText.common.select}
-              />
-              <Select
-                label="지원트랙 (Program Track)"
-                required
-                disabled={isReadOnly}
-                value={form.programTrack}
-                onChange={(e) => updateField("programTrack", e.target.value)}
-                options={programTracks}
+                options={admissionTypeOptions}
                 placeholder={pageText.common.select}
               />
               <RadioGroup
-                label="생활관 신청 (Dormitory)"
+                label="宿舍申请 (Dormitory)"
                 required
                 disabled={isReadOnly}
                 value={form.dormitory}
