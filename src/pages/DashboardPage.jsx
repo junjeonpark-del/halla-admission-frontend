@@ -761,26 +761,34 @@ function DashboardPage() {
     }, {});
   }, [agencies]);
 
-    const intakeOptions = useMemo(() => {
+      const intakeOptions = useMemo(() => {
     const map = new Map();
 
     applications.forEach((item) => {
+      const status = String(item.status || "").toLowerCase();
+      if (!status || status === "draft") return;
+
       const linkedIntake = getLinkedIntake(item);
       const source = linkedIntake || item;
-      const value = linkedIntake?.id || item.intake_id || getScopedIntakeLabel(item);
-      const label = getScopedIntakeOptionLabel(source);
+      const intakeLabel = getScopedIntakeLabel(source);
 
-      if (value && label && label !== "-") {
+      if (!intakeLabel || intakeLabel === "-") return;
+
+      const value = linkedIntake?.id || item.intake_id || intakeLabel;
+      const applicationType = getApplicationType(source);
+      const label = `${getApplicationTypeLabel(source)} / ${intakeLabel}`;
+
+      if (value && label) {
         map.set(String(value), {
           value: String(value),
           label,
+          applicationType,
         });
       }
     });
 
     return Array.from(map.values());
   }, [applications, intakes, language]);
-
 
     const filteredApplications = useMemo(() => {
     return applications.filter((item) => {
@@ -906,63 +914,144 @@ function DashboardPage() {
     });
   }, [intakes]);
 
-    const intakeStats = useMemo(() => {
-    const map = new Map();
+      const intakeStats = useMemo(() => {
+    const now = Date.now();
+    const typeOrder = ["undergraduate", "graduate", "language"];
 
-    activeApplications.forEach((item) => {
-      const linkedIntake = item.intake_id
-        ? intakes.find((intake) => intake.id === item.intake_id) || null
-        : null;
+    const toTime = (value) => {
+      if (!value) return 0;
+      const time = new Date(value).getTime();
+      return Number.isNaN(time) ? 0 : time;
+    };
 
-      const source = linkedIntake || item;
-      const applicationType = source.application_type || item.application_type || "undergraduate";
+    const isCurrentOpenIntake = (intake) => {
+      if (!intake || intake.is_active !== true) return false;
 
-      const typeLabel =
-        language === "en"
-          ? applicationType === "language"
-            ? "Language Program"
-            : applicationType === "graduate"
-            ? "Graduate School"
-            : "Undergraduate"
-          : language === "ko"
-          ? applicationType === "language"
-            ? "어학연수"
-            : applicationType === "graduate"
-            ? "대학원"
-            : "학부"
-          : applicationType === "language"
-          ? "语言班"
-          : applicationType === "graduate"
-          ? "大学院"
-          : "本科";
+      const openAt = toTime(intake.open_at);
+      const closeAt = toTime(intake.close_at);
 
-      const intakeLabel = getIntakeLabel(source);
-      const key = `${applicationType}::${source.id || item.intake_id || intakeLabel}`;
+      if (openAt && now < openAt) return false;
+      if (closeAt && now > closeAt) return false;
 
-      if (!map.has(key)) {
-        map.set(key, {
-          key,
-          label: `${typeLabel} / ${intakeLabel}`,
-          total: 0,
-          submitted: 0,
-          under_review: 0,
-          missing_documents: 0,
-          approved: 0,
-        });
-      }
+      return true;
+    };
 
-      const target = map.get(key);
-      target.total += 1;
+    const isClosedIntake = (intake) => {
+      if (!intake?.close_at) return false;
+      return toTime(intake.close_at) < now;
+    };
 
-      if (item.status === "submitted") target.submitted += 1;
-      if (item.status === "under_review") target.under_review += 1;
-      if (item.status === "missing_documents") target.missing_documents += 1;
-      if (item.status === "approved") target.approved += 1;
+    const getIntakeSortRank = (intake) => {
+      if (isCurrentOpenIntake(intake)) return 3;
+      if (isClosedIntake(intake)) return 2;
+      return 1;
+    };
+
+    const compareIntakesByRecency = (a, b) => {
+      const rankDiff = getIntakeSortRank(b) - getIntakeSortRank(a);
+      if (rankDiff !== 0) return rankDiff;
+
+      const aPrimary = isClosedIntake(a)
+        ? toTime(a.close_at)
+        : Math.max(toTime(a.open_at), toTime(a.close_at));
+      const bPrimary = isClosedIntake(b)
+        ? toTime(b.close_at)
+        : Math.max(toTime(b.open_at), toTime(b.close_at));
+
+      if (bPrimary !== aPrimary) return bPrimary - aPrimary;
+
+      return toTime(b.created_at) - toTime(a.created_at);
+    };
+
+    const availableIntakes =
+      selectedApplicationType === "all"
+        ? [...intakes]
+        : intakes.filter(
+            (item) => getApplicationType(item) === selectedApplicationType
+          );
+
+    const sortedIntakes = [...availableIntakes].sort(compareIntakesByRecency);
+
+    let targetIntakes = [];
+
+    if (selectedIntake !== "all") {
+      const selectedRow = sortedIntakes.find((item) => {
+        const id = item.id != null ? String(item.id) : "";
+        const optionLabel = getScopedIntakeOptionLabel(item);
+        const scopedLabel = getScopedIntakeLabel(item);
+        const rawLabel = getIntakeLabel(item);
+
+        return (
+          id === selectedIntake ||
+          optionLabel === selectedIntake ||
+          scopedLabel === selectedIntake ||
+          rawLabel === selectedIntake
+        );
+      });
+
+      targetIntakes = selectedRow ? [selectedRow] : [];
+    } else if (selectedApplicationType !== "all") {
+      targetIntakes = sortedIntakes.slice(0, 3);
+    } else {
+      targetIntakes = typeOrder
+        .map((type) =>
+          sortedIntakes.find((item) => getApplicationType(item) === type)
+        )
+        .filter(Boolean);
+    }
+
+    return targetIntakes.map((intake) => {
+      const intakeId = intake.id != null ? String(intake.id) : "";
+      const intakeLabel = getIntakeLabel(intake);
+      const intakeType = getApplicationType(intake);
+
+      const stat = {
+        key: intakeId || `${intakeType}::${intakeLabel}`,
+        label: `${getApplicationTypeLabel(intake)} / ${intakeLabel}`,
+        total: 0,
+        submitted: 0,
+        under_review: 0,
+        missing_documents: 0,
+        approved: 0,
+      };
+
+      activeApplications.forEach((item) => {
+        const linkedIntake = getLinkedIntake(item);
+        const linkedIntakeId =
+          linkedIntake?.id != null ? String(linkedIntake.id) : "";
+        const itemIntakeId = item.intake_id != null ? String(item.intake_id) : "";
+        const itemLabel = getScopedIntakeLabel(item);
+
+        const sameById =
+          intakeId &&
+          (linkedIntakeId === intakeId || itemIntakeId === intakeId);
+
+        const sameByFallback =
+          !sameById &&
+          !itemIntakeId &&
+          getApplicationType(item) === intakeType &&
+          itemLabel === intakeLabel;
+
+        if (!sameById && !sameByFallback) return;
+
+        stat.total += 1;
+
+        const status = String(item.status || "").toLowerCase();
+        if (status === "submitted") stat.submitted += 1;
+        if (status === "under_review") stat.under_review += 1;
+        if (status === "missing_documents") stat.missing_documents += 1;
+        if (status === "approved") stat.approved += 1;
+      });
+
+      return stat;
     });
-
-    return Array.from(map.values()).sort((a, b) => b.total - a.total);
-  }, [activeApplications, intakes, language]);
-
+  }, [
+    activeApplications,
+    intakes,
+    selectedApplicationType,
+    selectedIntake,
+    language,
+  ]);
 
   const statusPieData = useMemo(() => {
     return [
@@ -1064,15 +1153,10 @@ function DashboardPage() {
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
             >
               <option value="all">{t.allIntakes}</option>
-              {intakeOptions
+                            {intakeOptions
                 .filter((option) => {
                   if (selectedApplicationType === "all") return true;
-                  const matched = applications.find((item) => {
-                    const linkedIntake = getLinkedIntake(item);
-                    const value = String(linkedIntake?.id || item.intake_id || getScopedIntakeOptionLabel(item));
-                    return value === option.value;
-                  });
-                  return matched && getApplicationType(matched) === selectedApplicationType;
+                  return option.applicationType === selectedApplicationType;
                 })
                 .map((option) => (
                   <option key={option.value} value={option.value}>
