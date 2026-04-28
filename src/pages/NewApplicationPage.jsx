@@ -1411,8 +1411,12 @@ if (lockError) throw lockError;
   }
 
   loadExistingApplication();
-}, [editingPublicId, agencySession, sessionLoading]);
-
+}, [
+  editingPublicId,
+  agencySession?.agency_id,
+  agencySession?.agency_account_id,
+  sessionLoading,
+]);
 
    useEffect(() => {
     async function loadCurrentIntake() {
@@ -2736,7 +2740,9 @@ const handleSubmit = async () => {
 await loadExistingUploadedFiles(data.public_id);
 clearUploadedMaterialSelections();
 
-      alert(language === "en" ? "Application submitted." : language === "ko" ? "지원서가 제출되었습니다." : "申请已提交");
+            alert(language === "en" ? "Application submitted." : language === "ko" ? "지원서가 제출되었습니다." : "申请已提交");
+      window.location.href = "/agency/applications";
+      
       return;
     }
 
@@ -2772,7 +2778,9 @@ setLoadedApplicationStatus("submitted");
 await loadExistingUploadedFiles(applicationPublicId || editingPublicId);
 clearUploadedMaterialSelections();
 
-    alert(language === "en" ? "Application submitted." : language === "ko" ? "지원서가 제출되었습니다." : "申请已提交。");
+        alert(language === "en" ? "Application submitted." : language === "ko" ? "지원서가 제출되었습니다." : "申请已提交。");
+    window.location.href = "/agency/applications";
+    return;
 
   } catch (error) {
     console.error(error);
