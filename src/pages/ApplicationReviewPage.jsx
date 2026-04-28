@@ -1412,26 +1412,116 @@ function ApplicationReviewPage() {
     return Date.now() - time > timeoutMinutes * 60 * 1000;
   }
 
+    function sanitizeDownloadSegment(value, fallback = "file") {
+    const cleaned = String(value || "")
+      .replace(/[\\/:*?"<>|]+/g, "-")
+      .replace(/\s+/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^[-_.]+|[-_.]+$/g, "");
+
+    return cleaned || fallback;
+  }
+
+  function getDownloadStudentName() {
+    return sanitizeDownloadSegment(
+      student?.english_name || student?.full_name_passport || "student",
+      "student"
+    );
+  }
+
+  function getDownloadApplicationTypeLabel() {
+    const type = student?.application_type || "undergraduate";
+
+    if (language === "en") {
+      if (type === "language") return "LanguageProgram";
+      if (type === "graduate") return "GraduateSchool";
+      return "Undergraduate";
+    }
+
+    if (language === "ko") {
+      if (type === "language") return "어학연수";
+      if (type === "graduate") return "대학원";
+      return "학부";
+    }
+
+    if (type === "language") return "语言班";
+    if (type === "graduate") return "大学院";
+    return "本科";
+  }
+
+  function getDownloadIntakeLabel() {
+    const intakeName =
+      student?.intake_name ||
+      student?.intake_title ||
+      "";
+
+    if (String(intakeName).trim() !== "") {
+      return sanitizeDownloadSegment(intakeName, "batch");
+    }
+
+    const year = student?.intake_year || "";
+    const month = student?.intake_month || "";
+    const round = student?.intake_round_number || "";
+
+    if (year && month && round) {
+      return sanitizeDownloadSegment(`${year}-${month}-Round${round}`, "batch");
+    }
+
+    return sanitizeDownloadSegment(student?.intake_id || "batch", "batch");
+  }
+
+  function getZipScopeLabel(mode = "all") {
+    if (language === "en") {
+      return mode === "selected" ? "Selected" : "All";
+    }
+
+    if (language === "ko") {
+      return mode === "selected" ? "선택" : "전체";
+    }
+
+    return mode === "selected" ? "已选" : "全部";
+  }
+
+  function getFullPackageLabel() {
+    if (language === "en") return "FullApplicationPackage";
+    if (language === "ko") return "전체지원서패키지";
+    return "完整申请包";
+  }
+
+  function buildSingleDownloadBaseName(item) {
+    const studentName = getDownloadStudentName();
+    const materialName = sanitizeDownloadSegment(item?.label || item?.key || "file", "file");
+    const applicationType = sanitizeDownloadSegment(getDownloadApplicationTypeLabel(), "type");
+    const intakeLabel = getDownloadIntakeLabel();
+
+    return `${studentName}_${materialName}_${applicationType}_${intakeLabel}`;
+  }
+
+  function buildZipDownloadFileName(mode = "all") {
+    const studentName = getDownloadStudentName();
+    const scopeLabel = sanitizeDownloadSegment(getZipScopeLabel(mode), "All");
+    const applicationType = sanitizeDownloadSegment(getDownloadApplicationTypeLabel(), "type");
+    const intakeLabel = getDownloadIntakeLabel();
+
+    return `${studentName}_${scopeLabel}_${applicationType}_${intakeLabel}.zip`;
+  }
+
+  function buildFullPackageDownloadTitle() {
+    const studentName = getDownloadStudentName();
+    const packageLabel = sanitizeDownloadSegment(getFullPackageLabel(), "package");
+    const applicationType = sanitizeDownloadSegment(getDownloadApplicationTypeLabel(), "type");
+    const intakeLabel = getDownloadIntakeLabel();
+
+    return `${studentName}_${packageLabel}_${applicationType}_${intakeLabel}`;
+  }
+
   function getDownloadFileName(item) {
     if (!item) return "file";
-
-    const studentName = (
-      student?.english_name ||
-      student?.full_name_passport ||
-      "student"
-    )
-      .replace(/\s+/g, "")
-      .replace(/[^\w-]/g, "");
-
-    const intakeText =
-      String(student?.intake_id || "")
-        .replace(/\s+/g, "")
-        .replace(/[^\w\u4e00-\u9fa5-]/g, "") || "batch";
 
     const extMatch = item.fileName?.match(/(\.[^.]+)$/);
     const ext = extMatch ? extMatch[1] : "";
 
-    return `${studentName}_${item.key}_${intakeText}${ext}`;
+    return `${buildSingleDownloadBaseName(item)}${ext}`;
   }
 
   const formatApplicationStatusLabel = (status) => {
@@ -2075,18 +2165,11 @@ function ApplicationReviewPage() {
         downloadName: getDownloadFileName(item),
       }));
 
-      const studentName = (
-        student?.english_name ||
-        student?.full_name_passport ||
-        "student"
-      )
-        .replace(/\s+/g, "")
-        .replace(/[^\w-]/g, "");
-
-      await downloadApplicationFilesAsZip(
+            await downloadApplicationFilesAsZip(
         zipFiles,
-        `${studentName}_selected_materials.zip`
+        buildZipDownloadFileName("selected")
       );
+
     } catch (error) {
       console.error("download selected zip error:", error);
       alert(t.materials.selectedZipFailed);
@@ -2110,18 +2193,11 @@ function ApplicationReviewPage() {
         downloadName: getDownloadFileName(item),
       }));
 
-      const studentName = (
-        student?.english_name ||
-        student?.full_name_passport ||
-        "student"
-      )
-        .replace(/\s+/g, "")
-        .replace(/[^\w-]/g, "");
-
-      await downloadApplicationFilesAsZip(
+            await downloadApplicationFilesAsZip(
         zipFiles,
-        `${studentName}_all_materials.zip`
+        buildZipDownloadFileName("all")
       );
+
     } catch (error) {
       console.error("download all zip error:", error);
       alert(t.materials.allZipFailed);
@@ -2469,12 +2545,7 @@ function ApplicationReviewPage() {
         return;
       }
 
-      const html = renderToStaticMarkup(node);
-      const studentName =
-        student?.english_name ||
-        student?.full_name_passport ||
-        "student";
-
+            const html = renderToStaticMarkup(node);
       const printWindow = window.open("", "_blank", "width=1200,height=900");
 
       if (!printWindow) {
@@ -2484,8 +2555,9 @@ function ApplicationReviewPage() {
 
       printWindow.document.open();
       printWindow.document.write(
-        buildPrintDocument(`${studentName}_${item.label}`, [html])
+        buildPrintDocument(buildSingleDownloadBaseName(item), [html])
       );
+
       printWindow.document.close();
     } catch (error) {
       console.error("handleDownloadGeneratedMaterial error:", error);
@@ -2516,11 +2588,6 @@ function ApplicationReviewPage() {
         .filter(Boolean)
         .map((node) => renderToStaticMarkup(node));
 
-      const studentName =
-        student.english_name ||
-        student.full_name_passport ||
-        "student";
-
       const printWindow = window.open("", "_blank", "width=1200,height=900");
 
       if (!printWindow) {
@@ -2530,8 +2597,9 @@ function ApplicationReviewPage() {
 
       printWindow.document.open();
       printWindow.document.write(
-        buildPrintDocument(`${studentName}_full_application_package`, contentBlocks)
+        buildPrintDocument(buildFullPackageDownloadTitle(), contentBlocks)
       );
+
       printWindow.document.close();
     } catch (error) {
       console.error("handleDownloadFullApplicationPackage error:", error);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AgencySessionContext } from "../contexts/AgencySessionContext";
 
@@ -49,7 +49,10 @@ const messages = {
         desc: "管理当前机构的主账号与子账号",
       },
     },
-    enteringAgency: "正在进入机构后台...",
+        enteringAgency: "正在进入机构后台...",
+    sessionConflictTitle: "登录状态变更",
+    sessionConflictMessage: "该账号已在其他地方登录，当前页面将返回登录页。",
+    sessionConflictConfirm: "确定",
   },
   en: {
     brandDesc: "Agency Application Submission and Materials Management",
@@ -91,7 +94,10 @@ const messages = {
         desc: "Manage the primary account and sub-accounts for the current agency",
       },
     },
-    enteringAgency: "Entering agency portal...",
+        enteringAgency: "Entering agency portal...",
+    sessionConflictTitle: "Session Changed",
+    sessionConflictMessage: "This account has been signed in elsewhere. This page will return to the login screen.",
+    sessionConflictConfirm: "OK",
   },
   ko: {
     brandDesc: "기관 지원서 제출 및 서류 관리",
@@ -133,7 +139,9 @@ const messages = {
         desc: "현재 기관의 주계정과 하위 계정을 관리합니다",
       },
     },
-    enteringAgency: "기관 포털로 이동 중...",
+        sessionConflictTitle: "로그인 상태 변경",
+    sessionConflictMessage: "이 계정이 다른 곳에서 로그인되었습니다. 현재 페이지는 로그인 화면으로 이동합니다.",
+    sessionConflictConfirm: "확인",
   },
 };
 
@@ -205,9 +213,11 @@ function AgencyLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [session, setSession] = useState(() => readLocalAgencySession());
+    const [session, setSession] = useState(() => readLocalAgencySession());
   const [checking, setChecking] = useState(true);
   const [language, setLanguage] = useState(() => readLanguage());
+  const [sessionConflictOpen, setSessionConflictOpen] = useState(false);
+  const [sessionConflictMessage, setSessionConflictMessage] = useState("");
 
   const t = messages[language] || messages.zh;
   const menuItems = useMemo(() => buildMenuItems(t), [t]);
@@ -220,10 +230,20 @@ function AgencyLayout() {
     saveLanguage(language);
   }, [language]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const clearLocalAgencySession = useCallback(() => {
+    sessionStorage.removeItem("agency_session");
+  }, []);
 
-    const verifySession = async () => {
+  const finalizeForcedLogout = useCallback(() => {
+    clearLocalAgencySession();
+    setSession(null);
+    setSessionConflictOpen(false);
+    setSessionConflictMessage("");
+    navigate("/login", { replace: true });
+  }, [clearLocalAgencySession, navigate]);
+
+  const verifySession = useCallback(
+    async ({ showConflictOnFail = false } = {}) => {
       try {
         const response = await fetch("/api/agency-session", {
           method: "GET",
@@ -240,41 +260,71 @@ function AgencyLayout() {
         }
 
         if (!response.ok || !result.success || !result.session) {
-          sessionStorage.removeItem("agency_session");
-          if (!cancelled) {
-            setSession(null);
-            navigate("/login", { replace: true });
+          clearLocalAgencySession();
+
+          if (showConflictOnFail && session) {
+            setSessionConflictMessage(t.sessionConflictMessage);
+            setSessionConflictOpen(true);
+            return null;
           }
-          return;
+
+          setSession(null);
+          navigate("/login", { replace: true });
+          return null;
         }
 
         sessionStorage.setItem("agency_session", JSON.stringify(result.session));
-
-        if (!cancelled) {
-          setSession(result.session);
-        }
+        setSession(result.session);
+        return result.session;
       } catch (error) {
         console.error("AgencyLayout verifySession error:", error);
 
-        sessionStorage.removeItem("agency_session");
+        clearLocalAgencySession();
 
-        if (!cancelled) {
-          setSession(null);
-          navigate("/login", { replace: true });
+        if (showConflictOnFail && session) {
+          setSessionConflictMessage(t.sessionConflictMessage);
+          setSessionConflictOpen(true);
+          return null;
         }
+
+        setSession(null);
+        navigate("/login", { replace: true });
+        return null;
       } finally {
-        if (!cancelled) {
-          setChecking(false);
-        }
+        setChecking(false);
+      }
+    },
+    [clearLocalAgencySession, navigate, session, t.sessionConflictMessage]
+  );
+
+  useEffect(() => {
+    verifySession({ showConflictOnFail: false });
+  }, [verifySession]);
+
+  useEffect(() => {
+    if (!session || sessionConflictOpen) return;
+
+    const runCheck = () => {
+      verifySession({ showConflictOnFail: true });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        runCheck();
       }
     };
 
-    verifySession();
+    const timer = window.setInterval(runCheck, 3000);
+
+    window.addEventListener("focus", runCheck);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      cancelled = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", runCheck);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [navigate]);
+  }, [session, sessionConflictOpen, verifySession]);
 
   const handleLogout = async () => {
     try {
@@ -285,7 +335,7 @@ function AgencyLayout() {
     } catch (error) {
       console.error("AgencyLayout handleLogout error:", error);
     } finally {
-      sessionStorage.removeItem("agency_session");
+      clearLocalAgencySession();
       navigate("/login", { replace: true });
     }
   };
@@ -302,31 +352,8 @@ function AgencyLayout() {
         language,
         setLanguage,
         t,
-        refreshSession: async () => {
-          const response = await fetch("/api/agency-session", {
-            method: "GET",
-            credentials: "include",
-          });
-
-          const text = await response.text();
-          let result = {};
-
-          try {
-            result = text ? JSON.parse(text) : {};
-          } catch {
-            result = {};
-          }
-
-          if (!response.ok || !result.success || !result.session) {
-            sessionStorage.removeItem("agency_session");
-            setSession(null);
-            navigate("/login", { replace: true });
-            return null;
-          }
-
-          sessionStorage.setItem("agency_session", JSON.stringify(result.session));
-          setSession(result.session);
-          return result.session;
+                refreshSession: async () => {
+          return verifySession({ showConflictOnFail: true });
         },
       }}
     >
@@ -420,11 +447,33 @@ function AgencyLayout() {
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-8">
+                        <div className="min-h-0 flex-1 overflow-y-auto p-8">
               <Outlet />
             </div>
           </main>
         </div>
+
+        {sessionConflictOpen ? (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/45 px-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+              <div className="text-lg font-bold text-slate-900">
+                {t.sessionConflictTitle}
+              </div>
+              <div className="mt-3 text-sm leading-6 text-slate-600">
+                {sessionConflictMessage || t.sessionConflictMessage}
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={finalizeForcedLogout}
+                  className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  {t.sessionConflictConfirm}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </AgencySessionContext.Provider>
   );

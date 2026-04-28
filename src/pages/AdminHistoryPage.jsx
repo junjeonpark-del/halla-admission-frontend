@@ -634,7 +634,7 @@ const [selectedNode, setSelectedNode] = useState({ type: "all" });
     return matched ? normalizeIntakeMonth(matched[1]) : "-";
   }
 
-  function formatDate(value) {
+    function formatDate(value) {
     if (!value) return "-";
 
     const date = new Date(value);
@@ -648,6 +648,16 @@ const [selectedNode, setSelectedNode] = useState({ type: "all" });
       month: "2-digit",
       day: "2-digit",
     });
+  }
+
+  function sanitizeExportFileSegment(value, fallback = "export") {
+    const cleaned = String(value || "")
+      .replace(/[\\/:*?"<>|]+/g, "-")
+      .replace(/\s+/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^[-_.]+|[-_.]+$/g, "");
+
+    return cleaned || fallback;
   }
 
   function getApplicationType(item) {
@@ -1409,7 +1419,7 @@ const toggleMonth = (year, applicationType, month) => {
         { wch: 14 },
       ];
 
-      const workbook = XLSX.utils.book_new();
+            const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, t.search.sheetName);
 
       const today = new Date();
@@ -1417,21 +1427,38 @@ const toggleMonth = (year, applicationType, month) => {
         today.getMonth() + 1
       ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-            let fileLabel = t.search.fileAll;
+      let fileLabel = t.search.fileAll;
+
       if (selectedNode.type === "year") {
         fileLabel =
           language === "en"
-            ? selectedNode.year
+            ? String(selectedNode.year)
             : `${selectedNode.year}${t.sidebar.yearSuffix}`;
       } else if (selectedNode.type === "applicationType") {
-        fileLabel = `${selectedNode.year}_${selectedNode.applicationTypeLabel}`;
+        fileLabel = `${selectedNode.year}${
+          language === "en" ? "" : t.sidebar.yearSuffix
+        }_${selectedNode.applicationTypeLabel}`;
       } else if (selectedNode.type === "month") {
-        fileLabel = `${selectedNode.year}_${selectedNode.applicationTypeLabel}_${selectedNode.monthLabel}`;
+        fileLabel = `${selectedNode.year}${
+          language === "en" ? "" : t.sidebar.yearSuffix
+        }_${selectedNode.applicationTypeLabel}_${selectedNode.monthLabel}`;
       } else if (selectedNode.type === "intake") {
-        fileLabel = `${selectedNode.year}_${selectedNode.applicationTypeLabel}_${selectedNode.monthLabel}_${selectedNode.intakeLabel}`;
+        fileLabel = `${selectedNode.year}${
+          language === "en" ? "" : t.sidebar.yearSuffix
+        }_${selectedNode.applicationTypeLabel}_${selectedNode.monthLabel}_${selectedNode.intakeLabel}`;
       }
 
-      XLSX.writeFile(workbook, `${t.search.filePrefix}_${fileLabel}_${dateText}.xlsx`);
+      const safePrefix = sanitizeExportFileSegment(
+        t.search.filePrefix,
+        "History"
+      );
+      const safeLabel = sanitizeExportFileSegment(fileLabel, "All");
+      const safeDate = sanitizeExportFileSegment(dateText, "date");
+
+      XLSX.writeFile(
+        workbook,
+        `${safePrefix}_${safeLabel}_${safeDate}.xlsx`
+      );
     } catch (error) {
       console.error("handleExportExcel error:", error);
       alert(`${t.search.exportFailed}${error.message}`);
