@@ -360,17 +360,50 @@ function ApplicationsPage() {
     return t.applicationTypeLabels[type] || t.applicationTypeLabels.undergraduate;
   };
 
-  const intakeMap = useMemo(() => {
+    const intakeMap = useMemo(() => {
     return (intakes || []).reduce((acc, intake) => {
       acc[String(intake.id)] = intake;
       return acc;
     }, {});
   }, [intakes]);
 
+  const isIntakeClosed = (intake) => {
+    if (!intake?.close_at) return false;
+
+    const closeAt = new Date(intake.close_at);
+    if (Number.isNaN(closeAt.getTime())) return false;
+
+    return Date.now() > closeAt.getTime();
+  };
+
+  const shouldShowInCurrentApplications = (student) => {
+    const status = String(student.status || "").toLowerCase();
+    if (!status || status === "draft") return false;
+
+    const intakeId = student.intake_id != null ? String(student.intake_id) : "";
+    const intakeRow = intakeId ? intakeMap[intakeId] : null;
+
+    if (!intakeRow) {
+      return true;
+    }
+
+    if (intakeRow.is_active === true) {
+      return !isIntakeClosed(intakeRow);
+    }
+
+    return true;
+  };
+
   const getIntake = (student) => {
     const intakeId = student.intake_id != null ? String(student.intake_id) : "";
     const intakeRow = intakeId ? intakeMap[intakeId] : null;
-    return intakeRow?.title || student.intake_name || student.intake || student.intake_id || "-";
+    return (
+      intakeRow?.title ||
+      student.intake_name ||
+      student.intake ||
+      student.intake_id ||
+      "-"
+    );
   };
 
   const getIntakeFilterValue = (student) => {
@@ -378,7 +411,8 @@ function ApplicationsPage() {
     return intakeId || getIntake(student);
   };
 
-  const getIntakeFilterLabel = (student) => `${getApplicationTypeLabel(student)} / ${getIntake(student)}`;
+  const getIntakeFilterLabel = (student) =>
+    `${getApplicationTypeLabel(student)} / ${getIntake(student)}`;
 
   const getMajor = (student) => {
     return student.major || student.department || "-";
@@ -563,7 +597,11 @@ function ApplicationsPage() {
         const [applicationsData, agenciesResult, intakesResult] = await Promise.all([
           fetchApplications(),
           supabase.from("agencies").select("id, agency_name"),
-          supabase.from("intakes").select("id, title, application_type"),
+                    supabase
+            .from("intakes")
+            .select(
+              "id, title, application_type, year, intake_month, round_number, is_active, open_at, close_at"
+            ),
         ]);
 
         if (agenciesResult.error) throw agenciesResult.error;
@@ -583,8 +621,8 @@ function ApplicationsPage() {
     loadData();
   }, [adminSession?.admin_id, t.loadError]);
 
-  const visibleApplications = applications.filter(
-    (item) => item.status && String(item.status).toLowerCase() !== "draft"
+    const visibleApplications = applications.filter((item) =>
+    shouldShowInCurrentApplications(item)
   );
 
   const agencyOptions = Array.from(
