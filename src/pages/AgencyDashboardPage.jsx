@@ -398,17 +398,17 @@ function AgencyDashboardPage() {
     });
   };
 
-  const getIntakeProgressType = (intake) => {
+    const getIntakeProgressType = (intake) => {
     const now = new Date();
     const openAt = intake.open_at ? new Date(intake.open_at) : null;
     const closeAt = intake.close_at ? new Date(intake.close_at) : null;
 
-    if (openAt && now < openAt) return "default";
+    if (openAt && now < openAt) return "warning";
     if (closeAt && now > closeAt) return "danger";
     return "success";
   };
 
-  const getIntakeProgressLabel = (intake) => {
+    const getIntakeProgressLabel = (intake) => {
     const now = new Date();
     const openAt = intake.open_at ? new Date(intake.open_at) : null;
     const closeAt = intake.close_at ? new Date(intake.close_at) : null;
@@ -416,6 +416,40 @@ function AgencyDashboardPage() {
     if (openAt && now < openAt) return t.intakeProgress.notStarted;
     if (closeAt && now > closeAt) return t.intakeProgress.closed;
     return t.intakeProgress.ongoing;
+  };
+
+  const getLinkedIntake = (app) => {
+    if (!app?.intake_id) return null;
+    return intakes.find((intake) => intake.id === app.intake_id) || null;
+  };
+
+  const getContinueEditAvailability = (app) => {
+    if (!app?.public_id) {
+      return { canContinueEdit: false, reason: "missing_public_id" };
+    }
+
+    const intakeItem = getLinkedIntake(app);
+    if (!intakeItem) {
+      return { canContinueEdit: true, reason: "unknown" };
+    }
+
+    const now = new Date();
+    const openAt = intakeItem.open_at ? new Date(intakeItem.open_at) : null;
+    const closeAt = intakeItem.close_at ? new Date(intakeItem.close_at) : null;
+
+    if (intakeItem.is_active === false) {
+      return { canContinueEdit: false, reason: "inactive" };
+    }
+
+    if (openAt && now < openAt) {
+      return { canContinueEdit: false, reason: "not_started" };
+    }
+
+    if (closeAt && now > closeAt) {
+      return { canContinueEdit: false, reason: "closed" };
+    }
+
+    return { canContinueEdit: true, reason: "open" };
   };
 
   useEffect(() => {
@@ -435,10 +469,9 @@ function AgencyDashboardPage() {
             .select("*")
             .eq("agency_id", agencySession.agency_id)
             .order("created_at", { ascending: false }),
-          supabase
+                    supabase
             .from("intakes")
             .select("*")
-            .eq("is_active", true)
             .order("open_at", { ascending: true }),
         ]);
 
@@ -757,9 +790,10 @@ function AgencyDashboardPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {recentApplications.map((student, index) => {
+                                            {recentApplications.map((student, index) => {
                         const publicId = student.public_id;
                         const status = student.status || "draft";
+                        const editAccess = getContinueEditAvailability(student);
 
                         return (
                           <tr
@@ -792,17 +826,22 @@ function AgencyDashboardPage() {
                                 {formatStatusLabel(status)}
                               </StatusBadge>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              {publicId ? (
-                                                                  <Link
-                                    to={buildEditApplicationUrl(student)}
-                                    className="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
-                                  >
-
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                              {publicId && editAccess.canContinueEdit ? (
+                                <Link
+                                  to={buildEditApplicationUrl(student)}
+                                  className="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                                >
                                   {t.table.continueEdit}
                                 </Link>
                               ) : (
-                                <span className="text-xs text-slate-400">{t.table.notEditable}</span>
+                                <span className="text-xs text-slate-400">
+                                  {language === "en"
+                                    ? "Not Editable"
+                                    : language === "ko"
+                                    ? "수정 불가"
+                                    : "不可编辑"}
+                                </span>
                               )}
                             </td>
                           </tr>

@@ -1033,22 +1033,43 @@ const isClosedIntake = (intakeRow) => {
   return new Date() > new Date(intakeRow.close_at);
 };
 
+const isNotStartedIntake = (intakeRow) => {
+  if (!intakeRow?.open_at) return false;
+  return new Date() < new Date(intakeRow.open_at);
+};
+
+const isInactiveIntake = (intakeRow) => {
+  return intakeRow?.is_active === false;
+};
+
 const fetchIntakeStatus = async (intakeId) => {
-  if (!intakeId) return { exists: false, closed: false, row: null };
+  if (!intakeId) {
+    return {
+      exists: false,
+      closed: false,
+      notStarted: false,
+      inactive: false,
+      row: null,
+    };
+  }
 
   const { data, error } = await supabase
     .from("intakes")
-    .select("id, close_at, post_deadline_material_edit_enabled")
+    .select("id, is_active, open_at, close_at, post_deadline_material_edit_enabled")
     .eq("id", intakeId)
     .single();
 
   if (error) throw error;
 
   const closed = data?.close_at ? new Date() > new Date(data.close_at) : false;
+  const notStarted = data?.open_at ? new Date() < new Date(data.open_at) : false;
+  const inactive = data?.is_active === false;
 
   return {
     exists: !!data,
     closed,
+    notStarted,
+    inactive,
     row: data || null,
   };
 };
@@ -1159,15 +1180,51 @@ if (shouldUseSavedIntake) {
   intakeRow = intakeData || null;
 }
 
+if (shouldUseSavedIntake && isInactiveIntake(intakeRow)) {
+  alert(
+    language === "en"
+      ? "This intake is currently inactive and can no longer be edited."
+      : language === "ko"
+      ? "이 차수는 현재 비활성 상태이므로 더 이상 수정할 수 없습니다."
+      : "该批次当前已停用，无法继续编辑。"
+  );
+  window.location.href = "/agency/history";
+  return;
+}
+
+if (shouldUseSavedIntake && isNotStartedIntake(intakeRow)) {
+  alert(
+    language === "en"
+      ? "This intake has not started yet and cannot be edited right now."
+      : language === "ko"
+      ? "이 차수는 아직 시작 전이므로 현재 수정할 수 없습니다."
+      : "该批次当前尚未开始，暂时无法编辑。"
+  );
+  window.location.href = "/agency/history";
+  return;
+}
+
 if (isMaterialOnlyMode) {
   if (!canUseMaterialOnlyMode(intakeRow)) {
-    alert(language === "en" ? "Post-deadline material editing is not enabled for this application." : language === "ko" ? "이 지원서는 마감 후 서류 보완 권한이 활성화되어 있지 않습니다." : "该申请当前未开启截止后补材料权限，无法进入补材料模式。");
+    alert(
+      language === "en"
+        ? "Post-deadline material editing is not enabled for this application."
+        : language === "ko"
+        ? "해당 신청은 마감 후 서류 보완 권한이 활성화되어 있지 않습니다."
+        : "该申请当前未开启截止后补材料权限，无法进入补材料模式。"
+    );
     window.location.href = "/agency/history";
     return;
   }
 } else {
   if (shouldUseSavedIntake && isClosedIntake(intakeRow)) {
-    alert(language === "en" ? "This intake is closed. Please use material-only mode from history if enabled by admin." : language === "ko" ? "해당 차수는 마감되었습니다. 관리자가 허용한 경우 이력에서 보완 모드로 들어가세요." : "该批次已截止，不能继续编辑前半部分申请信息。若管理员已开启权限，请从历史申请进入“补充材料”模式。");
+    alert(
+      language === "en"
+        ? "This intake is closed. Please use material-only mode from history if enabled by admin."
+        : language === "ko"
+        ? "해당 차수는 이미 마감되었습니다. 관리자 허용 시 역사申请页에서 보완 모드로 들어가세요."
+        : "该批次已截止，不能继续编辑前半部分申请信息。若管理员已开启权限，请从历史申请进入“补充材料”模式。"
+    );
     window.location.href = "/agency/history";
     return;
   }
@@ -2382,8 +2439,30 @@ clearUploadedMaterialSelections();
 
 const handleSubmit = async () => {
   try {
-        if (selectedIntakeId) {
+            if (selectedIntakeId) {
       const intakeStatus = await fetchIntakeStatus(selectedIntakeId);
+
+      if (intakeStatus.inactive) {
+        alert(
+          language === "en"
+            ? "This intake is currently inactive and can no longer be edited."
+            : language === "ko"
+            ? "이 차수는 현재 비활성 상태이므로 더 이상 수정할 수 없습니다."
+            : "该批次当前已停用，无法继续操作。"
+        );
+        return;
+      }
+
+      if (intakeStatus.notStarted) {
+        alert(
+          language === "en"
+            ? "This intake has not started yet and cannot be edited right now."
+            : language === "ko"
+            ? "이 차수는 아직 시작 전이므로 현재 수정할 수 없습니다."
+            : "该批次当前尚未开始，暂时无法操作。"
+        );
+        return;
+      }
 
       if (intakeStatus.closed && !isMaterialOnlyMode) {
         alert(
@@ -2405,7 +2484,7 @@ const handleSubmit = async () => {
           language === "en"
             ? "Post-deadline material editing is not enabled for this application."
             : language === "ko"
-            ? "이 지원서는 마감 후 서류 보완 권한이 활성화되어 있지 않습니다."
+            ? "해당 신청은 마감 후 서류 보완 권한이 활성화되어 있지 않습니다."
             : "该申请当前未开启截止后补材料权限，无法继续提交。"
         );
         return;
