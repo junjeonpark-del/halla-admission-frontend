@@ -1466,7 +1466,7 @@ const toggleMonth = (year, applicationType, month) => {
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[300px_1fr]">
+        <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
@@ -1652,7 +1652,7 @@ const toggleMonth = (year, applicationType, month) => {
         </div>
       </div>
 
-      <div className="space-y-6">
+            <div className="min-w-0 space-y-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -1738,10 +1738,19 @@ const toggleMonth = (year, applicationType, month) => {
             <div className="px-6 py-8 text-sm text-slate-500">
               {t.table.empty}
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-[1900px] text-sm">
-                <thead className="bg-slate-50 text-center text-slate-500">
+                    ) : (
+            <>
+              <div className="px-6 pt-4 text-xs text-slate-400">
+                {language === "en"
+                  ? "This table is wide. Scroll horizontally to view all columns."
+                  : language === "ko"
+                  ? "이 표는 가로로 넓습니다. 모든 열을 보려면 좌우로 스크롤하세요."
+                  : "表格较宽，可左右滑动查看全部列。"}
+              </div>
+              <div className="overflow-x-auto pb-2">
+                <table className="min-w-[1900px] text-sm">
+                  <thead className="bg-slate-50 text-center text-slate-500">
+
                   <tr>
                     <th className="px-6 py-4 font-semibold">{t.table.index}</th>
                     <th className="px-6 py-4 font-semibold">{t.table.studentName}</th>
@@ -1919,9 +1928,10 @@ const toggleMonth = (year, applicationType, month) => {
                       </tr>
                     );
                   })}
-                </tbody>
+                                </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       </div>
