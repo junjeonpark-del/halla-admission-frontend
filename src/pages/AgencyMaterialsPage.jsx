@@ -656,22 +656,16 @@ function AgencyMaterialsPage() {
     return getCurrentIntakeByType("graduate");
   }, [currentIntakes]);
 
-    const currentBatchApplications = useMemo(() => {
+      const currentBatchApplications = useMemo(() => {
     const activeIntakeIds = [
       undergraduateCurrentIntake?.id,
       languageCurrentIntake?.id,
       graduateCurrentIntake?.id,
-    ].filter(Boolean);
-
-    const activeIntakeLabels = [
-      undergraduateCurrentIntake,
-      languageCurrentIntake,
-      graduateCurrentIntake,
     ]
-      .filter(Boolean)
-      .map((item) => getIntakeLabel(item));
+      .map((id) => (id ? String(id) : ""))
+      .filter(Boolean);
 
-    if (activeIntakeIds.length === 0 && activeIntakeLabels.length === 0) return [];
+    if (activeIntakeIds.length === 0) return [];
 
     return applications.filter((item) => {
       const status = String(item.status || "").toLowerCase();
@@ -685,18 +679,14 @@ function AgencyMaterialsPage() {
         return false;
       }
 
-      if (item.intake_id && activeIntakeIds.includes(item.intake_id)) {
-        return true;
-      }
-
-      return activeIntakeLabels.includes(getIntakeLabel(item));
+      const intakeId = item?.intake_id ? String(item.intake_id) : "";
+      return !!intakeId && activeIntakeIds.includes(intakeId);
     });
   }, [
     applications,
     undergraduateCurrentIntake,
     languageCurrentIntake,
     graduateCurrentIntake,
-    language,
   ]);
 
   const fileMap = useMemo(() => getFileTypeMap(applicationFiles), [applicationFiles]);

@@ -693,26 +693,22 @@ function AgencyApplicationsPage() {
     }
   };
 
-  const currentIntakeLabels = useMemo(() => {
-    return currentIntakes.map((item) => getIntakeLabel(item));
-  }, [currentIntakes, language]);
-
-  const currentIntakeIds = useMemo(() => {
-    return new Set(currentIntakes.map((item) => item?.id).filter(Boolean));
+    const currentIntakeIds = useMemo(() => {
+    return new Set(
+      currentIntakes
+        .map((item) => (item?.id ? String(item.id) : ""))
+        .filter(Boolean)
+    );
   }, [currentIntakes]);
 
   const currentBatchApplications = useMemo(() => {
-    if (currentIntakes.length === 0) return [];
+    if (currentIntakeIds.size === 0) return [];
 
     return applications.filter((item) => {
-      if (item.intake_id && currentIntakeIds.has(item.intake_id)) {
-        return true;
-      }
-
-      const itemLabel = getIntakeLabel(item);
-      return currentIntakeLabels.includes(itemLabel);
+      const intakeId = item?.intake_id ? String(item.intake_id) : "";
+      return !!intakeId && currentIntakeIds.has(intakeId);
     });
-  }, [applications, currentIntakes, currentIntakeIds, currentIntakeLabels, language]);
+  }, [applications, currentIntakeIds]);
 
   const draftApplications = useMemo(() => {
     return applications.filter((item) => getStatus(item) === "draft");
