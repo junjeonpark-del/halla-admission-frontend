@@ -376,7 +376,7 @@ function ApplicationsPage() {
     return Date.now() > closeAt.getTime();
   };
 
-  const shouldShowInCurrentApplications = (student) => {
+    const shouldShowInCurrentApplications = (student) => {
     const status = String(student.status || "").toLowerCase();
     if (!status || status === "draft") return false;
 
@@ -384,7 +384,7 @@ function ApplicationsPage() {
     const intakeRow = intakeId ? intakeMap[intakeId] : null;
 
     if (!intakeRow) {
-      return true;
+      return false;
     }
 
     if (intakeRow.is_active === true) {

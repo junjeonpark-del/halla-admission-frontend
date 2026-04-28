@@ -428,9 +428,9 @@ function AgencyDashboardPage() {
       return { canContinueEdit: false, reason: "missing_public_id" };
     }
 
-    const intakeItem = getLinkedIntake(app);
+        const intakeItem = getLinkedIntake(app);
     if (!intakeItem) {
-      return { canContinueEdit: true, reason: "unknown" };
+      return { canContinueEdit: false, reason: "unknown" };
     }
 
     const now = new Date();

@@ -987,6 +987,7 @@ const [passportCheckWarnings, setPassportCheckWarnings] = useState([]);
 
 const sessionLoading = !agencySession;
 const [loadedUpdatedAt, setLoadedUpdatedAt] = useState("");
+const [loadedApplicationStatus, setLoadedApplicationStatus] = useState("draft");
 const [, setLockChecked] = useState(false);
 const LOCK_TIMEOUT_MINUTES = 20;
 const studentFillLink = studentFillToken
@@ -1256,11 +1257,12 @@ const lockedByOther =
 
 if (lockError) throw lockError;
 
-      setApplicationId(data.id || "");
+            setApplicationId(data.id || "");
       setApplicationPublicId(data.public_id || "");
-            setStudentFillToken(data.student_fill_token || "");
+      setStudentFillToken(data.student_fill_token || "");
       setStudentFillEnabled(data.student_fill_enabled !== false);
       setLoadedUpdatedAt(lockedRow?.updated_at || data.updated_at || "");
+      setLoadedApplicationStatus(String(data.status || "draft").toLowerCase());
 
       const loadedIntakeLabel =
         intakeRow?.title && String(intakeRow.title).trim() !== ""
@@ -1970,14 +1972,22 @@ const runPassportOcrCheck = async (file) => {
 };
 
 const buildApplicationPayload = (statusValue = "draft", publicIdValue) => {
-  const shouldBindIntake = statusValue === "submitted" || isMaterialOnlyMode;
+  const normalizedLoadedStatus = String(loadedApplicationStatus || "draft").toLowerCase();
+  const finalStatusValue =
+    applicationId &&
+    statusValue === "draft" &&
+    normalizedLoadedStatus !== "draft"
+      ? normalizedLoadedStatus
+      : statusValue;
+
+  const shouldBindIntake = finalStatusValue === "submitted" || isMaterialOnlyMode;
   const payloadIntakeId = shouldBindIntake ? selectedIntakeId || null : null;
   const payloadIntakeName = shouldBindIntake ? selectedIntakeLabel || null : null;
 
   if (isMaterialOnlyMode && applicationId) {
     return {
       ...(publicIdValue ? { public_id: publicIdValue } : {}),
-      status: statusValue,
+      status: finalStatusValue,
       agency_id: agencySession?.agency_id || null,
       agency_account_id: agencySession?.agency_account_id || null,
             intake_id: payloadIntakeId,
@@ -2043,7 +2053,7 @@ const buildApplicationPayload = (statusValue = "draft", publicIdValue) => {
 
   return {
     ...(publicIdValue ? { public_id: publicIdValue } : {}),
-    status: statusValue,
+    status: finalStatusValue,
     agency_id: agencySession?.agency_id || null,
 agency_account_id: agencySession?.agency_account_id || null,
     student_fill_enabled: true,
@@ -2381,11 +2391,12 @@ const handleSaveDraft = async () => {
 
       if (error) throw error;
 
-      setApplicationId(data.id);
+            setApplicationId(data.id);
       setLoadedUpdatedAt(data.updated_at || "");
       setApplicationPublicId(data.public_id);
       setStudentFillToken(payload.student_fill_token || "");
       setStudentFillEnabled(true);
+      setLoadedApplicationStatus("draft");
 
       await uploadApplicationFiles(data.id, data.public_id);
 await loadExistingUploadedFiles(data.public_id);
@@ -2518,11 +2529,12 @@ const handleSubmit = async () => {
 
       if (error) throw error;
 
-      setApplicationId(data.id);
+            setApplicationId(data.id);
       setLoadedUpdatedAt(data.updated_at || "");
       setApplicationPublicId(data.public_id);
       setStudentFillToken(payload.student_fill_token || "");
       setStudentFillEnabled(true);
+      setLoadedApplicationStatus("submitted");
 
       await uploadApplicationFiles(data.id, data.public_id);
 await loadExistingUploadedFiles(data.public_id);
@@ -2559,6 +2571,7 @@ if (!data) {
 }
 
 setLoadedUpdatedAt(data.updated_at || "");
+setLoadedApplicationStatus("submitted");
 
     await uploadApplicationFiles(
   applicationId,
