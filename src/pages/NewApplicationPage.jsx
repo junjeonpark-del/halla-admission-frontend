@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
+import {
+  filterAdmissionTypeOptions,
+  getMajorOptions,
+  isAdmissionTypeAllowedForTrack,
+  isMajorAllowedForTrack,
+} from "../data/majorCatalog";
 import { supabase } from "../lib/supabase";
 import { useAgencySession } from "../contexts/AgencySessionContext";
 
@@ -947,12 +953,12 @@ function NewApplicationPage() {
   const agencySession = agencyContext?.session || null;
   const language = agencyContext?.language || "zh";
   const t = messages[language] || messages.zh;
-  const steps = t.steps;
+    const steps = t.steps;
   const sexOptions = t.options.sex;
   const yesNoOptions = t.options.yesNo;
   const bankHolderTypes = t.options.bankHolderTypes;
   const residenceOptions = t.options.residenceOptions;
-  const admissionTypeOptions = t.options.admissionTypes;
+  const rawAdmissionTypeOptions = t.options.admissionTypes;
   const programTrackOptions = t.options.programTracks;
   const [searchParams] = useSearchParams();
 const editingPublicId = searchParams.get("public_id");
@@ -961,6 +967,21 @@ const isMaterialOnlyMode = pageMode === "material_only";
 
   const [currentStep, setCurrentStep] = useState(0);
   const [form, setForm] = useState(initialForm);
+
+  const majorOptions = useMemo(() => {
+    return getMajorOptions({
+      applicationType: "undergraduate",
+      programTrack: form.programTrack,
+      language,
+    });
+  }, [form.programTrack, language]);
+
+  const admissionTypeOptions = useMemo(() => {
+    return filterAdmissionTypeOptions(rawAdmissionTypeOptions, {
+      applicationType: "undergraduate",
+      programTrack: form.programTrack,
+    });
+  }, [rawAdmissionTypeOptions, form.programTrack]);
 
   const [applicantUploadedSignature, setApplicantUploadedSignature] =
     useState("");
@@ -1574,12 +1595,75 @@ if (lockError) throw lockError;
     ];
   }, [bilingualTrack, inKorea, financialGuaranteeRequired]);
 
-  const updateField = (field, value) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    const updateField = (field, value) => {
+    setForm((prev) => {
+      const next = {
+        ...prev,
+        [field]: value,
+      };
+
+      if (field === "programTrack") {
+        if (
+          prev.major &&
+          !isMajorAllowedForTrack({
+            applicationType: "undergraduate",
+            programTrack: value,
+            major: prev.major,
+          })
+        ) {
+          next.major = "";
+        }
+
+        if (
+          prev.admissionType &&
+          !isAdmissionTypeAllowedForTrack({
+            applicationType: "undergraduate",
+            programTrack: value,
+            admissionType: prev.admissionType,
+          })
+        ) {
+          next.admissionType = "";
+        }
+      }
+
+      return next;
+    });
   };
+
+  useEffect(() => {
+    if (!form.programTrack) return;
+
+    setForm((prev) => {
+      let changed = false;
+      const next = { ...prev };
+
+      if (
+        prev.major &&
+        !isMajorAllowedForTrack({
+          applicationType: "undergraduate",
+          programTrack: prev.programTrack,
+          major: prev.major,
+        })
+      ) {
+        next.major = "";
+        changed = true;
+      }
+
+      if (
+        prev.admissionType &&
+        !isAdmissionTypeAllowedForTrack({
+          applicationType: "undergraduate",
+          programTrack: prev.programTrack,
+          admissionType: prev.admissionType,
+        })
+      ) {
+        next.admissionType = "";
+        changed = true;
+      }
+
+      return changed ? next : prev;
+    });
+  }, [form.programTrack]);
 
   const updateCountryField = (field, value) => {
   setForm((prev) => ({
@@ -2794,13 +2878,22 @@ if (sessionLoading) {
     </div>
   ) : null}
 </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Input
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <Select
+              label={t.fields.programTrack}
+              required
+              value={form.programTrack}
+              onChange={(e) => updateField("programTrack", e.target.value)}
+              options={programTrackOptions}
+              t={t}
+            />
+            <Select
               label={t.fields.major}
               required
               value={form.major}
               onChange={(e) => updateField("major", e.target.value)}
-              placeholder={t.fields.majorPlaceholder}
+              options={majorOptions}
+              t={t}
             />
             <Select
               label={t.fields.admissionType}
@@ -2808,15 +2901,7 @@ if (sessionLoading) {
               value={form.admissionType}
               onChange={(e) => updateField("admissionType", e.target.value)}
               options={admissionTypeOptions}
-            t={t}
-            />
-            <Select
-              label={t.fields.programTrack}
-              required
-              value={form.programTrack}
-              onChange={(e) => updateField("programTrack", e.target.value)}
-              options={programTrackOptions}
-            t={t}
+              t={t}
             />
             <RadioGroup
               label={t.fields.dormitory}
