@@ -553,10 +553,9 @@ const getMonthDisplay = (itemOrMonth, applicationType) => {
           { data: applicationsData, error: applicationsError },
           filesResponse,
         ] = await Promise.all([
-          supabase
+                    supabase
             .from("intakes")
             .select("*")
-            .eq("is_active", true)
             .lte("open_at", nowIso)
             .order("open_at", { ascending: false }),
           supabase
@@ -628,19 +627,12 @@ setExpandedMonths(initialExpandedMonths);
     return new Set((historyIntakes || []).map((item) => getIntakeLabel(item)));
   }, [historyIntakes, language]);
 
-  const historicalApplications = useMemo(() => {
+    const historicalApplications = useMemo(() => {
     return applications.filter((item) => {
       const status = String(item.status || "").toLowerCase();
-      if (status === "draft") return false;
-
-      if (item.intake_id && historyIntakeIds.has(item.intake_id)) {
-        return true;
-      }
-
-      const label = getIntakeLabel(item);
-      return historyIntakeLabels.has(label);
+      return status !== "draft";
     });
-  }, [applications, historyIntakeIds, historyIntakeLabels, language]);
+  }, [applications]);
 
   const fileMap = useMemo(() => getFileTypeMap(applicationFiles), [applicationFiles]);
 

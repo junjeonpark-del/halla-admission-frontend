@@ -819,10 +819,9 @@ function getMonthDisplay(itemOrMonth, applicationType) {
           filesResponse,
           agenciesResponse,
         ] = await Promise.all([
-          supabase
+                    supabase
             .from("intakes")
             .select("*")
-            .eq("is_active", true)
             .lte("open_at", nowIso)
             .order("open_at", { ascending: false }),
           supabase
@@ -905,19 +904,11 @@ const intakeMap = useMemo(() => {
 }, [historyIntakes]);
 
 const historicalApplications = useMemo(() => {
-
-    return applications.filter((item) => {
-      const status = String(item.status || "").toLowerCase();
-      if (status === "draft") return false;
-
-      if (item.intake_id && historyIntakeIds.has(item.intake_id)) {
-        return true;
-      }
-
-      const label = getIntakeLabel(item);
-      return historyIntakeLabels.has(label);
-    });
-  }, [applications, historyIntakeIds, historyIntakeLabels, language]);
+  return applications.filter((item) => {
+    const status = String(item.status || "").toLowerCase();
+    return status !== "draft";
+  });
+}, [applications]);
 
   const fileMap = useMemo(() => getFileTypeMap(applicationFiles), [applicationFiles]);
 
