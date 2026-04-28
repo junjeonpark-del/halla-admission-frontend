@@ -391,6 +391,9 @@ function IntakesPage() {
   const [monthFilter, setMonthFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedNode, setSelectedNode] = useState({ type: "all" });
+  const [expandedYears, setExpandedYears] = useState({});
+  const [expandedTypes, setExpandedTypes] = useState({});
+  const [expandedMonths, setExpandedMonths] = useState({});
 
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState("create");
@@ -592,13 +595,52 @@ function formatUtcToKstDateTimeLocal(value) {
     return false;
   };
 
-  const getTreeButtonClass = (active) =>
+    const getTreeButtonClass = (active) =>
     [
       "flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition",
       active
         ? "bg-blue-600 font-semibold text-white shadow-sm"
         : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
     ].join(" ");
+
+  const getTypeExpandKey = (year, applicationType) =>
+    `${year}-${applicationType}`;
+
+  const getMonthExpandKey = (year, applicationType, month) =>
+    `${year}-${applicationType}-${month}`;
+
+  const isYearExpanded = (year) => expandedYears[year] !== false;
+
+  const isTypeExpanded = (year, applicationType) =>
+    expandedTypes[getTypeExpandKey(year, applicationType)] !== false;
+
+  const isMonthExpanded = (year, applicationType, month) =>
+    expandedMonths[getMonthExpandKey(year, applicationType, month)] !== false;
+
+  const toggleYearExpanded = (year) => {
+    setExpandedYears((prev) => ({
+      ...prev,
+      [year]: prev[year] === false,
+    }));
+  };
+
+  const toggleTypeExpanded = (year, applicationType) => {
+    const key = getTypeExpandKey(year, applicationType);
+
+    setExpandedTypes((prev) => ({
+      ...prev,
+      [key]: prev[key] === false,
+    }));
+  };
+
+  const toggleMonthExpanded = (year, applicationType, month) => {
+    const key = getMonthExpandKey(year, applicationType, month);
+
+    setExpandedMonths((prev) => ({
+      ...prev,
+      [key]: prev[key] === false,
+    }));
+  };
 
   const getIntakeStatus = (item) => {
     const now = new Date();
@@ -1226,129 +1268,186 @@ function formatUtcToKstDateTimeLocal(value) {
               </div>
             ) : (
               <div className="mt-4 space-y-2">
-                {intakeTree.map((yearNode) => {
+                                {intakeTree.map((yearNode) => {
                   const yearActive = isTreeNodeActive({
                     type: "year",
                     year: yearNode.year,
                   });
+                  const yearExpanded = isYearExpanded(yearNode.year);
 
                   return (
                     <div key={yearNode.year} className="space-y-1">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSelectedNode({
-                            type: "year",
-                            year: yearNode.year,
-                          })
-                        }
-                        className={getTreeButtonClass(yearActive)}
-                      >
-                        <span>{getTreeYearLabel(yearNode.year)}</span>
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                          {yearNode.count}
-                        </span>
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleYearExpanded(yearNode.year)}
+                          className="h-8 w-8 rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                        >
+                          {yearExpanded ? "▾" : "▸"}
+                        </button>
 
-                      <div className="ml-3 space-y-1 border-l border-slate-200 pl-3">
-                        {yearNode.types.map((typeNode) => {
-                          const typeActive = isTreeNodeActive({
-                            type: "applicationType",
-                            year: yearNode.year,
-                            applicationType: typeNode.applicationType,
-                          });
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedNode({
+                              type: "year",
+                              year: yearNode.year,
+                            })
+                          }
+                          className={getTreeButtonClass(yearActive)}
+                        >
+                          <span>{getTreeYearLabel(yearNode.year)}</span>
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                            {yearNode.count}
+                          </span>
+                        </button>
+                      </div>
 
-                          return (
-                            <div
-                              key={`${yearNode.year}-${typeNode.applicationType}`}
-                              className="space-y-1"
-                            >
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setSelectedNode({
-                                    type: "applicationType",
-                                    year: yearNode.year,
-                                    applicationType: typeNode.applicationType,
-                                  })
-                                }
-                                className={getTreeButtonClass(typeActive)}
+                      {yearExpanded ? (
+                        <div className="ml-4 space-y-1 border-l border-slate-200 pl-3">
+                          {yearNode.types.map((typeNode) => {
+                            const typeActive = isTreeNodeActive({
+                              type: "applicationType",
+                              year: yearNode.year,
+                              applicationType: typeNode.applicationType,
+                            });
+                            const typeExpanded = isTypeExpanded(
+                              yearNode.year,
+                              typeNode.applicationType
+                            );
+
+                            return (
+                              <div
+                                key={`${yearNode.year}-${typeNode.applicationType}`}
+                                className="space-y-1"
                               >
-                                <span>{typeNode.label}</span>
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                                  {typeNode.count}
-                                </span>
-                              </button>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      toggleTypeExpanded(
+                                        yearNode.year,
+                                        typeNode.applicationType
+                                      )
+                                    }
+                                    className="h-8 w-8 rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                                  >
+                                    {typeExpanded ? "▾" : "▸"}
+                                  </button>
 
-                              <div className="ml-3 space-y-1 border-l border-slate-100 pl-3">
-                                {typeNode.months.map((monthNode) => {
-                                  const monthActive = isTreeNodeActive({
-                                    type: "month",
-                                    year: yearNode.year,
-                                    applicationType: typeNode.applicationType,
-                                    month: monthNode.month,
-                                  });
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setSelectedNode({
+                                        type: "applicationType",
+                                        year: yearNode.year,
+                                        applicationType: typeNode.applicationType,
+                                      })
+                                    }
+                                    className={getTreeButtonClass(typeActive)}
+                                  >
+                                    <span>{typeNode.label}</span>
+                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                                      {typeNode.count}
+                                    </span>
+                                  </button>
+                                </div>
 
-                                  return (
-                                    <div
-                                      key={`${yearNode.year}-${typeNode.applicationType}-${monthNode.month}`}
-                                      className="space-y-1"
-                                    >
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setSelectedNode({
-                                            type: "month",
-                                            year: yearNode.year,
-                                            applicationType:
-                                              typeNode.applicationType,
-                                            month: monthNode.month,
-                                          })
-                                        }
-                                        className={getTreeButtonClass(monthActive)}
-                                      >
-                                        <span>{monthNode.label}</span>
-                                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                                          {monthNode.intakes.length}
-                                        </span>
-                                      </button>
+                                {typeExpanded ? (
+                                  <div className="ml-4 space-y-1 border-l border-slate-100 pl-3">
+                                    {typeNode.months.map((monthNode) => {
+                                      const monthActive = isTreeNodeActive({
+                                        type: "month",
+                                        year: yearNode.year,
+                                        applicationType: typeNode.applicationType,
+                                        month: monthNode.month,
+                                      });
+                                      const monthExpanded = isMonthExpanded(
+                                        yearNode.year,
+                                        typeNode.applicationType,
+                                        monthNode.month
+                                      );
 
-                                      <div className="ml-3 space-y-1 border-l border-slate-100 pl-3">
-                                        {monthNode.intakes.map((intake) => {
-                                          const intakeActive = isTreeNodeActive({
-                                            type: "intake",
-                                            intakeId: intake.id,
-                                          });
-
-                                          return (
+                                      return (
+                                        <div
+                                          key={`${yearNode.year}-${typeNode.applicationType}-${monthNode.month}`}
+                                          className="space-y-1"
+                                        >
+                                          <div className="flex items-center gap-1">
                                             <button
-                                              key={intake.id}
+                                              type="button"
+                                              onClick={() =>
+                                                toggleMonthExpanded(
+                                                  yearNode.year,
+                                                  typeNode.applicationType,
+                                                  monthNode.month
+                                                )
+                                              }
+                                              className="h-8 w-8 rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                                            >
+                                              {monthExpanded ? "▾" : "▸"}
+                                            </button>
+
+                                            <button
                                               type="button"
                                               onClick={() =>
                                                 setSelectedNode({
-                                                  type: "intake",
-                                                  intakeId: intake.id,
+                                                  type: "month",
+                                                  year: yearNode.year,
+                                                  applicationType:
+                                                    typeNode.applicationType,
+                                                  month: monthNode.month,
                                                 })
                                               }
-                                              className={getTreeButtonClass(
-                                                intakeActive
-                                              )}
+                                              className={getTreeButtonClass(monthActive)}
                                             >
-                                              <span className="truncate">
-                                                {getIntakeTitle(intake)}
+                                              <span>{monthNode.label}</span>
+                                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                                                {monthNode.intakes.length}
                                               </span>
                                             </button>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
+                                          </div>
+
+                                          {monthExpanded ? (
+                                            <div className="ml-4 space-y-1 border-l border-slate-100 pl-3">
+                                              {monthNode.intakes.map((intake) => {
+                                                const intakeActive = isTreeNodeActive({
+                                                  type: "intake",
+                                                  intakeId: intake.id,
+                                                });
+
+                                                return (
+                                                  <button
+                                                    key={intake.id}
+                                                    type="button"
+                                                    onClick={() =>
+                                                      setSelectedNode({
+                                                        type: "intake",
+                                                        intakeId: intake.id,
+                                                      })
+                                                    }
+                                                    className={getTreeButtonClass(
+                                                      intakeActive
+                                                    )}
+                                                  >
+                                                    <span className="truncate">
+                                                      {getIntakeTitle(intake)}
+                                                    </span>
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : null}
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}
