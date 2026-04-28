@@ -970,7 +970,11 @@ function DashboardPage() {
             (item) => getApplicationType(item) === selectedApplicationType
           );
 
-    const sortedIntakes = [...availableIntakes].sort(compareIntakesByRecency);
+        const sortedIntakes = [...availableIntakes].sort(compareIntakesByRecency);
+
+    const displayableIntakes = sortedIntakes.filter(
+      (item) => isCurrentOpenIntake(item) || isClosedIntake(item)
+    );
 
     let targetIntakes = [];
 
@@ -991,11 +995,11 @@ function DashboardPage() {
 
       targetIntakes = selectedRow ? [selectedRow] : [];
     } else if (selectedApplicationType !== "all") {
-      targetIntakes = sortedIntakes.slice(0, 3);
+      targetIntakes = displayableIntakes.slice(0, 3);
     } else {
       targetIntakes = typeOrder
         .map((type) =>
-          sortedIntakes.find((item) => getApplicationType(item) === type)
+          displayableIntakes.find((item) => getApplicationType(item) === type)
         )
         .filter(Boolean);
     }
