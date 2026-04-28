@@ -1025,6 +1025,61 @@ const fetchIntakeStatus = async (intakeId) => {
   };
 };
 
+const getCurrentOpenIntakeLabel = (intake) => {
+  if (!intake) return "";
+
+  if (intake.title && String(intake.title).trim() !== "") {
+    return intake.title;
+  }
+
+  const year = intake.year || "";
+  const month = intake.intake_month || "";
+  const round = intake.round_number || "";
+
+  if (year && month && round) {
+    if (language === "en") return `${year}-${month} Round ${round} Language Program`;
+    if (language === "ko") return `${year}년 ${month}월 ${round}차 어학연수`;
+    return `${year}年${month}月 第${round}批语言班申请`;
+  }
+
+  return "";
+};
+
+const fetchCurrentOpenIntake = async () => {
+  const nowIso = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from("intakes")
+    .select("*")
+    .eq("is_active", true)
+    .eq("application_type", "language")
+    .lte("open_at", nowIso)
+    .gte("close_at", nowIso)
+    .order("open_at", { ascending: true })
+    .limit(1);
+
+  if (error) throw error;
+
+  return data && data.length > 0 ? data[0] : null;
+};
+
+const applyCurrentIntake = (intake) => {
+  if (!intake) {
+    setCurrentIntakeId("");
+    setCurrentIntakeLabel("");
+    setSelectedIntakeId("");
+    setSelectedIntakeLabel("");
+    return;
+  }
+
+  const label = getCurrentOpenIntakeLabel(intake);
+
+  setCurrentIntakeId(intake.id || "");
+  setCurrentIntakeLabel(label);
+  setSelectedIntakeId(intake.id || "");
+  setSelectedIntakeLabel(label);
+};
+
   useEffect(() => {
   async function loadExistingApplication() {
     if (!editingPublicId) {
@@ -1059,9 +1114,13 @@ const fetchIntakeStatus = async (intakeId) => {
   return;
 }
 
+const isDraftApplication = String(data.status || "draft").toLowerCase() === "draft";
+const shouldUseSavedIntake =
+  Boolean(data.intake_id) && (!isDraftApplication || isMaterialOnlyMode);
+
 let intakeRow = null;
 
-if (data.intake_id) {
+if (shouldUseSavedIntake) {
   const { data: intakeData, error: intakeError } = await supabase
     .from("intakes")
     .select("*")
@@ -1079,7 +1138,7 @@ if (isMaterialOnlyMode) {
     return;
   }
 } else {
-  if (isClosedIntake(intakeRow)) {
+  if (shouldUseSavedIntake && isClosedIntake(intakeRow)) {
     alert(language === "en" ? "This intake is closed. Please use material-only mode from history if enabled by admin." : language === "ko" ? "해당 차수는 마감되었습니다. 관리자가 허용한 경우 이력에서 보완 모드로 들어가세요." : "该批次已截止，不能继续编辑前半部分申请信息。若管理员已开启权限，请从历史申请进入“补充材料”模式。");
     window.location.href = "/agency/history";
     return;
@@ -1114,9 +1173,8 @@ if (lockError) throw lockError;
 
       setApplicationId(data.id || "");
       setApplicationPublicId(data.public_id || "");
-      setStudentFillToken(data.student_fill_token || "");
+            setStudentFillToken(data.student_fill_token || "");
       setStudentFillEnabled(data.student_fill_enabled !== false);
-      setCurrentIntakeId(data.intake_id || "");
       setLoadedUpdatedAt(lockedRow?.updated_at || data.updated_at || "");
 
       const loadedIntakeLabel =
@@ -1128,10 +1186,16 @@ if (lockError) throw lockError;
               ? `${data.intake_year}年${data.intake_month}月 第${data.intake_round_number}批`
               : "");
 
-      setCurrentIntakeLabel(loadedIntakeLabel);
+      if (isDraftApplication && !isMaterialOnlyMode) {
+        const current = await fetchCurrentOpenIntake();
+        applyCurrentIntake(current);
+      } else {
+        setCurrentIntakeId(data.intake_id || "");
+        setCurrentIntakeLabel(loadedIntakeLabel);
+        setSelectedIntakeId(data.intake_id || "");
+        setSelectedIntakeLabel(loadedIntakeLabel);
+      }
 
-      setSelectedIntakeId(data.intake_id || "");
-      setSelectedIntakeLabel(loadedIntakeLabel);
       const { data: fileRows, error: fileError } = await supabase
         .from("application_files")
         .select("*")
@@ -1242,46 +1306,20 @@ if (lockError) throw lockError;
 }, [editingPublicId, agencySession, sessionLoading]);
 
 
-  useEffect(() => {
+    useEffect(() => {
     async function loadCurrentIntake() {
-      if (editingPublicId) return;
+      if (editingPublicId || isMaterialOnlyMode) return;
 
       try {
-        const nowIso = new Date().toISOString();
-
-        const { data, error } = await supabase
-          .from("intakes")
-          .select("*")
-          .eq("is_active", true)
-          .eq("application_type", "language")
-          .lte("open_at", nowIso)
-          .gte("close_at", nowIso)
-          .order("open_at", { ascending: true })
-          .limit(1);
-
-        if (error) throw error;
-
-        const current = data && data.length > 0 ? data[0] : null;
-        if (!current) return;
-
-        setCurrentIntakeId(current.id || "");
-
-const label =
-  current.title && String(current.title).trim() !== ""
-    ? current.title
-    : `${current.year}年${current.intake_month}月 第${current.round_number}批`;
-
-setCurrentIntakeLabel(label);
-
-setSelectedIntakeId(current.id || "");
-setSelectedIntakeLabel(label);
+        const current = await fetchCurrentOpenIntake();
+        applyCurrentIntake(current);
       } catch (error) {
         console.error("loadCurrentIntake error:", error);
       }
     }
 
     loadCurrentIntake();
-  }, [editingPublicId]);
+  }, [editingPublicId, isMaterialOnlyMode, language]);
 
   const financialGuaranteeRequired =
     form.bank_certificate_holder_type === "guarantor";
@@ -1843,6 +1881,10 @@ const runPassportOcrCheck = async (file) => {
 };
 
 const buildApplicationPayload = (statusValue = "draft", publicIdValue) => {
+  const shouldBindIntake = statusValue === "submitted" || isMaterialOnlyMode;
+  const payloadIntakeId = shouldBindIntake ? selectedIntakeId || null : null;
+  const payloadIntakeName = shouldBindIntake ? selectedIntakeLabel || null : null;
+
   if (isMaterialOnlyMode && applicationId) {
     return {
       ...(publicIdValue ? { public_id: publicIdValue } : {}),
@@ -1850,8 +1892,8 @@ const buildApplicationPayload = (statusValue = "draft", publicIdValue) => {
       application_type: "language",
       agency_id: agencySession?.agency_id || null,
       agency_account_id: agencySession?.agency_account_id || null,
-      intake_id: selectedIntakeId || null,
-      intake_name: selectedIntakeLabel || null,
+            intake_id: payloadIntakeId,
+      intake_name: payloadIntakeName,
 
       refund_name: form.refundName,
       refund_dob: normalizeDate(form.refundDateOfBirth),
@@ -1918,8 +1960,8 @@ const buildApplicationPayload = (statusValue = "draft", publicIdValue) => {
     agency_id: agencySession?.agency_id || null,
 agency_account_id: agencySession?.agency_account_id || null,
     student_fill_enabled: true,
-    intake_id: selectedIntakeId || null,
-intake_name: selectedIntakeLabel || null,
+        intake_id: payloadIntakeId,
+    intake_name: payloadIntakeName,
 
     major: form.major,
     admission_type: form.admissionType,
@@ -2208,23 +2250,11 @@ useEffect(() => {
 
 const handleSaveDraft = async () => {
   try {
-        if (applicationId && selectedIntakeId) {
+    if (isMaterialOnlyMode && applicationId && selectedIntakeId) {
       const intakeStatus = await fetchIntakeStatus(selectedIntakeId);
-
-      if (intakeStatus.closed && !isMaterialOnlyMode) {
-        alert(
-          language === "en"
-            ? "This intake is already closed. You can no longer edit this application."
-            : language === "ko"
-            ? "해당 차수는 이미 마감되어 더 이상 이 지원서를 수정할 수 없습니다."
-            : "该批次已截止，不能继续修改这份申请。"
-        );
-        return;
-      }
 
       if (
         intakeStatus.closed &&
-        isMaterialOnlyMode &&
         intakeStatus.row?.post_deadline_material_edit_enabled !== true
       ) {
         alert(

@@ -427,6 +427,12 @@ function AgencyApplicationsPage() {
     return status || "-";
   };
 
+    const getUnassignedIntakeLabel = () => {
+    if (language === "en") return "No intake assigned";
+    if (language === "ko") return "차수 미지정";
+    return "暂未绑定批次";
+  };
+
   const getIntakeLabel = (item) => {
     if (!item) return "-";
 
@@ -458,7 +464,7 @@ function AgencyApplicationsPage() {
       return `${year}${t.yearSuffix}${month}${t.monthSuffix} ${t.intakeRoundPrefix}${round}${t.intakeRoundSuffix}`;
     }
 
-    return item.intake_id || item.id || "-";
+    return getUnassignedIntakeLabel();
   };
 
   const formatDateTime = (value) => {
