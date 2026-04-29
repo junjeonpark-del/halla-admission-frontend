@@ -1507,8 +1507,8 @@ const toggleMonth = (year, applicationType, month) => {
             agencyMap[student.agency_id] ||
             student.agency_id ||
             "-",
-          申请批次: getIntakeLabel(nodeSource),
-                  申请项目类型: applicationCategoryText,
+        申请项目类型: applicationCategoryText,
+          申请批次: getIntakeLabel(nodeSource),           
           学生姓名:
             student.english_name ||
             student.full_name_passport ||
