@@ -1328,7 +1328,7 @@ const toggleMonth = (year, applicationType, month) => {
         const edu2 = educationRows[1];
         const edu3 = educationRows[2];
 
-        return {
+                return {
           [t.exportHeaders.index]: index + 1,
           [t.exportHeaders.studentName]:
             student.english_name ||
@@ -1336,24 +1336,12 @@ const toggleMonth = (year, applicationType, month) => {
             student.fullNamePassport ||
             student.name ||
             "-",
-          [t.exportHeaders.fatherName]:
-            student.father_name ||
-            student.father_full_name ||
-            student.parent_father_name ||
-            student.parent_father_full_name ||
-            "",
-          [t.exportHeaders.motherName]:
-            student.mother_name ||
-            student.mother_full_name ||
-            student.parent_mother_name ||
-            student.parent_mother_full_name ||
-            "",
           [t.exportHeaders.agency]:
             student.agency_name ||
             agencyMap[student.agency_id] ||
             student.agency_id ||
             "-",
-                    [t.exportHeaders.intake]: getIntakeLabel(nodeSource),
+          [t.exportHeaders.intake]: getIntakeLabel(nodeSource),
           [t.exportHeaders.applicationCategory]: applicationCategoryText,
           [t.exportHeaders.monthSeason]: monthSeasonText,
           [t.exportHeaders.degreeLevel]: degreeLevelText,
@@ -1365,7 +1353,8 @@ const toggleMonth = (year, applicationType, month) => {
           [t.exportHeaders.status]: formatStatusLabel(student.status),
           [t.exportHeaders.passportNo]: student.passport_no || "",
           [t.exportHeaders.gender]: student.gender || "",
-          [t.exportHeaders.nationality]: student.nationality_applicant || student.nationality || "",
+          [t.exportHeaders.nationality]:
+            student.nationality_applicant || student.nationality || "",
           [t.exportHeaders.birth]: student.date_of_birth || "",
           [t.exportHeaders.tel]: student.tel || student.phone || "",
           [t.exportHeaders.email]: student.email || "",
@@ -1384,11 +1373,23 @@ const toggleMonth = (year, applicationType, month) => {
           [t.exportHeaders.edu3End]: edu3.endDate,
           [t.exportHeaders.languageLevel]: languageLevel,
           [t.exportHeaders.bankSubmitted]: hasBankStatement ? "O" : "X",
-                    [t.exportHeaders.studentFormStatus]: student.student_form_status || "",
+          [t.exportHeaders.fatherName]:
+            student.father_name ||
+            student.father_full_name ||
+            student.parent_father_name ||
+            student.parent_father_full_name ||
+            "",
+          [t.exportHeaders.motherName]:
+            student.mother_name ||
+            student.mother_full_name ||
+            student.parent_mother_name ||
+            student.parent_mother_full_name ||
+            "",
+          [t.exportHeaders.studentFormStatus]: student.student_form_status || "",
           [t.exportHeaders.createdAt]: student.created_at || "",
           [t.exportHeaders.updatedAt]: student.updated_at || "",
           [t.exportHeaders.publicId]: student.public_id || "",
-                };
+        };
       });
 
       const worksheet = XLSX.utils.json_to_sheet(exportRows);
@@ -1499,7 +1500,7 @@ const toggleMonth = (year, applicationType, month) => {
             ? "大学院"
             : "本科";
 
-        return {
+                return {
           序号: index + 1,
           学生姓名:
             student.english_name ||
@@ -1515,7 +1516,6 @@ const toggleMonth = (year, applicationType, month) => {
           申请批次: getIntakeLabel(nodeSource),
           申请项目类型: applicationCategoryText,
           申请状态: formatStatusLabel(student.status),
-          public_id: student.public_id || "",
 
           退款账户姓名: student.refund_name || student.refundName || "",
           退款账户出生日期: student.refund_dob || student.refundDob || "",
@@ -1523,9 +1523,12 @@ const toggleMonth = (year, applicationType, month) => {
           账户持有人: student.account_holder || student.accountHolder || "",
           与申请人关系: student.relationship || student.relationshipWithApplicant || "",
 
-          收款人国家: student.beneficiary_country || student.beneficiaryCountry || "",
-          收款人城市: student.beneficiary_city || student.beneficiaryCity || "",
-          收款人地址: student.beneficiary_address || student.beneficiaryAddress || "",
+          收款人国家:
+            student.beneficiary_country || student.beneficiaryCountry || "",
+          收款人城市:
+            student.beneficiary_city || student.beneficiaryCity || "",
+          收款人地址:
+            student.beneficiary_address || student.beneficiaryAddress || "",
 
           银行名称: student.bank_name || student.bankName || "",
           银行国家: student.bank_country || student.bankCountry || "",
@@ -1536,6 +1539,7 @@ const toggleMonth = (year, applicationType, month) => {
 
           创建时间: student.created_at || "",
           更新时间: student.updated_at || "",
+          public_id: student.public_id || "",
         };
       });
 
