@@ -35,7 +35,11 @@ passportNoLikelyMatch:
   "护照号疑似一致，但 OCR 可能把 1/I、0/O 等字符识别混淆，请人工确认",
 passportBirthMismatch: "出生日期与护照信息不一致",
 materialOnlyBanner: "当前为补材料模式：仅允许修改退款账户信息、财务担保信息与上传申请材料，前半部分申请信息已锁定。",
-
+openIntake: "当前开放批次",
+noOpenIntake: "当前没有开放批次",
+submitIntake: "本次提交批次",
+noSelectedIntake: "暂未选择，当前可先保存草稿",
+noIntakeHint: "当前没有开放批次，但仍可继续填写并保存草稿。正式提交时再选择批次即可。",
       educationRecord: "学历记录", guarantorSelfHint: "已选择“申请人本人名义”。财政担保书页将自动隐藏，后续生成学校申请表时该页可免填。"
     },
     options: {
