@@ -3155,18 +3155,19 @@ function ApplicationReviewPage() {
 
           <div className="min-w-0 self-start">
   <PreviewPlaceholder
-    item={selectedItem}
-    previewUrl={previewUrl}
-    previewLoading={previewLoading}
-    onDownload={handleDownloadCurrent}
-    reviewNote={reviewNote}
-    setReviewNote={setReviewNote}
-    onApprove={() => handleSaveReview("approved")}
-    onRequestMore={() => handleSaveReview("missing_documents")}
-    onSaveNote={() => handleSaveReview("")}
-    savingReview={savingReview}
-    t={t}
-  />
+  item={selectedItem}
+  previewUrl={previewUrl}
+  previewLoading={previewLoading}
+  onDownload={handleDownloadCurrent}
+  reviewNote={reviewNote}
+  setReviewNote={setReviewNote}
+  onApprove={() => handleSaveReview("approved")}
+  onRequestMore={() => handleSaveReview("missing_documents")}
+  onSaveNote={() => handleSaveReview("")}
+  savingReview={savingReview}
+  applicationPhotoUrl={applicationPhotoUrl}
+  t={t}
+/>
 </div>
       </div>
     </div>
