@@ -1329,19 +1329,19 @@ const toggleMonth = (year, applicationType, month) => {
         const edu3 = educationRows[2];
 
                 return {
-          [t.exportHeaders.index]: index + 1,
-          [t.exportHeaders.studentName]:
-            student.english_name ||
-            student.full_name_passport ||
-            student.fullNamePassport ||
-            student.name ||
-            "-",
+          [t.exportHeaders.index]: index + 1,          
           [t.exportHeaders.agency]:
             student.agency_name ||
             agencyMap[student.agency_id] ||
             student.agency_id ||
             "-",
           [t.exportHeaders.intake]: getIntakeLabel(nodeSource),
+[t.exportHeaders.studentName]:
+            student.english_name ||
+            student.full_name_passport ||
+            student.fullNamePassport ||
+            student.name ||
+            "-",
           [t.exportHeaders.applicationCategory]: applicationCategoryText,
           [t.exportHeaders.monthSeason]: monthSeasonText,
           [t.exportHeaders.degreeLevel]: degreeLevelText,
@@ -1502,19 +1502,19 @@ const toggleMonth = (year, applicationType, month) => {
 
                 return {
           序号: index + 1,
-          学生姓名:
-            student.english_name ||
-            student.full_name_passport ||
-            student.fullNamePassport ||
-            student.name ||
-            "-",
           机构:
             student.agency_name ||
             agencyMap[student.agency_id] ||
             student.agency_id ||
             "-",
           申请批次: getIntakeLabel(nodeSource),
-          申请项目类型: applicationCategoryText,
+          学生姓名:
+            student.english_name ||
+            student.full_name_passport ||
+            student.fullNamePassport ||
+            student.name ||
+            "-",
+                  申请项目类型: applicationCategoryText,
           申请状态: formatStatusLabel(student.status),
 
           退款账户姓名: student.refund_name || student.refundName || "",
