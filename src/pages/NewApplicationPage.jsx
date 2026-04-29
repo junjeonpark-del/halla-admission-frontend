@@ -1836,7 +1836,16 @@ const readFileAsBase64 = (file) =>
       resolve(base64);
     };
 
-    reader.onerror = () => reject(new Error("读取护照文件失败"));
+    reader.onerror = () =>
+      reject(
+        new Error(
+          language === "en"
+            ? "Failed to read the passport file"
+            : language === "ko"
+            ? "\uc5ec\uad8c \ud30c\uc77c\uc744 \uc77d\ub294 \ub370 \uc2e4\ud328\ud588\uc2b5\ub2c8\ub2e4"
+            : "\u8bfb\u53d6\u62a4\u7167\u6587\u4ef6\u5931\u8d25"
+        )
+      );
     reader.readAsDataURL(file);
   });
 
@@ -1928,15 +1937,15 @@ const normalizeDateForCompare = (value) => {
 };
 
 const buildMismatchMessage = (message, formValue, ocrValue) => {
-  return `${message}：${t.common.passportCompareFormValue} ${
+  return `${message}: ${t.common.passportCompareFormValue} ${
     formValue || "-"
-  }，${t.common.passportCompareOcrValue} ${ocrValue || "-"}`;
+  }, ${t.common.passportCompareOcrValue} ${ocrValue || "-"}`;
 };
 
 const buildPassportWarnings = (ocrResult, currentForm) => {
   if (!ocrResult) return [];
 
- const warnings = [];
+  const warnings = [];
 
   const rawFormName = currentForm.fullNamePassport;
   const rawOcrName = ocrResult.passport_name;
@@ -1957,8 +1966,11 @@ const buildPassportWarnings = (ocrResult, currentForm) => {
 
   if (ocrName && formName && ocrName !== formName) {
     warnings.push(
-      buildMismatchMessage(t.common.passportNameMismatch
-, rawFormName, rawOcrName)
+      buildMismatchMessage(
+        t.common.passportNameMismatch,
+        rawFormName,
+        rawOcrName
+      )
     );
   }
 
@@ -1978,8 +1990,7 @@ const buildPassportWarnings = (ocrResult, currentForm) => {
     } else {
       warnings.push(
         buildMismatchMessage(
-          t.common.passportNoMismatch
-,
+          t.common.passportNoMismatch,
           rawFormPassportNo,
           rawOcrPassportNo
         )
@@ -1989,8 +2000,11 @@ const buildPassportWarnings = (ocrResult, currentForm) => {
 
   if (ocrDob && formDob && ocrDob !== formDob) {
     warnings.push(
-      buildMismatchMessage(t.common.passportBirthMismatch
-, rawFormDob, rawOcrDob)
+      buildMismatchMessage(
+        t.common.passportBirthMismatch,
+        rawFormDob,
+        rawOcrDob
+      )
     );
   }
 
@@ -1999,7 +2013,10 @@ const buildPassportWarnings = (ocrResult, currentForm) => {
 
 const displayedPassportWarnings = useMemo(() => {
   if (passportOcrResult?.success) {
-    return buildPassportWarnings(passportOcrResult, form);
+    const recalculatedWarnings = buildPassportWarnings(passportOcrResult, form);
+    return recalculatedWarnings.length > 0
+      ? recalculatedWarnings
+      : passportCheckWarnings;
   }
 
   return passportCheckWarnings;
@@ -2009,6 +2026,7 @@ const displayedPassportWarnings = useMemo(() => {
   form.fullNamePassport,
   form.passportNo,
   form.dateOfBirth,
+  t,
 ]);
 
 const runPassportOcrCheck = async (file) => {
@@ -2019,15 +2037,26 @@ const runPassportOcrCheck = async (file) => {
   }
 
   const lowerName = String(file.name || "").toLowerCase();
-  const isPdfForOcr = String(file.type || "").toLowerCase() === "application/pdf" || lowerName.endsWith(".pdf");
+  const isPdfForOcr =
+    String(file.type || "").toLowerCase() === "application/pdf" ||
+    lowerName.endsWith(".pdf");
 
   if (isPdfForOcr && file.size > OCR_PDF_MAX_SIZE) {
     setPassportOcrResult({
       success: false,
-      message: "Passport OCR skipped because the PDF is larger than 3MB.",
+      message:
+        language === "en"
+          ? "Passport OCR was skipped because the PDF is larger than 3MB."
+          : language === "ko"
+          ? "\uc5ec\uad8c OCR\uc774 \uac74\ub108\ub6f0\uc5b4\uc84c\uc2b5\ub2c8\ub2e4. PDF \ud30c\uc77c\uc774 3MB\ub97c \ucd08\uacfc\ud569\ub2c8\ub2e4."
+          : "\u62a4\u7167 OCR \u5df2\u8df3\u8fc7\uff0c\u56e0\u4e3a PDF \u6587\u4ef6\u5927\u4e8e 3MB\u3002",
     });
     setPassportCheckWarnings([
-      "Passport OCR was skipped because the PDF is larger than 3MB. Please manually check the passport name, number, and date of birth.",
+      language === "en"
+        ? "Passport OCR was skipped because the PDF is larger than 3MB. Please manually check the passport name, number, and date of birth."
+        : language === "ko"
+        ? "PDF \ud30c\uc77c\uc774 3MB\ub97c \ucd08\uacfc\ud558\uc5ec \uc5ec\uad8c OCR\uc774 \uac74\ub108\ub6f0\uc5b4\uc84c\uc2b5\ub2c8\ub2e4. \uc5ec\uad8c \uc774\ub984, \ubc88\ud638, \uc0dd\ub144\uc6d4\uc77c\uc744 \uc218\ub3d9\uc73c\ub85c \ud655\uc778\ud574 \uc8fc\uc138\uc694."
+        : "\u62a4\u7167 OCR \u5df2\u8df3\u8fc7\uff0c\u56e0\u4e3a PDF \u6587\u4ef6\u5927\u4e8e 3MB\u3002\u8bf7\u4eba\u5de5\u68c0\u67e5\u62a4\u7167\u59d3\u540d\u3001\u62a4\u7167\u53f7\u548c\u51fa\u751f\u65e5\u671f\u662f\u5426\u6b63\u786e\u3002",
     ]);
     return;
   }
@@ -2052,7 +2081,14 @@ const runPassportOcrCheck = async (file) => {
     const result = await response.json();
 
     if (!response.ok || !result.success) {
-      throw new Error(result.message || "护照识别失败");
+      throw new Error(
+        result.message ||
+          (language === "en"
+            ? "Passport OCR failed"
+            : language === "ko"
+            ? "\uc5ec\uad8c \uc778\uc2dd\uc5d0 \uc2e4\ud328\ud588\uc2b5\ub2c8\ub2e4"
+            : "\u62a4\u7167\u8bc6\u522b\u5931\u8d25")
+      );
     }
 
     setPassportOcrResult(result);
@@ -2061,10 +2097,20 @@ const runPassportOcrCheck = async (file) => {
     console.error("runPassportOcrCheck error:", error);
     setPassportOcrResult({
       success: false,
-      message: error.message || "护照识别失败",
+      message:
+        error.message ||
+        (language === "en"
+          ? "Passport OCR failed"
+          : language === "ko"
+          ? "\uc5ec\uad8c \uc778\uc2dd\uc5d0 \uc2e4\ud328\ud588\uc2b5\ub2c8\ub2e4"
+          : "\u62a4\u7167\u8bc6\u522b\u5931\u8d25"),
     });
     setPassportCheckWarnings([
-      "护照信息识别失败，请人工检查姓名、护照号和出生日期是否填写正确。",
+      language === "en"
+        ? "Passport OCR failed. Please manually check whether the passport name, number, and date of birth are correct."
+        : language === "ko"
+        ? "\uc5ec\uad8c \uc815\ubcf4 \uc778\uc2dd\uc5d0 \uc2e4\ud328\ud588\uc2b5\ub2c8\ub2e4. \uc5ec\uad8c \uc774\ub984, \ubc88\ud638, \uc0dd\ub144\uc6d4\uc77c\uc744 \uc218\ub3d9\uc73c\ub85c \ud655\uc778\ud574 \uc8fc\uc138\uc694."
+        : "\u62a4\u7167\u4fe1\u606f\u8bc6\u522b\u5931\u8d25\uff0c\u8bf7\u4eba\u5de5\u68c0\u67e5\u62a4\u7167\u59d3\u540d\u3001\u62a4\u7167\u53f7\u548c\u51fa\u751f\u65e5\u671f\u662f\u5426\u6b63\u786e\u3002",
     ]);
   } finally {
     setPassportCheckLoading(false);
