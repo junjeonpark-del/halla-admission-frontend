@@ -213,11 +213,9 @@ function AgencyLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
-    const [session, setSession] = useState(() => readLocalAgencySession());
+   const [session, setSession] = useState(() => readLocalAgencySession());
   const [checking, setChecking] = useState(true);
   const [language, setLanguage] = useState(() => readLanguage());
-  const [sessionConflictOpen, setSessionConflictOpen] = useState(false);
-  const [sessionConflictMessage, setSessionConflictMessage] = useState("");
 
   const t = messages[language] || messages.zh;
   const menuItems = useMemo(() => buildMenuItems(t), [t]);
@@ -234,97 +232,46 @@ function AgencyLayout() {
     sessionStorage.removeItem("agency_session");
   }, []);
 
-  const finalizeForcedLogout = useCallback(() => {
-    clearLocalAgencySession();
-    setSession(null);
-    setSessionConflictOpen(false);
-    setSessionConflictMessage("");
-    navigate("/login", { replace: true });
-  }, [clearLocalAgencySession, navigate]);
+  const verifySession = useCallback(async () => {
+    try {
+      const response = await fetch("/api/agency-session", {
+        method: "GET",
+        credentials: "include",
+      });
 
-  const verifySession = useCallback(
-    async ({ showConflictOnFail = false } = {}) => {
+      const text = await response.text();
+      let result = {};
+
       try {
-        const response = await fetch("/api/agency-session", {
-          method: "GET",
-          credentials: "include",
-        });
+        result = text ? JSON.parse(text) : {};
+      } catch {
+        result = {};
+      }
 
-        const text = await response.text();
-        let result = {};
-
-        try {
-          result = text ? JSON.parse(text) : {};
-        } catch {
-          result = {};
-        }
-
-        if (!response.ok || !result.success || !result.session) {
-          clearLocalAgencySession();
-
-          if (showConflictOnFail && session) {
-            setSessionConflictMessage(t.sessionConflictMessage);
-            setSessionConflictOpen(true);
-            return null;
-          }
-
-          setSession(null);
-          navigate("/login", { replace: true });
-          return null;
-        }
-
-        sessionStorage.setItem("agency_session", JSON.stringify(result.session));
-        setSession(result.session);
-        return result.session;
-      } catch (error) {
-        console.error("AgencyLayout verifySession error:", error);
-
+      if (!response.ok || !result.success || !result.session) {
         clearLocalAgencySession();
-
-        if (showConflictOnFail && session) {
-          setSessionConflictMessage(t.sessionConflictMessage);
-          setSessionConflictOpen(true);
-          return null;
-        }
-
         setSession(null);
         navigate("/login", { replace: true });
         return null;
-      } finally {
-        setChecking(false);
       }
-    },
-    [clearLocalAgencySession, navigate, session, t.sessionConflictMessage]
-  );
+
+      sessionStorage.setItem("agency_session", JSON.stringify(result.session));
+      setSession(result.session);
+      return result.session;
+    } catch (error) {
+      console.error("AgencyLayout verifySession error:", error);
+      clearLocalAgencySession();
+      setSession(null);
+      navigate("/login", { replace: true });
+      return null;
+    } finally {
+      setChecking(false);
+    }
+  }, [clearLocalAgencySession, navigate]);
 
   useEffect(() => {
-    verifySession({ showConflictOnFail: false });
-  }, [verifySession]);
-
-  useEffect(() => {
-    if (!session || sessionConflictOpen) return;
-
-    const runCheck = () => {
-      verifySession({ showConflictOnFail: true });
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        runCheck();
-      }
-    };
-
-    const timer = window.setInterval(runCheck, 3000);
-
-    window.addEventListener("focus", runCheck);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener("focus", runCheck);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [session, sessionConflictOpen, verifySession]);
+    verifySession();
+  }, [location.pathname, verifySession]);
 
   const handleLogout = async () => {
     try {
@@ -352,8 +299,8 @@ function AgencyLayout() {
         language,
         setLanguage,
         t,
-                refreshSession: async () => {
-          return verifySession({ showConflictOnFail: true });
+                 refreshSession: async () => {
+          return verifySession();
         },
       }}
     >
@@ -451,29 +398,7 @@ function AgencyLayout() {
               <Outlet />
             </div>
           </main>
-        </div>
-
-        {sessionConflictOpen ? (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/45 px-4">
-            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-              <div className="text-lg font-bold text-slate-900">
-                {t.sessionConflictTitle}
-              </div>
-              <div className="mt-3 text-sm leading-6 text-slate-600">
-                {sessionConflictMessage || t.sessionConflictMessage}
-              </div>
-              <div className="mt-6 flex justify-end">
-                <button
-                  type="button"
-                  onClick={finalizeForcedLogout}
-                  className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-                >
-                  {t.sessionConflictConfirm}
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
+        </div>      
       </div>
     </AgencySessionContext.Provider>
   );
