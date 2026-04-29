@@ -137,16 +137,6 @@ function saveLanguage(value) {
   }
 }
 
-function BrandMark() {
-  return (
-    <div className="relative h-11 w-11 shrink-0">
-      <div className="absolute left-0 top-0 h-11 w-4 skew-x-[-16deg] rounded-sm bg-[linear-gradient(180deg,#65d7ff_0%,#1e6eff_62%,#13307c_100%)] shadow-[0_0_10px_rgba(77,152,255,0.28)]" />
-      <div className="absolute right-0 top-0 h-11 w-4 skew-x-[16deg] rounded-sm bg-[linear-gradient(180deg,#e7fbff_0%,#92dbff_38%,#3880ff_100%)] shadow-[0_0_10px_rgba(77,152,255,0.28)]" />
-      <div className="absolute left-[9px] top-[15px] h-3 w-[22px] rounded-sm bg-[linear-gradient(180deg,#1a2e7c_0%,#224dcb_100%)]" />
-    </div>
-  );
-}
-
 function UserIcon() {
   return (
     <svg
@@ -264,7 +254,7 @@ function LanguageSwitcher({ language, onChange }) {
           type="button"
           onClick={() => onChange(item.value)}
           className={[
-            "relative min-w-[82px] cursor-pointer px-5 py-2.5 text-sm font-semibold transition",
+            "relative h-[46px] w-[92px] shrink-0 cursor-pointer px-0 py-0 text-sm font-semibold transition",
             index !== 0 ? "border-l border-slate-200" : "",
             language === item.value
               ? "bg-[linear-gradient(180deg,#3776ff_0%,#1e5dff_100%)] text-white"
@@ -281,15 +271,12 @@ function LanguageSwitcher({ language, onChange }) {
 function BrandBlock({ t }) {
   return (
     <div className="flex items-center gap-4">
-      <BrandMark />
-      <div className="flex items-center gap-4">
-        <div className="text-[1.85rem] font-black tracking-tight text-[#132046]">
-          {t.brandKo}
-        </div>
-        <div className="h-7 w-px bg-slate-200" />
-        <div className="text-sm font-semibold uppercase tracking-[0.28em] text-[#47557b]">
-          {t.brandEn}
-        </div>
+      <div className="text-[1.85rem] font-black tracking-tight text-[#132046]">
+        {t.brandKo}
+      </div>
+      <div className="h-7 w-px bg-slate-200" />
+      <div className="text-sm font-semibold uppercase tracking-[0.28em] text-[#47557b]">
+        {t.brandEn}
       </div>
     </div>
   );
@@ -318,10 +305,10 @@ function LoginCard({
           {icon}
         </div>
         <div>
-          <h3 className="text-[2rem] font-black tracking-tight text-[#0d1a3f]">
+          <h3 className="text-[1.75rem] font-black tracking-tight text-[#0d1a3f]">
             {title}
           </h3>
-          <p className="mt-1 text-base text-[#6f7f9f]">{desc}</p>
+          <p className="mt-1 text-[0.95rem] text-[#6f7f9f]">{desc}</p>
         </div>
       </div>
 
@@ -332,7 +319,7 @@ function LoginCard({
             value={username}
             onChange={onUsernameChange}
             placeholder={usernamePlaceholder}
-            className="w-full border-0 bg-transparent text-base text-slate-700 outline-none placeholder:text-[#9ba9c4]"
+            className="w-full border-0 bg-transparent text-[0.98rem] text-slate-700 outline-none placeholder:text-[#9ba9c4]"
           />
         </div>
 
@@ -343,7 +330,7 @@ function LoginCard({
             value={password}
             onChange={onPasswordChange}
             placeholder={passwordPlaceholder}
-            className="w-full border-0 bg-transparent text-base text-slate-700 outline-none placeholder:text-[#9ba9c4]"
+            className="w-full border-0 bg-transparent text-[0.98rem] text-slate-700 outline-none placeholder:text-[#9ba9c4]"
           />
         </div>
       </div>
@@ -353,7 +340,7 @@ function LoginCard({
         onClick={onSubmit}
         disabled={loading}
         className={[
-          "mt-5 w-full cursor-pointer rounded-2xl px-5 py-4 text-lg font-bold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-75",
+          "mt-5 w-full cursor-pointer rounded-2xl px-5 py-3.5 text-[1.02rem] font-bold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-75",
           buttonClassName,
         ].join(" ")}
       >
@@ -375,10 +362,10 @@ function FeatureItem({ icon, title, desc, bordered = false }) {
         {icon}
       </div>
       <div>
-        <h4 className="text-[1.5rem] font-black tracking-tight text-[#132046]">
+        <h4 className="text-[1.28rem] font-black tracking-tight text-[#132046]">
           {title}
         </h4>
-        <p className="mt-1 text-base leading-7 text-[#70819f]">{desc}</p>
+        <p className="mt-1 text-[0.95rem] leading-7 text-[#70819f]">{desc}</p>
       </div>
     </div>
   );
@@ -553,11 +540,11 @@ function LoginPage() {
 
         <div className="relative mx-auto max-w-[1480px] px-6 pb-14 pt-12 lg:px-10 lg:pt-14">
           <div className="mx-auto max-w-[1160px] text-center">
-            <div className="text-[15px] font-semibold uppercase tracking-[0.32em] text-[#576989]">
+            <div className="text-[14px] font-semibold uppercase tracking-[0.28em] text-[#576989]">
               {t.heroEyebrow}
             </div>
 
-            <h1 className="mt-5 text-[3.5rem] font-black tracking-tight text-[#121e45] md:text-[4.3rem] lg:text-[4.8rem]">
+            <h1 className="mt-5 text-[3.05rem] font-black tracking-tight text-[#121e45] md:text-[3.75rem] lg:text-[4.15rem]">
               <span>{t.heroTitlePrimary} </span>
               <span className="bg-[linear-gradient(180deg,#3b79ff_0%,#1a5cff_100%)] bg-clip-text text-transparent">
                 {t.heroTitleAccent}
@@ -566,7 +553,7 @@ function LoginPage() {
 
             <div className="mx-auto mt-5 h-1.5 w-[70px] rounded-full bg-[linear-gradient(90deg,#2c70ff_0%,#3b85ff_100%)]" />
 
-            <p className="mx-auto mt-7 max-w-[940px] text-[1.35rem] leading-10 text-[#586b8d]">
+            <p className="mx-auto mt-7 max-w-[940px] text-[1.12rem] leading-9 text-[#586b8d]">
               {t.heroDesc}
             </p>
           </div>
@@ -607,7 +594,7 @@ function LoginPage() {
             />
           </div>
 
-          <div className="mt-7 text-center text-[1.2rem] font-medium text-[#7b89a5]">
+          <div className="mt-7 text-center text-[1.05rem] font-medium text-[#7b89a5]">
             <span>{t.registerPrefix} </span>
             <button
               type="button"
@@ -638,14 +625,6 @@ function LoginPage() {
                 bordered
               />
             </div>
-          </div>
-
-          <div className="mt-10 text-center text-[1.02rem] text-[#8694ae]">
-            <span>© 2024 Halla University. All rights reserved.</span>
-            <span className="mx-4 text-slate-300">|</span>
-            <span>隐私政策</span>
-            <span className="mx-4 text-slate-300">|</span>
-            <span>使用条款</span>
           </div>
         </div>
       </div>
