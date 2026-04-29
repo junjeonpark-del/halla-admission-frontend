@@ -1335,14 +1335,14 @@ const toggleMonth = (year, applicationType, month) => {
             agencyMap[student.agency_id] ||
             student.agency_id ||
             "-",
+            [t.exportHeaders.applicationCategory]: applicationCategoryText,
           [t.exportHeaders.intake]: getIntakeLabel(nodeSource),
 [t.exportHeaders.studentName]:
             student.english_name ||
             student.full_name_passport ||
             student.fullNamePassport ||
             student.name ||
-            "-",
-          [t.exportHeaders.applicationCategory]: applicationCategoryText,
+            "-",          
           [t.exportHeaders.monthSeason]: monthSeasonText,
           [t.exportHeaders.degreeLevel]: degreeLevelText,
           [t.exportHeaders.major]: student.major || student.department || "-",
@@ -1508,13 +1508,13 @@ const toggleMonth = (year, applicationType, month) => {
             student.agency_id ||
             "-",
           申请批次: getIntakeLabel(nodeSource),
+                  申请项目类型: applicationCategoryText,
           学生姓名:
             student.english_name ||
             student.full_name_passport ||
             student.fullNamePassport ||
             student.name ||
-            "-",
-                  申请项目类型: applicationCategoryText,
+            "-",          
           申请状态: formatStatusLabel(student.status),
 
           退款账户姓名: student.refund_name || student.refundName || "",
