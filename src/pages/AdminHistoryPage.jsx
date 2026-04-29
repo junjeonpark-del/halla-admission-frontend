@@ -25,10 +25,14 @@ const messages = {
         `仅显示 ${year}年 ${month}月下所有当前进行中与已截止批次的申请`,
       intakeDesc: (label) => `仅显示 ${label} 的申请记录`,
     },
-    search: {
+        search: {
       label: "学生姓名 / 机构 / 专业",
       placeholder: "输入姓名、机构或专业搜索",
       export: "导出 Excel",
+      exportApplication: "导出申请信息",
+      exportRefund: "导出退款信息",
+      refundSheetName: "退款信息",
+      refundFilePrefix: "管理员退款信息",
       noExportData: "当前没有可导出的申请数据。",
       exportFailed: "导出失败：",
       sheetName: "历史申请",
@@ -36,6 +40,7 @@ const messages = {
       fileAll: "全部申请",
       fileSingle: "单批次",
     },
+
     table: {
       title: "申请明细",
       desc: "管理员可继续进入审核页查看、审核并修改状态",
@@ -182,10 +187,14 @@ const messages = {
         `Show all ongoing and closed intake applications in ${year}-${month}`,
       intakeDesc: (label) => `Show only application records for ${label}`,
     },
-    search: {
+        search: {
       label: "Student / Agency / Major",
       placeholder: "Search by name, agency, or major",
       export: "Export Excel",
+      exportApplication: "Export Application Info",
+      exportRefund: "Export Refund Info",
+      refundSheetName: "Refund Info",
+      refundFilePrefix: "Admin_Refund_Info",
       noExportData: "There is no application data to export.",
       exportFailed: "Export failed: ",
       sheetName: "History",
@@ -193,6 +202,7 @@ const messages = {
       fileAll: "All",
       fileSingle: "SingleIntake",
     },
+
     table: {
       title: "Application Details",
       desc: "Admins can continue to the review page to review and update status",
@@ -339,10 +349,14 @@ const messages = {
         `${year}년 ${month}월의 현재 진행 중 및 마감된 모든 차수 지원을 표시합니다`,
       intakeDesc: (label) => `${label}의 지원 기록만 표시합니다`,
     },
-    search: {
+        search: {
       label: "학생 / 기관 / 전공",
       placeholder: "이름, 기관 또는 전공으로 검색",
       export: "Excel 내보내기",
+      exportApplication: "지원정보 내보내기",
+      exportRefund: "환불정보 내보내기",
+      refundSheetName: "환불정보",
+      refundFilePrefix: "관리자_환불정보",
       noExportData: "내보낼 지원 데이터가 없습니다.",
       exportFailed: "내보내기 실패: ",
       sheetName: "지원이력",
@@ -350,6 +364,7 @@ const messages = {
       fileAll: "전체",
       fileSingle: "단일차수",
     },
+
     table: {
       title: "지원 상세",
       desc: "관리자는 심사 페이지로 이동해 상태를 검토하고 수정할 수 있습니다",
@@ -1213,7 +1228,7 @@ const toggleMonth = (year, applicationType, month) => {
         let admissionGradeText = "";
 
                 const applicationCategoryText =
-          applicationType === "language"
+                    applicationType === "language"
             ? t.exportValues.languageProgram
             : applicationType === "graduate"
             ? t.exportValues.graduateSchool
@@ -1465,6 +1480,138 @@ const toggleMonth = (year, applicationType, month) => {
     }
   };
 
+    const handleExportRefundExcel = async () => {
+    try {
+      if (!filteredApplications || filteredApplications.length === 0) {
+        alert(t.search.noExportData);
+        return;
+      }
+
+      const exportRows = filteredApplications.map((student, index) => {
+        const linkedIntake = student.intake_id ? intakeMap[student.intake_id] : null;
+        const nodeSource = linkedIntake || student;
+        const applicationType = getApplicationType(nodeSource);
+
+        const applicationCategoryText =
+          applicationType === "language"
+            ? "语言班"
+            : applicationType === "graduate"
+            ? "大学院"
+            : "本科";
+
+        return {
+          序号: index + 1,
+          学生姓名:
+            student.english_name ||
+            student.full_name_passport ||
+            student.fullNamePassport ||
+            student.name ||
+            "-",
+          机构:
+            student.agency_name ||
+            agencyMap[student.agency_id] ||
+            student.agency_id ||
+            "-",
+          申请批次: getIntakeLabel(nodeSource),
+          申请项目类型: applicationCategoryText,
+          申请状态: formatStatusLabel(student.status),
+          public_id: student.public_id || "",
+
+          退款账户姓名: student.refund_name || student.refundName || "",
+          退款账户出生日期: student.refund_dob || student.refundDob || "",
+          退款账户邮箱: student.refund_email || student.refundEmail || "",
+          账户持有人: student.account_holder || student.accountHolder || "",
+          与申请人关系: student.relationship || student.relationshipWithApplicant || "",
+
+          收款人国家: student.beneficiary_country || student.beneficiaryCountry || "",
+          收款人城市: student.beneficiary_city || student.beneficiaryCity || "",
+          收款人地址: student.beneficiary_address || student.beneficiaryAddress || "",
+
+          银行名称: student.bank_name || student.bankName || "",
+          银行国家: student.bank_country || student.bankCountry || "",
+          银行城市: student.bank_city || student.bankCity || "",
+          银行地址: student.bank_address || student.bankAddress || "",
+          账号: student.account_number || student.accountNumber || "",
+          SWIFT代码: student.swift_code || student.swiftCode || "",
+
+          创建时间: student.created_at || "",
+          更新时间: student.updated_at || "",
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(exportRows);
+
+      worksheet["!cols"] = [
+        { wch: 8 },
+        { wch: 20 },
+        { wch: 18 },
+        { wch: 22 },
+        { wch: 14 },
+        { wch: 14 },
+        { wch: 20 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 24 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 28 },
+        { wch: 22 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 28 },
+        { wch: 22 },
+        { wch: 18 },
+        { wch: 22 },
+        { wch: 22 },
+      ];
+
+      const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, t.search.refundSheetName);
+
+      const today = new Date();
+      const dateText = `${today.getFullYear()}-${String(
+        today.getMonth() + 1
+      ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+      let fileLabel = t.search.fileAll;
+
+      if (selectedNode.type === "year") {
+        fileLabel =
+          language === "en"
+            ? String(selectedNode.year)
+            : `${selectedNode.year}${t.sidebar.yearSuffix}`;
+      } else if (selectedNode.type === "applicationType") {
+        fileLabel = `${selectedNode.year}${
+          language === "en" ? "" : t.sidebar.yearSuffix
+        }_${selectedNode.applicationTypeLabel}`;
+      } else if (selectedNode.type === "month") {
+        fileLabel = `${selectedNode.year}${
+          language === "en" ? "" : t.sidebar.yearSuffix
+        }_${selectedNode.applicationTypeLabel}_${selectedNode.monthLabel}`;
+      } else if (selectedNode.type === "intake") {
+        fileLabel = `${selectedNode.year}${
+          language === "en" ? "" : t.sidebar.yearSuffix
+        }_${selectedNode.applicationTypeLabel}_${selectedNode.monthLabel}_${selectedNode.intakeLabel}`;
+      }
+
+            const safePrefix = sanitizeExportFileSegment(
+        t.search.refundFilePrefix,
+        "Refund"
+      );
+      const safeLabel = sanitizeExportFileSegment(fileLabel, "All");
+      const safeDate = sanitizeExportFileSegment(dateText, "date");
+
+      XLSX.writeFile(
+        workbook,
+        `${safePrefix}_${safeLabel}_${safeDate}.xlsx`
+      );
+    } catch (error) {
+      console.error("handleExportRefundExcel error:", error);
+      alert(`${t.search.exportFailed}${error.message}`);
+    }
+  };
+
   return (
         <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -1709,13 +1856,23 @@ const toggleMonth = (year, applicationType, month) => {
                 />
               </div>
 
-              <button
-                type="button"
-                onClick={handleExportExcel}
-                className="inline-flex rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-              >
-                {t.search.export}
-              </button>
+                              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportExcel}
+                  className="inline-flex rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  {t.search.exportApplication}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportRefundExcel}
+                  className="inline-flex rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                >
+                  {t.search.exportRefund}
+                </button>
+              </div>
             </div>
           </div>
         </div>
