@@ -274,7 +274,7 @@ function BrandBlock({ t }) {
       <img
         src="/halla-logo.png"
         alt="Halla University Logo"
-        className="h-20 w-auto object-contain"
+        className="h-18 w-auto object-contain"
       />
       <div className="h-7 w-px bg-slate-200" />
       <div className="text-sm font-semibold uppercase tracking-[0.28em] text-[#47557b]">
