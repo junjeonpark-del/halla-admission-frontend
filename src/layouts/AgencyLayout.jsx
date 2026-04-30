@@ -380,17 +380,26 @@ function AgencyLayout() {
                   </p>
                 </div>
 
-                <div className="text-right">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    {t.currentAccount}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-800">
-                    {session.account_name || session.username}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {session.agency_name}
-                  </p>
+                  <div className="flex items-center gap-4">
+                  <img
+                    src="/agency-mascot.jpg"
+                    alt="Agency Mascot"
+                    className="h-24 w-24 rounded-2xl object-cover shadow-[0_8px_20px_rgba(15,23,42,0.08)]"
+                  />
+
+                  <div className="text-right">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                      {t.currentAccount}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-800">
+                      {session.account_name || session.username}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {session.agency_name}
+                    </p>
+                  </div>
                 </div>
+
               </div>
             </div>
 
