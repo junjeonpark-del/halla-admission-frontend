@@ -419,7 +419,7 @@ function AdminLayout() {
                     <img
                       src="/admin-mascot.jpg"
                       alt="Admin Mascot"
-                      className="h-17 w-17 rounded-2xl object-cover shadow-[0_8px_20px_rgba(15,23,42,0.08)]"
+                      className="h-20 w-20 rounded-2xl object-cover shadow-[0_8px_20px_rgba(15,23,42,0.08)]"
                     />
 
                     <div className="text-right">
