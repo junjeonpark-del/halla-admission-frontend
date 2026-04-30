@@ -271,9 +271,11 @@ function LanguageSwitcher({ language, onChange }) {
 function BrandBlock({ t }) {
   return (
     <div className="flex items-center gap-4">
-      <div className="text-[1.85rem] font-black tracking-tight text-[#132046]">
-        {t.brandKo}
-      </div>
+      <img
+        src="/halla-logo.png"
+        alt="Halla University Logo"
+        className="h-12 w-auto object-contain"
+      />
       <div className="h-7 w-px bg-slate-200" />
       <div className="text-sm font-semibold uppercase tracking-[0.28em] text-[#47557b]">
         {t.brandEn}
