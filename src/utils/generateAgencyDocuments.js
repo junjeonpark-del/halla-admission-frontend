@@ -8,6 +8,9 @@ import {
 } from "./docxTemplateHelpers";
 
 const WORD_DOCUMENT_XML_PATH = "word/document.xml";
+const TEMPLATE_KOREAN_NAME = "\uCF04\uAE00\uB85C\uBC8C\uCEE8\uC124\uD305";
+const TEMPLATE_ENGLISH_NAME = "Ken Global Consulting";
+const TEMPLATE_MOU_DATE = "2026. 04. ____";
 
 function ensureAgency(agency) {
   if (!agency || !agency.agency_name) {
@@ -28,8 +31,8 @@ async function fetchTemplate(templateUrl) {
 function parseXml(xmlText) {
   const parser = new DOMParser();
   const documentNode = parser.parseFromString(xmlText, "application/xml");
-
   const parserError = documentNode.querySelector("parsererror");
+
   if (parserError) {
     throw new Error("Failed to parse document XML.");
   }
@@ -110,16 +113,34 @@ function triggerDownload(blob, fileName) {
 }
 
 function buildMouXmlTransformer(agency) {
-  const { partyBDisplayName } = buildMouDocumentData(agency);
-
-  const replacePartyBText = (value) =>
-    value
-      .replace(/켄글로벌컨설팅\s*\(Ken Global Consulting\)/g, partyBDisplayName)
-      .replace(/켄글로벌컨설팅/g, partyBDisplayName)
-      .replace(/Ken Global Consulting/g, partyBDisplayName);
+  const { partyBDisplayName, partyBEnglishName, blankDate } =
+    buildMouDocumentData(agency);
 
   return (documentNode) => {
-    replaceParagraphs(documentNode, (currentText) => replacePartyBText(currentText));
+    replaceParagraphs(documentNode, (currentText, normalizedText) => {
+      let nextText = currentText;
+
+      if (normalizedText.includes("(Party B):")) {
+        nextText = nextText
+          .replace(`${TEMPLATE_KOREAN_NAME} (${TEMPLATE_ENGLISH_NAME})`, partyBDisplayName)
+          .replace(TEMPLATE_KOREAN_NAME, partyBDisplayName)
+          .replace(TEMPLATE_ENGLISH_NAME, partyBDisplayName);
+      } else if (normalizedText.includes('("Party B")')) {
+        nextText = nextText
+          .replace(`${TEMPLATE_KOREAN_NAME} (${TEMPLATE_ENGLISH_NAME})`, partyBEnglishName)
+          .replace(TEMPLATE_KOREAN_NAME, partyBEnglishName)
+          .replace(TEMPLATE_ENGLISH_NAME, partyBEnglishName);
+      } else {
+        nextText = nextText
+          .replace(`${TEMPLATE_KOREAN_NAME} (${TEMPLATE_ENGLISH_NAME})`, partyBDisplayName)
+          .replace(TEMPLATE_KOREAN_NAME, partyBDisplayName);
+      }
+
+      nextText = nextText.replaceAll(TEMPLATE_MOU_DATE, blankDate);
+
+      return nextText;
+    });
+
     return serializeXml(documentNode);
   };
 }
@@ -138,12 +159,17 @@ function buildAuthorizationXmlTransformer(agency, issuedAt = new Date()) {
 
   return (documentNode) => {
     replaceParagraphs(documentNode, (currentText, normalizedText) => {
-      if (normalizedText.includes("Name") && normalizedText.includes(":")) {
+      if (
+        normalizedText.includes("(Name") &&
+        normalizedText.includes(":") &&
+        !normalizedText.includes("Representative") &&
+        !normalizedText.includes("Registration Number")
+      ) {
         return `${currentText.replace(/\s+$/, "")}${agencyName ? ` ${agencyName}` : ""}`;
       }
 
       if (
-        normalizedText.includes("Representative") &&
+        normalizedText.includes("(Representative") &&
         normalizedText.includes(":")
       ) {
         return `${currentText.replace(/\s+$/, "")}${
@@ -152,7 +178,7 @@ function buildAuthorizationXmlTransformer(agency, issuedAt = new Date()) {
       }
 
       if (
-        normalizedText.includes("Registration Number") &&
+        normalizedText.includes("(Registration Number") &&
         normalizedText.includes(":")
       ) {
         return `${currentText.replace(/\s+$/, "")}${
@@ -160,7 +186,7 @@ function buildAuthorizationXmlTransformer(agency, issuedAt = new Date()) {
         }`;
       }
 
-      if (normalizedText.includes("Term") && normalizedText.includes(":")) {
+      if (normalizedText.includes("(Term") && normalizedText.includes(":")) {
         return currentText.replace(
           /202\s*X\s*\.\s*XX\s*\.\s*XX\s*~\s*202\s*X\s*\.\s*XX\s*\.\s*XX/,
           `${termStartDate} ~ ${termEndDate}`
@@ -170,7 +196,7 @@ function buildAuthorizationXmlTransformer(agency, issuedAt = new Date()) {
       if (
         !issueDateReplaced &&
         /202\s*X\s*\.\s*XX\s*\.\s*XX/.test(currentText) &&
-        !normalizedText.includes("Term")
+        !normalizedText.includes("(Term")
       ) {
         issueDateReplaced = true;
         return currentText.replace(/202\s*X\s*\.\s*XX\s*\.\s*XX/, issueDate);

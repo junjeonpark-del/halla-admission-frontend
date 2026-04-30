@@ -17,6 +17,14 @@ export function buildMouPartyBDisplayName(agencyName = "") {
   return `__________ (${normalized})`;
 }
 
+export function buildMouEnglishPartyBName(agencyName = "") {
+  return String(agencyName || "").trim();
+}
+
+export function buildMouBlankDate() {
+  return "____. __. ____";
+}
+
 export function toDate(value = new Date()) {
   if (value instanceof Date) return new Date(value.getTime());
 
@@ -87,5 +95,7 @@ export function buildMouDocumentData(agency = {}) {
   return {
     agencyName,
     partyBDisplayName: buildMouPartyBDisplayName(agencyName),
+    partyBEnglishName: buildMouEnglishPartyBName(agencyName),
+    blankDate: buildMouBlankDate(),
   };
 }
