@@ -9,6 +9,7 @@ import {
 
 const WORD_DOCUMENT_XML_PATH = "word/document.xml";
 const TEMPLATE_KOREAN_NAME = "\uCF04\uAE00\uB85C\uBC8C\uCEE8\uC124\uD305";
+const TEMPLATE_KOREAN_NAME_VARIANT = "\uCF04\uAE00\uB85C\uBC8C\uCEE8\uC120\uD305";
 const TEMPLATE_ENGLISH_NAME = "Ken Global Consulting";
 const TEMPLATE_MOU_DATE = "2026. 04. ____";
 function escapeRegExp(value = "") {
@@ -133,25 +134,37 @@ function buildMouXmlTransformer(agency) {
       if (normalizedText.includes("(Party B):")) {
         nextText = nextText
           .replace(fullPartyBPattern, partyBDisplayName)
-          .replace(new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME), "g"), partyBDisplayName);
+          .replace(new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME), "g"), partyBDisplayName)
+.replace(new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME_VARIANT), "g"), partyBDisplayName);
+
       } else if (normalizedText.includes('("Party B")')) {
         nextText = nextText
           .replace(fullPartyBPattern, partyBEnglishName)
-          .replace(new RegExp(escapeRegExp(TEMPLATE_ENGLISH_NAME), "g"), partyBEnglishName);
+          .replace(new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME), "g"), partyBDisplayName)
+.replace(new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME_VARIANT), "g"), partyBDisplayName);
+
             } else if (normalizedText.includes("대표자")) {
         nextText = nextText
           .replace(fullPartyBPattern, partyBEnglishName)
           .replace(
-            new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME), "g"),
-            partyBEnglishName
-          );
+  new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME), "g"),
+  partyBEnglishName
+)
+.replace(
+  new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME_VARIANT), "g"),
+  partyBEnglishName
+);
       } else {
         nextText = nextText
           .replace(fullPartyBPattern, partyBDisplayName)
           .replace(
-            new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME), "g"),
-            partyBDisplayName
-          );
+  new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME), "g"),
+  partyBDisplayName
+)
+.replace(
+  new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME_VARIANT), "g"),
+  partyBDisplayName
+);
       }
       nextText = nextText.replaceAll(TEMPLATE_MOU_DATE, blankDate);
 
