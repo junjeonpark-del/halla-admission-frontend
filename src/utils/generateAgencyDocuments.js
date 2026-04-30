@@ -11,6 +11,9 @@ const WORD_DOCUMENT_XML_PATH = "word/document.xml";
 const TEMPLATE_KOREAN_NAME = "\uCF04\uAE00\uB85C\uBC8C\uCEE8\uC124\uD305";
 const TEMPLATE_ENGLISH_NAME = "Ken Global Consulting";
 const TEMPLATE_MOU_DATE = "2026. 04. ____";
+function escapeRegExp(value = "") {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 function ensureAgency(agency) {
   if (!agency || !agency.agency_name) {
@@ -116,24 +119,29 @@ function buildMouXmlTransformer(agency) {
   const { partyBDisplayName, partyBEnglishName, blankDate } =
     buildMouDocumentData(agency);
 
+  const fullPartyBPattern = new RegExp(
+    `${escapeRegExp(TEMPLATE_KOREAN_NAME)}\\s*\\(${escapeRegExp(
+      TEMPLATE_ENGLISH_NAME
+    )}\\)`,
+    "g"
+  );
+
   return (documentNode) => {
     replaceParagraphs(documentNode, (currentText, normalizedText) => {
       let nextText = currentText;
 
       if (normalizedText.includes("(Party B):")) {
         nextText = nextText
-          .replace(`${TEMPLATE_KOREAN_NAME} (${TEMPLATE_ENGLISH_NAME})`, partyBDisplayName)
-          .replace(TEMPLATE_KOREAN_NAME, partyBDisplayName)
-          .replace(TEMPLATE_ENGLISH_NAME, partyBDisplayName);
+          .replace(fullPartyBPattern, partyBDisplayName)
+          .replace(new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME), "g"), partyBDisplayName);
       } else if (normalizedText.includes('("Party B")')) {
         nextText = nextText
-          .replace(`${TEMPLATE_KOREAN_NAME} (${TEMPLATE_ENGLISH_NAME})`, partyBEnglishName)
-          .replace(TEMPLATE_KOREAN_NAME, partyBEnglishName)
-          .replace(TEMPLATE_ENGLISH_NAME, partyBEnglishName);
+          .replace(fullPartyBPattern, partyBEnglishName)
+          .replace(new RegExp(escapeRegExp(TEMPLATE_ENGLISH_NAME), "g"), partyBEnglishName);
       } else {
         nextText = nextText
-          .replace(`${TEMPLATE_KOREAN_NAME} (${TEMPLATE_ENGLISH_NAME})`, partyBDisplayName)
-          .replace(TEMPLATE_KOREAN_NAME, partyBDisplayName);
+          .replace(fullPartyBPattern, partyBDisplayName)
+          .replace(new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME), "g"), partyBDisplayName);
       }
 
       nextText = nextText.replaceAll(TEMPLATE_MOU_DATE, blankDate);
@@ -193,13 +201,20 @@ function buildAuthorizationXmlTransformer(agency, issuedAt = new Date()) {
         );
       }
 
-      if (
+            if (
         !issueDateReplaced &&
         /202\s*X\s*\.\s*XX\s*\.\s*XX/.test(currentText) &&
         !normalizedText.includes("(Term")
       ) {
         issueDateReplaced = true;
         return currentText.replace(/202\s*X\s*\.\s*XX\s*\.\s*XX/, issueDate);
+      }
+
+      if (currentText.includes(TEMPLATE_KOREAN_NAME)) {
+        return currentText.replace(
+          new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME), "g"),
+          agencyName
+        );
       }
 
       return currentText;
