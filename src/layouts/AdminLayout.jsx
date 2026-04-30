@@ -415,17 +415,25 @@ function AdminLayout() {
                   </p>
                 </div>
 
-                <div className="text-right">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    {t.currentAccount}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-800">
-                    {session.name || session.username}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {t.adminBackend}
-                  </p>
-                </div>
+                     <div className="flex items-center gap-4">
+                    <img
+                      src="/admin-mascot.jpg"
+                      alt="Admin Mascot"
+                      className="h-14 w-14 rounded-2xl object-cover shadow-[0_8px_20px_rgba(15,23,42,0.08)]"
+                    />
+
+                    <div className="text-right">
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                        {t.currentAccount}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-800">
+                        {session.name || session.username}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {t.adminBackend}
+                      </p>
+                    </div>
+                  </div>
               </div>
             </div>
 
