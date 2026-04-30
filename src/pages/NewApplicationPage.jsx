@@ -22,7 +22,7 @@ pdfTooLarge: 'PDF 文件“{fileName}”超过 4MB，请压缩后重新上传。
       enabled: "已开启", disabled: "已关闭", reopenStudentFill: "重新开启填写", closeStudentFill: "关闭学生填写",
       uploadFile: "上传文件", chooseFile: "选择文件", uploadedFiles: "已上传文件", selectedFiles: "本次新选择文件", noSelectedFiles: "尚未选择新文件", delete: "删除",
       generatedNoNeedUpload: "此项由系统生成，不需要机构重复上传。", uploadRule: "上传要求：照片文件不能超过 2MB，PDF 文件不能超过 4MB。请尽量上传清晰但压缩后的文件。",
-      signatureMethod: "签字方式", signatureHelper: "请选择签字方式。下方将显示当前签字预览，最终会自动回填到学校申请表所有对应签字位置。", autoSignatureDesc: "系统将基于当前姓名字段自动生成签字：",
+      signatureMethod: "签字方式", signatureHelper: "请选择签字方式。下方将显示当前签字预览，最终会自动回填到学校申请表所有对应签字位置。", autoSignatureDesc: "系统将基于当前姓名字段自动生成名字：",
 fillNameFirst: "请先填写姓名后生成自动签字", noSignaturePreview: "暂无签字预览", drawSignatureDesc: "请在下方区域手写签字。", clearSignature: "清空重签", uploadSignatureImage: "上传签字图片",
 generatedSignatureTip: "当前签字预览如下。重新打开页面时会显示已保存的签字效果。",
  passportReminderTitle: "护照信息辅助提醒",
