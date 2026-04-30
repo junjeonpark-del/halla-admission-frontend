@@ -13,7 +13,7 @@ const sexOptions = ["Male", "Female"];
 const yesNoOptions = ["YES", "NO"];
 
 const signatureMethods = [
-  { value: "auto", label: "自动生成名字" },
+  { value: "auto", label: "手写签字展示" },
   { value: "draw", label: "手写签字" },
   { value: "upload", label: "上传签字图片" },
 ];
@@ -599,23 +599,28 @@ function SignaturePad({
         />
       </div>
 
-      {method === "auto" && (
-        <div className="mt-5">
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4">
-            <p className="text-sm text-slate-500">{text.autoDesc}</p>
-            <p className="mt-2 text-sm font-medium text-slate-700">
-              {signerName || text.autoEmpty}
-            </p>
-            <div className="mt-4 min-h-[90px] rounded-xl border border-slate-200 bg-slate-50 p-4">
-              {generatedSignature ? (
-                <img src={generatedSignature} alt="auto-signature" className="h-20 object-contain" />
-              ) : (
-                <p className="text-sm text-slate-400">{text.noPreview}</p>
-              )}
-            </div>
+            <div className="mt-5">
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4">
+          {method === "auto" ? (
+            <>
+              <p className="text-sm text-slate-500">{text.autoDesc}</p>
+              <p className="mt-2 text-sm font-medium text-slate-700">
+                {signerName || text.autoEmpty}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-slate-500">{text.previewReady}</p>
+          )}
+
+          <div className="mt-4 min-h-[90px] rounded-xl border border-slate-200 bg-slate-50 p-4">
+            {previewImage ? (
+              <img src={previewImage} alt="signature-preview" className="h-20 object-contain" />
+            ) : (
+              <p className="text-sm text-slate-400">{text.noPreview}</p>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
       {method === "draw" && (
         <div className="mt-5">
@@ -762,7 +767,7 @@ function StudentLanguageApplicationPage() {
 
     const signatureMethodOptions = useMemo(
     () => [
-      { value: "auto", label: txt("自动生成名字", "Generate Name", "이름 자동 생성") },
+      { value: "auto", label: txt("系统自动签字", "Auto Signature", "자동 서명") },
       { value: "draw", label: txt("手写签字", "Draw signature", "직접 서명") },
       { value: "upload", label: txt("上传签字图片", "Upload signature image", "서명 이미지 업로드") },
     ],
@@ -792,15 +797,14 @@ function StudentLanguageApplicationPage() {
         saveFailed: (message) => txt(`保存失败：${message}`, `Save failed: ${message}`, `저장 실패: ${message}`),
       },
       signaturePad: {
-        confirm: txt("请选择签字方式。提交后会同步到机构端。", "Choose a signature method. It will sync to the agency portal after submission.", "서명 방식을 선택하세요. 제출 후 기관 포털에 동기화됩니다."),
-        methodLabel: txt("签字方式", "Signature Method", "서명 방식"),
-                autoDesc: txt("自动生成名字将基于当前姓名字段生成：", "The generated name will be based on the current name field:", "자동 생성 이름은 현재 이름 입력값을 기준으로 생성됩니다."),
-        autoEmpty: txt("请先填写姓名后自动生成", "Enter a name first to generate a signature", "먼저 이름을 입력하면 서명이 생성됩니다"),
-        noPreview: txt("暂无签字预览", "No signature preview yet", "서명 미리보기가 없습니다"),
-        drawDesc: txt("请在下方区域手写签字。", "Draw your signature in the area below.", "아래 영역에 직접 서명해 주세요."),
-        clear: txt("清空重签", "Clear and redraw", "지우고 다시 서명"),
-        uploadLabel: txt("上传签字图片", "Upload signature image", "서명 이미지 업로드"),
-        previewReady: txt("已生成签字预览。", "Signature preview is ready.", "서명 미리보기가 생성되었습니다."),
+        confirm: txt("请选择签字方式。下方会显示当前签字预览，保存或提交后会同步到机构端。", "Choose a signature method. The current signature preview will be shown below and will sync to the agency portal after saving or submission.", "서명 방식을 선택하세요. 아래에 현재 서명 미리보기가 표시되며, 저장 또는 제출 후 기관 포털에 동기화됩니다."),
+methodLabel: txt("签字方式", "Signature Method", "서명 방식"),
+autoDesc: txt("系统将基于当前姓名字段自动生成签字：", "The system will generate a signature based on the current name field:", "시스템이 현재 이름 입력값을 기준으로 자동 서명을 생성합니다:"),
+autoEmpty: txt("请先填写姓名后生成自动签字", "Enter a name first to generate the auto signature", "먼저 이름을 입력한 뒤 자동 서명을 생성하세요"),
+noPreview: txt("暂无签字预览", "No signature preview yet", "서명 미리보기가 없습니다"),
+drawDesc: txt("请在下方区域手写签字。", "Draw your signature in the area below.", "아래 영역에 직접 서명해 주세요."),
+uploadLabel: txt("上传签字图片", "Upload signature image", "서명 이미지 업로드"),
+previewReady: txt("当前签字预览如下。重新打开页面时会显示已保存的签字效果。", "The current signature preview is shown below. Saved signatures will appear again when you reopen this page.", "현재 서명 미리보기가 아래에 표시됩니다. 페이지를 다시 열어도 저장된 서명이 그대로 표시됩니다."),
       },
       sections: {
         loading: txt("正在加载申请信息...", "Loading application information...", "지원 정보를 불러오는 중입니다..."),
