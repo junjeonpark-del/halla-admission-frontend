@@ -254,12 +254,16 @@ function LanguageSwitcher({ language, onChange }) {
           type="button"
           onClick={() => onChange(item.value)}
           className={[
-            "relative h-[46px] w-[92px] shrink-0 cursor-pointer px-0 py-0 text-sm font-semibold transition",
-            index !== 0 ? "border-l border-slate-200" : "",
-            language === item.value
-              ? "bg-[linear-gradient(180deg,#3776ff_0%,#1e5dff_100%)] text-white"
-              : "text-slate-600 hover:bg-slate-50",
-          ].join(" ")}
+  "relative h-[46px] w-[92px] shrink-0 cursor-pointer px-0 py-0 text-sm font-semibold transition",
+  index !== 0 ? "border-l border-slate-200" : "",
+  language === item.value
+    ? [
+        "bg-[linear-gradient(180deg,#3776ff_0%,#1e5dff_100%)] text-white",
+        index === 0 ? "rounded-l-xl" : "",
+        index === LANGUAGE_OPTIONS.length - 1 ? "rounded-r-xl" : "",
+      ].join(" ")
+    : "text-slate-600 hover:bg-slate-50",
+].join(" ")}
         >
           {item.label}
         </button>
@@ -274,7 +278,7 @@ function BrandBlock({ t }) {
       <img
         src="/halla-logo.png"
         alt="Halla University Logo"
-        className="h-20 w-auto object-contain"
+        className="h-18 w-auto object-contain"
       />
       <div className="h-7 w-px bg-slate-200" />
       <div className="text-sm font-semibold uppercase tracking-[0.28em] text-[#47557b]">
