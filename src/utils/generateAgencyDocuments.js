@@ -138,12 +138,21 @@ function buildMouXmlTransformer(agency) {
         nextText = nextText
           .replace(fullPartyBPattern, partyBEnglishName)
           .replace(new RegExp(escapeRegExp(TEMPLATE_ENGLISH_NAME), "g"), partyBEnglishName);
+            } else if (normalizedText.includes("대표자")) {
+        nextText = nextText
+          .replace(fullPartyBPattern, partyBEnglishName)
+          .replace(
+            new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME), "g"),
+            partyBEnglishName
+          );
       } else {
         nextText = nextText
           .replace(fullPartyBPattern, partyBDisplayName)
-          .replace(new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME), "g"), partyBDisplayName);
+          .replace(
+            new RegExp(escapeRegExp(TEMPLATE_KOREAN_NAME), "g"),
+            partyBDisplayName
+          );
       }
-
       nextText = nextText.replaceAll(TEMPLATE_MOU_DATE, blankDate);
 
       return nextText;
