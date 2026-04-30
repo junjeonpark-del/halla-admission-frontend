@@ -13,7 +13,7 @@ const sexOptions = ["Male", "Female"];
 const yesNoOptions = ["YES", "NO"];
 
 const signatureMethods = [
-  { value: "auto", label: "手写签字展示" },
+  { value: "auto", label: "自动生成名字" },
   { value: "draw", label: "手写签字" },
   { value: "upload", label: "上传签字图片" },
 ];
@@ -767,7 +767,7 @@ function StudentLanguageApplicationPage() {
 
     const signatureMethodOptions = useMemo(
     () => [
-      { value: "auto", label: txt("系统自动签字", "Auto Signature", "자동 서명") },
+      { value: "auto", label: txt("自动生成名字", "Generate Name", "자동이름생성") },
       { value: "draw", label: txt("手写签字", "Draw signature", "직접 서명") },
       { value: "upload", label: txt("上传签字图片", "Upload signature image", "서명 이미지 업로드") },
     ],
@@ -799,8 +799,8 @@ function StudentLanguageApplicationPage() {
       signaturePad: {
         confirm: txt("请选择签字方式。下方会显示当前签字预览，保存或提交后会同步到机构端。", "Choose a signature method. The current signature preview will be shown below and will sync to the agency portal after saving or submission.", "서명 방식을 선택하세요. 아래에 현재 서명 미리보기가 표시되며, 저장 또는 제출 후 기관 포털에 동기화됩니다."),
 methodLabel: txt("签字方式", "Signature Method", "서명 방식"),
-autoDesc: txt("系统将基于当前姓名字段自动生成签字：", "The system will generate a signature based on the current name field:", "시스템이 현재 이름 입력값을 기준으로 자동 서명을 생성합니다:"),
-autoEmpty: txt("请先填写姓名后生成自动签字", "Enter a name first to generate the auto signature", "먼저 이름을 입력한 뒤 자동 서명을 생성하세요"),
+autoDesc: txt("自动生成名字将基于当前姓名字段生成：", "The generated name will be based on the current name field:", "자동 생성 이름은 현재 이름 입력값을 기준으로 생성됩니다."),
+autoEmpty: txt("请先填写姓名后自动生成", "Enter a name first to generate a signature", "먼저 이름을 입력하면 서명이 생성됩니다"),
 noPreview: txt("暂无签字预览", "No signature preview yet", "서명 미리보기가 없습니다"),
 drawDesc: txt("请在下方区域手写签字。", "Draw your signature in the area below.", "아래 영역에 직접 서명해 주세요."),
 uploadLabel: txt("上传签字图片", "Upload signature image", "서명 이미지 업로드"),
