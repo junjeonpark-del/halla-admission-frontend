@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAdminSession } from "../contexts/AdminSessionContext";
+import {
+  generateAuthorizationLetterDocx,
+  generateMouKoEnDocx,
+} from "../utils/generateAgencyDocuments";
 
 const messages = {
   zh: {
@@ -948,6 +952,50 @@ function AgenciesPage() {
     }
   };
 
+    const handleGenerateAuthorizationLetter = async () => {
+  if (!detailAgency) return;
+
+  try {
+    await generateAuthorizationLetterDocx(detailAgency);
+  } catch (error) {
+    console.error("generate authorization letter error:", error);
+    alert(
+      language === "en"
+        ? `Failed to generate authorization letter: ${error.message}`
+        : language === "ko"
+        ? `위촉장 생성에 실패했습니다: ${error.message}`
+        : `生成授权书失败：${error.message}`
+    );
+  }
+};
+
+const handleDownloadMouKoEn = async () => {
+  if (!detailAgency) return;
+
+  try {
+    await generateMouKoEnDocx(detailAgency);
+  } catch (error) {
+    console.error("download mou ko-en error:", error);
+    alert(
+      language === "en"
+        ? `Failed to download MOU: ${error.message}`
+        : language === "ko"
+        ? `MOU 다운로드에 실패했습니다: ${error.message}`
+        : `下载 MOU 失败：${error.message}`
+    );
+  }
+};
+
+const handleDownloadMouZhKo = () => {
+  alert(
+    language === "en"
+      ? "Chinese-Korean MOU template is not ready yet."
+      : language === "ko"
+      ? "중한 MOU 템플릿이 아직 준비되지 않았습니다."
+      : "中韩版 MOU 模板暂未准备好。"
+  );
+};
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -1600,33 +1648,74 @@ function AgenciesPage() {
               </div>
             </div>
 
-            <div className="mt-6 flex flex-wrap justify-end gap-3">
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={() => handleUpdateAgencyStatus(detailAgency.id, "approved")}
-                className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
-              >
-                {t.detail.approve}
-              </button>
+                        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={handleGenerateAuthorizationLetter}
+                  className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                >
+                  {language === "en"
+                    ? "Generate Authorization Letter"
+                    : language === "ko"
+                    ? "위촉장 생성"
+                    : "生成授权书"}
+                </button>
 
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={() => handleUpdateAgencyStatus(detailAgency.id, "rejected")}
-                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-              >
-                {t.detail.reject}
-              </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadMouKoEn}
+                  className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  {language === "en"
+                    ? "Download MOU (KO-EN)"
+                    : language === "ko"
+                    ? "MOU 다운로드 (한영)"
+                    : "下载MOU（韩英）"}
+                </button>
 
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={() => handleUpdateAgencyStatus(detailAgency.id, "disabled")}
-                className="rounded-xl bg-slate-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-              >
-                {t.detail.disable}
-              </button>
+                <button
+                  type="button"
+                  disabled
+                  onClick={handleDownloadMouZhKo}
+                  className="cursor-not-allowed rounded-xl bg-slate-300 px-4 py-2.5 text-sm font-semibold text-white opacity-70"
+                >
+                  {language === "en"
+                    ? "Download MOU (ZH-KO)"
+                    : language === "ko"
+                    ? "MOU 다운로드 (중한)"
+                    : "下载MOU（中韩）"}
+                </button>
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-3">
+                <button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={() => handleUpdateAgencyStatus(detailAgency.id, "approved")}
+                  className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  {t.detail.approve}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={() => handleUpdateAgencyStatus(detailAgency.id, "rejected")}
+                  className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                >
+                  {t.detail.reject}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={() => handleUpdateAgencyStatus(detailAgency.id, "disabled")}
+                  className="rounded-xl bg-slate-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                >
+                  {t.detail.disable}
+                </button>
+              </div>
             </div>
           </div>
         </div>
