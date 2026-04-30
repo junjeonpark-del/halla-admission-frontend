@@ -947,7 +947,7 @@ function AgencyAccountsPage() {
               <button
                 type="button"
                 onClick={handleOpenAgencyInfoEdit}
-                className="rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+                className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
               >
                 {language === "en" ? "Edit Agency Info" : language === "ko" ? "기관 정보 수정" : "编辑机构信息"}
               </button>
@@ -967,49 +967,61 @@ function AgencyAccountsPage() {
           )}
         </div>
 
-                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+                   <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="text-xs font-medium text-slate-500">
               {t.info.agencyName}
-            </label>
-            <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
-              {agencyInfo?.agency_name || agencySession?.agency_name || "-"}
+            </div>
+            <div className="mt-2 min-h-[24px] text-sm font-semibold text-slate-800 break-all">
+              {agencyInfo?.agency_name || "-"}
             </div>
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="text-xs font-medium text-slate-500">
               {language === "en" ? "Country" : language === "ko" ? "국가" : "国家"}
-            </label>
-            <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            </div>
+            <div className="mt-2 min-h-[24px] text-sm font-semibold text-slate-800 break-all">
               {agencyInfo?.country || "-"}
             </div>
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="text-xs font-medium text-slate-500">
               {t.info.primaryAccount}
-            </label>
-            <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            </div>
+            <div className="mt-2 min-h-[24px] text-sm font-semibold text-slate-800 break-all">
               {primaryAccount?.username || agencySession?.username || "-"}
             </div>
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="text-xs font-medium text-slate-500">
               {t.info.contact}
-            </label>
-            <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            </div>
+            <div className="mt-2 min-h-[24px] text-sm font-semibold text-slate-800 break-all">
               {agencyInfo?.phone || primaryAccount?.phone || "-"}
             </div>
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="text-xs font-medium text-slate-500">
               {t.info.reviewStatus}
-            </label>
-            <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
-              {agencyInfo?.status || "-"}
+            </div>
+            <div className="mt-2 min-h-[24px]">
+              <span
+                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                  agencyInfo?.status === "approved"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : agencyInfo?.status === "pending"
+                    ? "bg-amber-100 text-amber-700"
+                    : agencyInfo?.status === "rejected"
+                    ? "bg-red-100 text-red-700"
+                    : "bg-slate-200 text-slate-700"
+                }`}
+              >
+                {agencyInfo?.status || "-"}
+              </span>
             </div>
           </div>
         </div>
