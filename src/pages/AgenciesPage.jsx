@@ -504,9 +504,9 @@ function buildAgencyApplicationStats(applications = [], openIntakeIds = new Set(
       stats.currentIntakeCount += 1;
     }
 
-    if (major) {
-      majorMap.set(major, (majorMap.get(major) || 0) + 1);
-    }
+    if (major && status !== "draft" && status !== "rejected") {
+  majorMap.set(major, (majorMap.get(major) || 0) + 1);
+}
   });
 
   stats.lastSubmittedAt = getLatestDate(submittedDates);
