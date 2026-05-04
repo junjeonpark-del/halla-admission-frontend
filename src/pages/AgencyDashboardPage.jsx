@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAgencySession } from "../contexts/AgencySessionContext";
+import { getMajorCatalog, getLocalizedMajorLabel } from "../data/majorCatalog";
 
 const messages = {
   zh: {
@@ -418,6 +419,27 @@ function AgencyDashboardPage() {
     return t.intakeProgress.ongoing;
   };
 
+    const getMajor = (student) => {
+    const rawMajor = student.major || student.department || "";
+    if (!rawMajor) return "-";
+
+    const type = String(student.application_type || "undergraduate").toLowerCase();
+
+    if (type === "language") {
+      return rawMajor;
+    }
+
+    const catalog = getMajorCatalog(type === "graduate" ? "graduate" : "undergraduate");
+    const matched = catalog.find(
+      (major) =>
+        major.zh === rawMajor ||
+        major.en === rawMajor ||
+        major.ko === rawMajor
+    );
+
+    return matched ? getLocalizedMajorLabel(matched, language) : rawMajor;
+  };
+
   const getLinkedIntake = (app) => {
     if (!app?.intake_id) return null;
     return intakes.find((intake) => intake.id === app.intake_id) || null;
@@ -825,7 +847,7 @@ function AgencyDashboardPage() {
   />
 </td>
 <td className="px-6 py-4 text-slate-600">
-  <EllipsisText text={student.major || "-"} widthClass="max-w-[150px]" />
+  <EllipsisText text={getMajor(student)} widthClass="max-w-[150px]" />
 </td>
                             <td className="px-6 py-4">
                               <StatusBadge type={mapStatusType(status)}>
