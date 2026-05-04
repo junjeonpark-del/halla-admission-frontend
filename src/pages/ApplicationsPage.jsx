@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 import { supabase } from "../lib/supabase";
 import { fetchApplications } from "../data/applicationsApi";
 import { useAdminSession } from "../contexts/AdminSessionContext";
+import { getMajorCatalog, getLocalizedMajorLabel } from "../data/majorCatalog";
 
 const messages = {
   zh: {
@@ -415,8 +416,25 @@ function ApplicationsPage() {
     `${getApplicationTypeLabel(student)} / ${getIntake(student)}`;
 
   const getMajor = (student) => {
-    return student.major || student.department || "-";
-  };
+  const rawMajor = student.major || student.department || "";
+  if (!rawMajor) return "-";
+
+  const type = String(student.application_type || "undergraduate").toLowerCase();
+
+  if (type === "language") {
+    return rawMajor;
+  }
+
+  const catalog = getMajorCatalog(type === "graduate" ? "graduate" : "undergraduate");
+  const matched = catalog.find(
+    (major) =>
+      major.zh === rawMajor ||
+      major.en === rawMajor ||
+      major.ko === rawMajor
+  );
+
+  return matched ? getLocalizedMajorLabel(matched, language) : rawMajor;
+};
 
   const getStatus = (student) => {
     const s = String(student.status || "").toLowerCase();

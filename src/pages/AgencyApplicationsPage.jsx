@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAgencySession } from "../contexts/AgencySessionContext";
+import { getMajorCatalog, getLocalizedMajorLabel } from "../data/majorCatalog";
 
 const MATERIALS_BUCKET = "application-files";
 
@@ -407,8 +408,25 @@ function AgencyApplicationsPage() {
   };
 
   const getMajor = (student) => {
-    return student.major || student.department || "-";
-  };
+  const rawMajor = student.major || student.department || "";
+  if (!rawMajor) return "-";
+
+  const type = String(student.application_type || "undergraduate").toLowerCase();
+
+  if (type === "language") {
+    return rawMajor;
+  }
+
+  const catalog = getMajorCatalog(type === "graduate" ? "graduate" : "undergraduate");
+  const matched = catalog.find(
+    (major) =>
+      major.zh === rawMajor ||
+      major.en === rawMajor ||
+      major.ko === rawMajor
+  );
+
+  return matched ? getLocalizedMajorLabel(matched, language) : rawMajor;
+};
 
   const getStatus = (student) => {
     return student.status || "draft";
