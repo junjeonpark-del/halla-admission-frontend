@@ -539,72 +539,93 @@ const getMonthDisplay = (itemOrMonth, applicationType) => {
   };
 
   useEffect(() => {
-    async function loadData() {
-      if (!agencySession?.agency_id) return;
+  async function loadData() {
+    if (!agencySession?.agency_id) return;
 
-      try {
-        setLoading(true);
-        setLoadError("");
+    try {
+      setLoading(true);
+      setLoadError("");
 
-        const nowIso = new Date().toISOString();
+      const applicationsQuery = supabase
+        .from("applications")
+        .select("*")
+        .eq("agency_id", agencySession.agency_id)
+        .order("updated_at", { ascending: false });
 
-        const [
-          { data: intakesData, error: intakesError },
-          { data: applicationsData, error: applicationsError },
-          filesResponse,
-        ] = await Promise.all([
-                     supabase
-            .from("intakes")
-            .select("*")
-            .order("open_at", { ascending: false }),
-          supabase
-            .from("applications")
-            .select("*")
-            .eq("agency_id", agencySession.agency_id)
-            .order("updated_at", { ascending: false }),
-          supabase
-            .from("application_files")
-            .select("*")
-            .order("created_at", { ascending: false }),
-        ]);
-
-        if (intakesError) throw intakesError;
-        if (applicationsError) throw applicationsError;
-        if (filesResponse.error) throw filesResponse.error;
-
-        const availableIntakes = intakesData || [];
-
-        setHistoryIntakes(availableIntakes);
-        setApplications(applicationsData || []);
-        setApplicationFiles(filesResponse.data || []);
-
-        const initialExpandedYears = {};
-const initialExpandedTypes = {};
-const initialExpandedMonths = {};
-
-availableIntakes.forEach((item) => {
-  const year = getIntakeYear(item);
-  const applicationType = getApplicationType(item);
-  const month = getIntakeMonth(item);
-  initialExpandedYears[year] = true;
-  initialExpandedTypes[`${year}-${applicationType}`] = true;
-  initialExpandedMonths[`${year}-${applicationType}-${month}`] = true;
-});
-
-setExpandedYears(initialExpandedYears);
-setExpandedTypes(initialExpandedTypes);
-setExpandedMonths(initialExpandedMonths);
-
-      } catch (error) {
-        console.error("AgencyHistoryPage loadData error:", error);
-        setLoadError(error.message || t.loadError);
-      } finally {
-        setLoading(false);
+      if (agencySession?.is_primary !== true) {
+        applicationsQuery.eq("agency_unit_id", agencySession?.agency_unit_id || "");
       }
-    }
 
-    loadData();
-  }, [agencySession?.agency_id, t.loadError, language]);
+      const [
+        { data: intakesData, error: intakesError },
+        { data: applicationsData, error: applicationsError },
+      ] = await Promise.all([
+        supabase
+          .from("intakes")
+          .select("*")
+          .order("open_at", { ascending: false }),
+        applicationsQuery,
+      ]);
+
+      if (intakesError) throw intakesError;
+      if (applicationsError) throw applicationsError;
+
+      const visibleApplications = applicationsData || [];
+      const visiblePublicIds = visibleApplications
+        .map((item) => item.public_id)
+        .filter(Boolean);
+
+      let filesData = [];
+
+      if (visiblePublicIds.length > 0) {
+        const { data, error } = await supabase
+          .from("application_files")
+          .select("*")
+          .in("public_id", visiblePublicIds)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        filesData = data || [];
+      }
+
+      const availableIntakes = intakesData || [];
+
+      setHistoryIntakes(availableIntakes);
+      setApplications(visibleApplications);
+      setApplicationFiles(filesData);
+
+      const initialExpandedYears = {};
+      const initialExpandedTypes = {};
+      const initialExpandedMonths = {};
+
+      availableIntakes.forEach((item) => {
+        const year = getIntakeYear(item);
+        const applicationType = getApplicationType(item);
+        const month = getIntakeMonth(item);
+        initialExpandedYears[year] = true;
+        initialExpandedTypes[`${year}-${applicationType}`] = true;
+        initialExpandedMonths[`${year}-${applicationType}-${month}`] = true;
+      });
+
+      setExpandedYears(initialExpandedYears);
+      setExpandedTypes(initialExpandedTypes);
+      setExpandedMonths(initialExpandedMonths);
+    } catch (error) {
+      console.error("AgencyHistoryPage loadData error:", error);
+      setLoadError(error.message || t.loadError);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  loadData();
+}, [
+  agencySession?.agency_id,
+  agencySession?.agency_unit_id,
+  agencySession?.is_primary,
+  t.loadError,
+  language,
+]);
 
   const historyIntakeIds = useMemo(() => {
     return new Set((historyIntakes || []).map((item) => item.id));
