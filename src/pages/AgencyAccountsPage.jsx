@@ -798,6 +798,67 @@ const handleSaveManagedUnit = async (unit, nextActive) => {
   }
 };
 
+const handleDeleteManagedUnit = async (unit) => {
+  const confirmed = window.confirm(
+    language === "en"
+      ? `Delete branch "${unit.name}"? This is only allowed when the branch has no accounts or applications.`
+      : language === "ko"
+      ? `"${unit.name}" 분기관을 삭제하시겠습니까? 계정이나 신청 기록이 없는 경우에만 삭제할 수 있습니다.`
+      : `确定删除分机构“${unit.name}”吗？只有没有账号和申请记录的分机构才能删除。`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    setSavingManagedUnitId(unit.id);
+
+    const response = await fetch("/api/agency-unit-delete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        id: unit.id,
+      }),
+    });
+
+    const text = await response.text();
+    let result = {};
+
+    try {
+      result = text ? JSON.parse(text) : {};
+    } catch {
+      result = {};
+    }
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || "Failed to delete branch");
+    }
+
+    alert(
+      language === "en"
+        ? "Branch deleted"
+        : language === "ko"
+        ? "분기관이 삭제되었습니다"
+        : "分机构已删除"
+    );
+
+    await loadData();
+  } catch (error) {
+    console.error("handleDeleteManagedUnit error:", error);
+    alert(
+      (language === "en"
+        ? "Failed to delete branch: "
+        : language === "ko"
+        ? "분기관 삭제 실패: "
+        : "分机构删除失败：") + error.message
+    );
+  } finally {
+    setSavingManagedUnitId("");
+  }
+};
+
    const handleOpenCreate = () => {
   setCreateForm({
     ...getInitialCreateForm(),
@@ -1737,6 +1798,15 @@ const handleSaveManagedUnit = async (unit, nextActive) => {
                           : "启用"}
                       </button>
                     )}
+                    <button
+  type="button"
+  onClick={() => handleDeleteManagedUnit(unit)}
+  disabled={isSaving}
+  className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+>
+  {language === "en" ? "Delete" : language === "ko" ? "삭제" : "删除"}
+</button>
+
                   </div>
                 </div>
 
