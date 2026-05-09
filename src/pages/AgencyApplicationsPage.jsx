@@ -322,14 +322,40 @@ function AgencyApplicationsPage() {
   const t = messages[language] || messages.zh;
 
   const [applications, setApplications] = useState([]);
-  const [currentIntakes, setCurrentIntakes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
-  const [applicationDialogOpen, setApplicationDialogOpen] = useState(false);
-  const [selectedApplicationType, setSelectedApplicationType] = useState("undergraduate");
-  const [activeTab, setActiveTab] = useState("draft");
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+const [currentIntakes, setCurrentIntakes] = useState([]);
+const [agencyUnits, setAgencyUnits] = useState([]);
+const [loading, setLoading] = useState(true);
+const [loadError, setLoadError] = useState("");
+const [applicationDialogOpen, setApplicationDialogOpen] = useState(false);
+const [selectedApplicationType, setSelectedApplicationType] = useState("undergraduate");
+const [activeTab, setActiveTab] = useState("draft");
+const [searchKeyword, setSearchKeyword] = useState("");
+const [statusFilter, setStatusFilter] = useState("all");
+
+const isPrimarySession = agencySession?.is_primary === true;
+const agencyUnitColumnLabel =
+  language === "en" ? "Branch" : language === "ko" ? "소속 분기관" : "所属分机构";
+
+const agencyUnitMap = useMemo(() => {
+  const map = new Map();
+
+  agencyUnits.forEach((unit) => {
+    map.set(unit.id, unit.name || "-");
+  });
+
+  return map;
+}, [agencyUnits]);
+
+const formatAgencyUnitName = (name) => {
+  return String(name || "-")
+    .replace(/\s*（本部）\s*$/u, "")
+    .replace(/\s*\(本部\)\s*$/u, "");
+};
+
+const getAgencyUnitName = (item) => {
+  const unitName = agencyUnitMap.get(item?.agency_unit_id);
+  return formatAgencyUnitName(unitName || agencySession?.agency_name || "-");
+};
 
   const mapStatusType = (status) => {
     if (!status) return "default";
@@ -610,54 +636,66 @@ function AgencyApplicationsPage() {
 
 
   useEffect(() => {
-    async function loadData() {
-      if (!agencySession?.agency_id) return;
+  async function loadData() {
+    if (!agencySession?.agency_id) return;
 
-      try {
-        setLoading(true);
-        setLoadError("");
+    try {
+      setLoading(true);
+      setLoadError("");
 
-        const nowIso = new Date().toISOString();
+      const nowIso = new Date().toISOString();
 
-        const applicationQuery = supabase
-  .from("applications")
-  .select("*")
-  .eq("agency_id", agencySession.agency_id)
-  .order("updated_at", { ascending: false });
+      const applicationQuery = supabase
+        .from("applications")
+        .select("*")
+        .eq("agency_id", agencySession.agency_id)
+        .order("updated_at", { ascending: false });
 
-if (agencySession?.is_primary !== true) {
-  applicationQuery.eq("agency_unit_id", agencySession?.agency_unit_id || "");
-}
-
-const [
-  { data: intakeData, error: intakeError },
-  { data: applicationsData, error: applicationsError },
-] = await Promise.all([
-  supabase
-    .from("intakes")
-    .select("*")
-    .eq("is_active", true)
-    .lte("open_at", nowIso)
-    .gte("close_at", nowIso)
-    .order("open_at", { ascending: true }),
-  applicationQuery,
-]);
-
-        if (intakeError) throw intakeError;
-        if (applicationsError) throw applicationsError;
-
-        setCurrentIntakes(intakeData || []);
-        setApplications(applicationsData || []);
-      } catch (error) {
-        console.error("AgencyApplicationsPage loadData error:", error);
-        setLoadError(error.message || t.loadError);
-      } finally {
-        setLoading(false);
+      if (agencySession?.is_primary !== true) {
+        applicationQuery.eq("agency_unit_id", agencySession?.agency_unit_id || "");
       }
-    }
 
-    loadData();
-  }, [
+      const [
+        { data: intakeData, error: intakeError },
+        { data: applicationsData, error: applicationsError },
+        { data: agencyUnitsData, error: agencyUnitsError },
+      ] = await Promise.all([
+        supabase
+          .from("intakes")
+          .select("*")
+          .eq("is_active", true)
+          .lte("open_at", nowIso)
+          .gte("close_at", nowIso)
+          .order("open_at", { ascending: true }),
+        applicationQuery,
+        agencySession?.is_primary === true
+          ? supabase
+              .from("agency_units")
+              .select("id, name")
+              .eq("agency_id", agencySession.agency_id)
+              .eq("is_active", true)
+              .order("is_default", { ascending: false })
+              .order("created_at", { ascending: true })
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      if (intakeError) throw intakeError;
+      if (applicationsError) throw applicationsError;
+      if (agencyUnitsError) throw agencyUnitsError;
+
+      setCurrentIntakes(intakeData || []);
+      setApplications(applicationsData || []);
+      setAgencyUnits(agencyUnitsData || []);
+    } catch (error) {
+      console.error("AgencyApplicationsPage loadData error:", error);
+      setLoadError(error.message || t.loadError);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  loadData();
+}, [
   agencySession?.agency_id,
   agencySession?.agency_unit_id,
   agencySession?.is_primary,
@@ -923,6 +961,9 @@ const { error: applicationDeleteError } = await deleteQuery;
                 <tr>
                   <th className="px-6 py-4 font-semibold">{t.table.index}</th>
                   <th className="px-6 py-4 font-semibold">{t.table.studentName}</th>
+{isPrimarySession ? (
+  <th className="px-6 py-4 font-semibold">{agencyUnitColumnLabel}</th>
+) : null}
 <th className="px-6 py-4 font-semibold">{t.table.applicationType}</th>
 <th className="px-6 py-4 font-semibold">{t.table.intake}</th>
 <th className="px-6 py-4 font-semibold">{t.table.major}</th>
@@ -948,6 +989,11 @@ const { error: applicationDeleteError } = await deleteQuery;
                       <td className="px-6 py-4 font-medium text-slate-800">
   <EllipsisText text={getStudentName(student)} widthClass="max-w-[140px]" />
 </td>
+{isPrimarySession ? (
+  <td className="px-6 py-4 text-slate-600">
+    <EllipsisText text={getAgencyUnitName(student)} widthClass="max-w-[170px]" />
+  </td>
+) : null}
 <td className="px-6 py-4 text-slate-600">
   <EllipsisText text={getApplicationTypeLabel(student)} widthClass="max-w-[140px]" />
 </td>
