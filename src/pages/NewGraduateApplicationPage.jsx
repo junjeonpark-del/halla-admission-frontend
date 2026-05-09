@@ -2059,6 +2059,7 @@ const buildApplicationPayload = (statusValue = "draft", publicIdValue) => {
       application_type: "graduate",
       agency_id: agencySession?.agency_id || null,
       agency_account_id: agencySession?.agency_account_id || null,
+      agency_unit_id: agencySession?.agency_unit_id || null,
             intake_id: payloadIntakeId,
       intake_name: payloadIntakeName,
 
@@ -2128,6 +2129,7 @@ const buildApplicationPayload = (statusValue = "draft", publicIdValue) => {
     application_type: "graduate",
     agency_id: agencySession?.agency_id || null,
 agency_account_id: agencySession?.agency_account_id || null,
+agency_unit_id: agencySession?.agency_unit_id || null,
     student_fill_enabled: true,
         intake_id: payloadIntakeId,
     intake_name: payloadIntakeName,
@@ -2525,6 +2527,7 @@ useEffect(() => {
     const payload = JSON.stringify({
       id: applicationId,
       agency_account_id: agencySession.agency_account_id,
+      agency_unit_id: agencySession.agency_unit_id || null,
     });
 
     navigator.sendBeacon?.("/api/application-release-lock", payload);
