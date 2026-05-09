@@ -531,8 +531,7 @@ setAgencyUnits(unitRows || []);
     loadData();
   }, [agencySession?.agency_id]);
 
-  const filteredAccounts = useMemo(() => {
-    const agencyUnitMap = useMemo(() => {
+  const agencyUnitMap = useMemo(() => {
   return agencyUnits.reduce((map, item) => {
     if (item?.id) {
       map[item.id] = item;
@@ -551,26 +550,27 @@ const agencyUnitOptions = useMemo(() => {
     }));
 }, [agencyUnits]);
 
-    const keyword = searchKeyword.trim().toLowerCase();
+const filteredAccounts = useMemo(() => {
+  const keyword = searchKeyword.trim().toLowerCase();
 
-    return accounts.filter((item) => {
-      const matchesKeyword =
-        !keyword ||
-        String(item.username || "").toLowerCase().includes(keyword) ||
-        String(item.account_name || "").toLowerCase().includes(keyword) ||
-        String(item.email || "").toLowerCase().includes(keyword) ||
-        String(item.phone || "").toLowerCase().includes(keyword);
+  return accounts.filter((item) => {
+    const matchesKeyword =
+      !keyword ||
+      String(item.username || "").toLowerCase().includes(keyword) ||
+      String(item.account_name || "").toLowerCase().includes(keyword) ||
+      String(item.email || "").toLowerCase().includes(keyword) ||
+      String(item.phone || "").toLowerCase().includes(keyword);
 
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "active" && item.is_active === true) ||
-        (statusFilter === "inactive" && item.is_active !== true) ||
-        (statusFilter === "primary" && item.is_primary === true) ||
-        (statusFilter === "sub" && item.is_primary !== true);
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && item.is_active === true) ||
+      (statusFilter === "inactive" && item.is_active !== true) ||
+      (statusFilter === "primary" && item.is_primary === true) ||
+      (statusFilter === "sub" && item.is_primary !== true);
 
-      return matchesKeyword && matchesStatus;
-    });
-  }, [accounts, searchKeyword, statusFilter]);
+    return matchesKeyword && matchesStatus;
+  });
+}, [accounts, searchKeyword, statusFilter]);
 
   const primaryAccount = useMemo(() => {
     return accounts.find((item) => item.is_primary === true) || null;
