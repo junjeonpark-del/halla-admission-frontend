@@ -147,7 +147,7 @@ export async function validateAgencySession(req) {
 
   const { data: account, error } = await supabaseAdmin
     .from("agency_accounts")
-    .select("id, agency_id, is_active, session_version")
+    .select("id, agency_id, agency_unit_id, is_active, is_primary, session_version")
     .eq("id", session.agency_account_id)
     .maybeSingle();
 
@@ -165,7 +165,12 @@ export async function validateAgencySession(req) {
     return null;
   }
 
-  return session;
+  return {
+  ...session,
+  agency_unit_id: account.agency_unit_id || null,
+  is_primary: account.is_primary === true,
+};
+
 }
 
 export async function validateAdminSession(req) {

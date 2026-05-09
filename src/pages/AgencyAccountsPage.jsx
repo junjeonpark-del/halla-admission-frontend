@@ -446,7 +446,8 @@ function AgencyAccountsPage() {
   const t = messages[language] || messages.zh;
 
   const [agencyInfo, setAgencyInfo] = useState(null);
-  const [accounts, setAccounts] = useState([]);
+const [accounts, setAccounts] = useState([]);
+const [agencyUnits, setAgencyUnits] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -454,6 +455,13 @@ function AgencyAccountsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createForm, setCreateForm] = useState(getInitialCreateForm());
+
+  const [showUnitModal, setShowUnitModal] = useState(false);
+const [creatingUnit, setCreatingUnit] = useState(false);
+const [unitForm, setUnitForm] = useState({
+  name: "",
+  note: "",
+});
 
     const [showEditModal, setShowEditModal] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -479,27 +487,37 @@ function AgencyAccountsPage() {
       setLoadError("");
 
       const [
-        { data: agencyRow, error: agencyError },
-        { data: accountRows, error: accountsError },
-      ] = await Promise.all([
-        supabase
-          .from("agencies")
-          .select("*")
-          .eq("id", agencySession.agency_id)
-          .single(),
-        supabase
-          .from("agency_accounts")
-          .select("*")
-          .eq("agency_id", agencySession.agency_id)
-          .order("is_primary", { ascending: false })
-          .order("created_at", { ascending: true }),
-      ]);
+  { data: agencyRow, error: agencyError },
+  { data: accountRows, error: accountsError },
+  { data: unitRows, error: unitsError },
+] = await Promise.all([
+  supabase
+    .from("agencies")
+    .select("*")
+    .eq("id", agencySession.agency_id)
+    .single(),
+  supabase
+    .from("agency_accounts")
+    .select("*")
+    .eq("agency_id", agencySession.agency_id)
+    .order("is_primary", { ascending: false })
+    .order("created_at", { ascending: true }),
+  supabase
+    .from("agency_units")
+    .select("*")
+    .eq("agency_id", agencySession.agency_id)
+    .order("is_default", { ascending: false })
+    .order("created_at", { ascending: true }),
+]);
 
-      if (agencyError) throw agencyError;
-      if (accountsError) throw accountsError;
+if (agencyError) throw agencyError;
+if (accountsError) throw accountsError;
+if (unitsError) throw unitsError;
 
-      setAgencyInfo(agencyRow || null);
-      setAccounts(accountRows || []);
+setAgencyInfo(agencyRow || null);
+setAccounts(accountRows || []);
+setAgencyUnits(unitRows || []);
+
     } catch (error) {
       console.error("AgencyAccountsPage loadData error:", error);
       setLoadError(error.message || t.alerts.loadError);
@@ -514,6 +532,25 @@ function AgencyAccountsPage() {
   }, [agencySession?.agency_id]);
 
   const filteredAccounts = useMemo(() => {
+    const agencyUnitMap = useMemo(() => {
+  return agencyUnits.reduce((map, item) => {
+    if (item?.id) {
+      map[item.id] = item;
+    }
+    return map;
+  }, {});
+}, [agencyUnits]);
+
+const agencyUnitOptions = useMemo(() => {
+  return agencyUnits
+    .filter((item) => item.is_active !== false)
+    .map((item) => ({
+      value: item.id,
+      label: item.name || "-",
+      isDefault: item.is_default === true,
+    }));
+}, [agencyUnits]);
+
     const keyword = searchKeyword.trim().toLowerCase();
 
     return accounts.filter((item) => {
@@ -560,6 +597,85 @@ function AgencyAccountsPage() {
       [field]: value,
     }));
   };
+
+  const handleOpenUnitCreate = () => {
+  setUnitForm({
+    name: "",
+    note: "",
+  });
+  setShowUnitModal(true);
+};
+
+const handleUnitChange = (field, value) => {
+  setUnitForm((prev) => ({
+    ...prev,
+    [field]: value,
+  }));
+};
+
+const handleCreateUnit = async () => {
+  try {
+    if (!unitForm.name.trim()) {
+      alert(
+        language === "en"
+          ? "Please enter the branch name"
+          : language === "ko"
+          ? "분기관 이름을 입력해 주세요"
+          : "请填写分机构名称"
+      );
+      return;
+    }
+
+    setCreatingUnit(true);
+
+    const response = await fetch("/api/agency-unit-create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        name: unitForm.name,
+        note: unitForm.note,
+      }),
+    });
+
+    const text = await response.text();
+    let result = {};
+
+    try {
+      result = text ? JSON.parse(text) : {};
+    } catch {
+      result = {};
+    }
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || "Failed to create branch");
+    }
+
+    alert(
+      language === "en"
+        ? "Branch created"
+        : language === "ko"
+        ? "분기관이 생성되었습니다"
+        : "分机构创建成功"
+    );
+
+    setShowUnitModal(false);
+    await loadData();
+  } catch (error) {
+    console.error("handleCreateUnit error:", error);
+    alert(
+      (language === "en"
+        ? "Failed to create branch: "
+        : language === "ko"
+        ? "분기관 생성 실패: "
+        : "分机构创建失败：") + error.message
+    );
+  } finally {
+    setCreatingUnit(false);
+  }
+};
 
     const handleOpenCreate = () => {
     setCreateForm(getInitialCreateForm());
@@ -952,6 +1068,18 @@ function AgencyAccountsPage() {
                 {language === "en" ? "Edit Agency Info" : language === "ko" ? "기관 정보 수정" : "编辑机构信息"}
               </button>
 
+<button
+  type="button"
+  onClick={handleOpenUnitCreate}
+  className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+>
+  {language === "en"
+    ? "Add Branch"
+    : language === "ko"
+    ? "분기관 추가"
+    : "新增分机构"}
+</button>
+
               <button
                 type="button"
                 onClick={handleOpenCreate}
@@ -1180,6 +1308,101 @@ function AgencyAccountsPage() {
           </div>
         )}
       </div>
+
+{showUnitModal ? (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+    <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-bold text-slate-900">
+            {language === "en"
+              ? "Add Branch"
+              : language === "ko"
+              ? "분기관 추가"
+              : "新增分机构"}
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            {language === "en"
+              ? "Create a branch or internal unit under the current agency."
+              : language === "ko"
+              ? "현재 기관 아래에 분기관 또는 내부 소속을 생성합니다."
+              : "在当前主机构下新增分机构或内部归属。"}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowUnitModal(false)}
+          className="rounded-lg px-3 py-1 text-sm text-slate-500 hover:bg-slate-100"
+        >
+          {language === "en" ? "Close" : language === "ko" ? "닫기" : "关闭"}
+        </button>
+      </div>
+
+      <div className="mt-6 space-y-4">
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            {language === "en"
+              ? "Branch Name"
+              : language === "ko"
+              ? "분기관 이름"
+              : "分机构名称"}
+          </label>
+          <input
+            value={unitForm.name}
+            onChange={(e) => handleUnitChange("name", e.target.value)}
+            className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            {language === "en"
+              ? "Note"
+              : language === "ko"
+              ? "비고"
+              : "备注"}
+          </label>
+          <textarea
+            value={unitForm.note}
+            onChange={(e) => handleUnitChange("note", e.target.value)}
+            rows={3}
+            className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={() => setShowUnitModal(false)}
+          className="rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+        >
+          {language === "en" ? "Cancel" : language === "ko" ? "취소" : "取消"}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleCreateUnit}
+          disabled={creatingUnit}
+          className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+        >
+          {creatingUnit
+            ? language === "en"
+              ? "Creating..."
+              : language === "ko"
+              ? "생성 중..."
+              : "创建中..."
+            : language === "en"
+            ? "Create"
+            : language === "ko"
+            ? "생성"
+            : "确认创建"}
+        </button>
+      </div>
+    </div>
+  </div>
+) : null}
 
       {showCreateModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">

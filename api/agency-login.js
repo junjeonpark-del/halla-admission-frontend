@@ -81,15 +81,17 @@ export default async function handler(req, res) {
     if (sessionVersionError) throw sessionVersionError;
 
     const sessionPayload = {
-      agency_id: agency.id,
-      agency_account_id: account.id,
-      username: account.username,
-      account_name: account.account_name || "",
-      agency_name: agency.agency_name || "",
-      role: "agency",
-      session_version: nextSessionVersion,
-      exp: Date.now() + 1000 * 60 * 60 * 24 * 7,
-    };
+  agency_id: agency.id,
+  agency_account_id: account.id,
+  agency_unit_id: account.agency_unit_id || null,
+  username: account.username,
+  account_name: account.account_name || "",
+  agency_name: agency.agency_name || "",
+  is_primary: account.is_primary === true,
+  role: "agency",
+  session_version: nextSessionVersion,
+  exp: Date.now() + 1000 * 60 * 60 * 24 * 7,
+};
 
     const token = signSession(sessionPayload);
 
