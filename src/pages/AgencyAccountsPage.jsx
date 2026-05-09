@@ -393,6 +393,7 @@ function getInitialCreateForm() {
     account_name: "",
     phone: "",
     email: "",
+    agency_unit_id: "",
     is_active: true,
   };
 }
@@ -677,10 +678,13 @@ const handleCreateUnit = async () => {
   }
 };
 
-    const handleOpenCreate = () => {
-    setCreateForm(getInitialCreateForm());
-    setShowCreateModal(true);
-  };
+   const handleOpenCreate = () => {
+  setCreateForm({
+    ...getInitialCreateForm(),
+    agency_unit_id: agencyUnitOptions[0]?.value || "",
+  });
+  setShowCreateModal(true);
+};
 
   const handleOpenAgencyInfoEdit = () => {
     setAgencyInfoForm({
@@ -786,6 +790,17 @@ const handleCreateUnit = async () => {
         return;
       }
 
+      if (!createForm.agency_unit_id) {
+  alert(
+    language === "en"
+      ? "Please select a branch"
+      : language === "ko"
+      ? "소속 분기관을 선택해 주세요"
+      : "请选择所属分机构"
+  );
+  return;
+}
+
       setCreating(true);
 
       const response = await fetch("/api/agency-subaccount-create", {
@@ -795,13 +810,14 @@ const handleCreateUnit = async () => {
         },
         credentials: "include",
         body: JSON.stringify({
-          username: createForm.username,
-          password: createForm.password,
-          account_name: createForm.account_name,
-          phone: createForm.phone,
-          email: createForm.email,
-          is_active: createForm.is_active,
-        }),
+  username: createForm.username,
+  password: createForm.password,
+  account_name: createForm.account_name,
+  phone: createForm.phone,
+  email: createForm.email,
+  agency_unit_id: createForm.agency_unit_id,
+  is_active: createForm.is_active,
+}),
       });
 
       const text = await response.text();
@@ -1477,6 +1493,33 @@ const handleCreateUnit = async () => {
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                 />
               </div>
+              <div className="md:col-span-2">
+  <label className="mb-2 block text-sm font-medium text-slate-700">
+    {language === "en"
+      ? "Branch"
+      : language === "ko"
+      ? "소속 분기관"
+      : "所属分机构"}
+  </label>
+  <select
+    value={createForm.agency_unit_id}
+    onChange={(e) => handleCreateChange("agency_unit_id", e.target.value)}
+    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+  >
+    <option value="">
+      {language === "en"
+        ? "Please select"
+        : language === "ko"
+        ? "선택해 주세요"
+        : "请选择"}
+    </option>
+    {agencyUnitOptions.map((unit) => (
+      <option key={unit.value} value={unit.value}>
+        {unit.label}
+      </option>
+    ))}
+  </select>
+</div>
             </div>
 
             <div className="mt-6 flex justify-end gap-3">

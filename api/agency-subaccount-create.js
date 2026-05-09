@@ -36,13 +36,14 @@ if (!currentAccount || currentAccount.is_primary !== true) {
 }
 
     const {
-      username = "",
-      password = "",
-      account_name = "",
-      phone = "",
-      email = "",
-      is_active = true,
-    } = req.body || {};
+  username = "",
+  password = "",
+  account_name = "",
+  phone = "",
+  email = "",
+  agency_unit_id = "",
+  is_active = true,
+} = req.body || {};
 
     if (!String(username).trim()) {
       return json(res, 400, { success: false, message: "请填写用户名" });
@@ -51,6 +52,27 @@ if (!currentAccount || currentAccount.is_primary !== true) {
     if (!String(password).trim()) {
       return json(res, 400, { success: false, message: "请填写密码" });
     }
+
+    if (!String(agency_unit_id).trim()) {
+  return json(res, 400, { success: false, message: "请选择所属分机构" });
+}
+
+const { data: unitRow, error: unitError } = await supabaseAdmin
+  .from("agency_units")
+  .select("id, agency_id, is_active")
+  .eq("id", String(agency_unit_id).trim())
+  .eq("agency_id", session.agency_id)
+  .maybeSingle();
+
+if (unitError) throw unitError;
+
+if (!unitRow) {
+  return json(res, 400, { success: false, message: "所属分机构不存在" });
+}
+
+if (unitRow.is_active !== true) {
+  return json(res, 400, { success: false, message: "所属分机构已停用" });
+}
 
     const { data: existingRows, error: existingError } = await supabaseAdmin
       .from("agency_accounts")
@@ -65,15 +87,16 @@ if (!currentAccount || currentAccount.is_primary !== true) {
     }
 
     const payload = {
-      agency_id: session.agency_id,
-      username: String(username).trim(),
-      password: hashPassword(String(password)),
-      account_name: String(account_name).trim() || null,
-      phone: String(phone).trim() || null,
-      email: String(email).trim() || null,
-      is_primary: false,
-      is_active: is_active === true,
-    };
+  agency_id: session.agency_id,
+  agency_unit_id: String(agency_unit_id).trim(),
+  username: String(username).trim(),
+  password: hashPassword(String(password)),
+  account_name: String(account_name).trim() || null,
+  phone: String(phone).trim() || null,
+  email: String(email).trim() || null,
+  is_primary: false,
+  is_active: is_active === true,
+};
 
     const { error } = await supabaseAdmin.from("agency_accounts").insert(payload);
 
