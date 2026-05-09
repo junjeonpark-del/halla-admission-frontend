@@ -1076,6 +1076,91 @@ year: getIntakeYear(linkedIntake || student),
     };
   };
 
+    const formatAdmissionTypeForExport = (value) => {
+    const text = String(value || "").trim();
+
+    if (text === "Freshman") {
+      return language === "en" ? "Freshman" : language === "ko" ? "신입" : "新入";
+    }
+
+    if (text.startsWith("Transfer")) {
+      const gradeMatch = text.match(/\d+/);
+      const grade = gradeMatch ? gradeMatch[0] : "";
+
+      if (language === "en") return grade ? `Transfer (Year ${grade})` : "Transfer";
+      if (language === "ko") return grade ? `편입 (${grade}학년)` : "편입";
+      return grade ? `插班（${grade}年级）` : "插班";
+    }
+
+    if (text.startsWith("Dual Degree")) {
+      const gradeMatch = text.match(/\d+/);
+      const grade = gradeMatch ? gradeMatch[0] : "";
+
+      if (language === "en") return grade ? `Dual Degree (Year ${grade})` : "Dual Degree";
+      if (language === "ko") return grade ? `복수학위 (${grade}학년)` : "복수학위";
+      return grade ? `双学位（${grade}年级）` : "双学位";
+    }
+
+    return text;
+  };
+
+  const formatAdmissionGradeForExport = (value) => {
+    const text = String(value || "").trim();
+    if (!text) return "";
+
+    const gradeMatch = text.match(/\d+/);
+    if (!gradeMatch) return text;
+
+    const grade = gradeMatch[0];
+    if (language === "en") return `Year ${grade}`;
+    if (language === "ko") return `${grade}학년`;
+    return `${grade}年级`;
+  };
+
+  const formatProgramTrackForExport = (value) => {
+    const text = String(value || "").trim();
+
+    if (text === "Korean Track") {
+      return language === "en" ? "Korean Track" : language === "ko" ? "한국어 과정" : "韩语课程";
+    }
+
+    if (text === "English Track") {
+      return language === "en" ? "English Track" : language === "ko" ? "영어 과정" : "英语课程";
+    }
+
+    if (text === "Bilingual Program (Chinese)") {
+      return language === "en"
+        ? "Bilingual Program (Chinese)"
+        : language === "ko"
+        ? "중국어 복수언어 과정"
+        : "双语课程（中文）";
+    }
+
+    return text;
+  };
+
+    const getLanguageLevelForExport = (student) => {
+    const track = String(student.program_track || "").trim();
+
+    if (track === "Bilingual Program (Chinese)") {
+      return language === "en" ? "Exempt" : language === "ko" ? "면제" : "免提交";
+    }
+
+    return [
+      student.topik ? `TOPIK ${student.topik}` : "",
+      student.ska ? `SKA ${student.ska}` : "",
+      student.kiip ? `KIIP ${student.kiip}` : "",
+      student.ielts ? `IELTS ${student.ielts}` : "",
+      student.toefl ? `TOEFL ${student.toefl}` : "",
+      student.toefl_ibt ? `TOEFL iBT ${student.toefl_ibt}` : "",
+      student.cefr ? `CEFR ${student.cefr}` : "",
+      student.teps ? `TEPS ${student.teps}` : "",
+      student.new_teps ? `NEW TEPS ${student.new_teps}` : "",
+    ]
+      .filter(Boolean)
+      .join(" / ");
+  };
+
   const handleExportExcel = () => {
     try {
       if (!filteredApplications || filteredApplications.length === 0) {
@@ -1135,9 +1220,9 @@ year: getIntakeYear(linkedIntake || student),
               : "博士"
             : "";
         row[labels.major] = student.major || student.department || "-";
-        row[labels.admissionType] = student.admission_type || "";
-        row[labels.admissionGrade] = student.admission_grade || "";
-        row[labels.programTrack] = student.program_track || "";
+                row[labels.admissionType] = formatAdmissionTypeForExport(student.admission_type);
+        row[labels.admissionGrade] = formatAdmissionGradeForExport(student.admission_grade);
+        row[labels.programTrack] = formatProgramTrackForExport(student.program_track);
         row[labels.dormitory] = student.dormitory || "";
         row[labels.status] = formatStatusLabel(student.status);
         row[labels.passportNo] = student.passport_no || "";
@@ -1160,19 +1245,8 @@ year: getIntakeYear(linkedIntake || student),
         row[labels.edu3Location] = educationRows[2].location;
         row[labels.edu3Start] = educationRows[2].startDate;
         row[labels.edu3End] = educationRows[2].endDate;
-        row[labels.languageLevel] = [
-          student.topik ? `TOPIK ${student.topik}` : "",
-          student.ska ? `SKA ${student.ska}` : "",
-          student.kiip ? `KIIP ${student.kiip}` : "",
-          student.ielts ? `IELTS ${student.ielts}` : "",
-          student.toefl ? `TOEFL ${student.toefl}` : "",
-          student.toefl_ibt ? `TOEFL iBT ${student.toefl_ibt}` : "",
-          student.cefr ? `CEFR ${student.cefr}` : "",
-          student.teps ? `TEPS ${student.teps}` : "",
-          student.new_teps ? `NEW TEPS ${student.new_teps}` : "",
-        ]
-          .filter(Boolean)
-          .join(" / ");
+                row[labels.languageLevel] = getLanguageLevelForExport(student);
+
         row[labels.bankSubmitted] = hasBankStatement ? "O" : "X";
         row[labels.fatherName] =
           student.father_name ||
