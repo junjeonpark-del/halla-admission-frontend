@@ -284,6 +284,7 @@ const [loading, setLoading] = useState(true);
 const [loadError, setLoadError] = useState("");
 
 const [searchKeyword, setSearchKeyword] = useState("");
+const [agencyUnitFilter, setAgencyUnitFilter] = useState("all");
 const [expandedYears, setExpandedYears] = useState({});
 const [expandedTypes, setExpandedTypes] = useState({});
 const [expandedMonths, setExpandedMonths] = useState({});
@@ -313,6 +314,13 @@ const getAgencyUnitName = (item) => {
   const unitName = agencyUnitMap.get(item?.agency_unit_id);
   return formatAgencyUnitName(unitName || agencySession?.agency_name || "-");
 };
+
+const agencyUnitFilterOptions = useMemo(() => {
+  return agencyUnits.map((unit) => ({
+    value: unit.id,
+    label: formatAgencyUnitName(unit.name || "-"),
+  }));
+}, [agencyUnits]);
 
   const getStudentName = (student) => {
     return (
@@ -735,14 +743,18 @@ setAgencyUnits(agencyUnitsData || []);
 }, [historyIntakes, language]);
 
   const filteredApplications = useMemo(() => {
-    const keyword = searchKeyword.trim().toLowerCase();
+  const keyword = searchKeyword.trim().toLowerCase();
 
-    return historicalApplications.filter((item) => {
-      const studentName = getStudentName(item).toLowerCase();
+  return historicalApplications.filter((item) => {
+    const studentName = getStudentName(item).toLowerCase();
 
-      const matchesKeyword = !keyword || studentName.includes(keyword);
+    const matchesKeyword = !keyword || studentName.includes(keyword);
+    const matchesAgencyUnit =
+      !isPrimarySession ||
+      agencyUnitFilter === "all" ||
+      item.agency_unit_id === agencyUnitFilter;
 
-      let matchesTree = true;
+    let matchesTree = true;
 
 if (selectedNode.type === "year") {
   matchesTree = getIntakeYear(item) === selectedNode.year;
@@ -767,9 +779,16 @@ if (selectedNode.type === "year") {
   }
 }
 
-      return matchesKeyword && matchesTree;
+      return matchesKeyword && matchesAgencyUnit && matchesTree;
     });
-  }, [historicalApplications, searchKeyword, selectedNode, language]);
+  }, [
+  historicalApplications,
+  searchKeyword,
+  agencyUnitFilter,
+  selectedNode,
+  language,
+  isPrimarySession,
+]);
 
   const rows = useMemo(() => {
   return filteredApplications.map((student) => {
@@ -1172,17 +1191,41 @@ const toggleMonth = (year, applicationType, month) => {
 </div>
 
 
-            <div className="w-full max-w-[280px]">
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                {t.searchLabel}
-              </label>
-              <input
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                placeholder={t.searchPlaceholder}
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-              />
-            </div>
+            <div className="grid w-full max-w-[620px] gap-4 sm:grid-cols-2">
+  {isPrimarySession ? (
+    <div>
+      <label className="mb-2 block text-sm font-medium text-slate-700">
+        {agencyUnitColumnLabel}
+      </label>
+      <select
+        value={agencyUnitFilter}
+        onChange={(e) => setAgencyUnitFilter(e.target.value)}
+        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+      >
+        <option value="all">
+          {language === "en" ? "All Branches" : language === "ko" ? "전체 분기관" : "全部分机构"}
+        </option>
+        {agencyUnitFilterOptions.map((unit) => (
+          <option key={unit.value} value={unit.value}>
+            {unit.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  ) : null}
+
+  <div>
+    <label className="mb-2 block text-sm font-medium text-slate-700">
+      {t.searchLabel}
+    </label>
+    <input
+      value={searchKeyword}
+      onChange={(e) => setSearchKeyword(e.target.value)}
+      placeholder={t.searchPlaceholder}
+      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+    />
+  </div>
+</div>
           </div>
         </div>
 
