@@ -462,11 +462,15 @@ const [agencyUnits, setAgencyUnits] = useState([]);
   const [createForm, setCreateForm] = useState(getInitialCreateForm());
 
   const [showUnitModal, setShowUnitModal] = useState(false);
-const [creatingUnit, setCreatingUnit] = useState(false);
-const [unitForm, setUnitForm] = useState({
-  name: "",
-  note: "",
-});
+  const [creatingUnit, setCreatingUnit] = useState(false);
+  const [unitForm, setUnitForm] = useState({
+    name: "",
+    note: "",
+  });
+
+  const [showUnitManageModal, setShowUnitManageModal] = useState(false);
+  const [savingManagedUnitId, setSavingManagedUnitId] = useState("");
+  const [unitManageForms, setUnitManageForms] = useState({});
 
     const [showEditModal, setShowEditModal] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -562,6 +566,10 @@ const agencyUnitOptions = useMemo(() => {
         isDefault: item.is_default === true,
       };
     });
+}, [agencyUnits]);
+
+const branchUnits = useMemo(() => {
+  return agencyUnits.filter((item) => item.is_default !== true);
 }, [agencyUnits]);
 
 const filteredAccounts = useMemo(() => {
@@ -691,6 +699,102 @@ const handleCreateUnit = async () => {
     );
   } finally {
     setCreatingUnit(false);
+  }
+};
+
+const handleOpenUnitManage = () => {
+  const forms = {};
+
+  branchUnits.forEach((unit) => {
+    forms[unit.id] = {
+      name: unit.name || "",
+      note: unit.note || "",
+      is_active: unit.is_active === true,
+    };
+  });
+
+  setUnitManageForms(forms);
+  setShowUnitManageModal(true);
+};
+
+const handleManagedUnitChange = (unitId, field, value) => {
+  setUnitManageForms((prev) => ({
+    ...prev,
+    [unitId]: {
+      ...(prev[unitId] || {}),
+      [field]: value,
+    },
+  }));
+};
+
+const handleSaveManagedUnit = async (unit, nextActive) => {
+  try {
+    const currentForm = unitManageForms[unit.id] || {};
+    const unitName = String(currentForm.name || "").trim();
+
+    if (!unitName) {
+      alert(
+        language === "en"
+          ? "Please enter the branch name"
+          : language === "ko"
+          ? "분기관명을 입력해주세요"
+          : "请填写分机构名称"
+      );
+      return;
+    }
+
+    setSavingManagedUnitId(unit.id);
+
+    const response = await fetch("/api/agency-unit-update", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        id: unit.id,
+        name: unitName,
+        note: currentForm.note || "",
+        is_active:
+          typeof nextActive === "boolean"
+            ? nextActive
+            : currentForm.is_active === true,
+      }),
+    });
+
+    const text = await response.text();
+    let result = {};
+
+    try {
+      result = text ? JSON.parse(text) : {};
+    } catch {
+      result = {};
+    }
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || "Failed to update branch");
+    }
+
+    alert(
+      language === "en"
+        ? "Branch updated"
+        : language === "ko"
+        ? "분기관이 수정되었습니다"
+        : "分机构已更新"
+    );
+
+    await loadData();
+  } catch (error) {
+    console.error("handleSaveManagedUnit error:", error);
+    alert(
+      (language === "en"
+        ? "Failed to update branch: "
+        : language === "ko"
+        ? "분기관 수정 실패: "
+        : "分机构更新失败：") + error.message
+    );
+  } finally {
+    setSavingManagedUnitId("");
   }
 };
 
@@ -1114,6 +1218,18 @@ const handleCreateUnit = async () => {
 
 <button
   type="button"
+  onClick={handleOpenUnitManage}
+  className="rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-900"
+>
+  {language === "en"
+    ? "Manage Branches"
+    : language === "ko"
+    ? "분기관 관리"
+    : "管理分机构"}
+</button>
+
+<button
+  type="button"
   onClick={handleOpenUnitCreate}
   className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
 >
@@ -1481,6 +1597,166 @@ const handleCreateUnit = async () => {
             ? "생성"
             : "确认创建"}
         </button>
+      </div>
+    </div>
+  </div>
+) : null}
+
+{showUnitManageModal ? (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+    <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-bold text-slate-900">
+            {language === "en"
+              ? "Manage Branches"
+              : language === "ko"
+              ? "분기관 관리"
+              : "管理分机构"}
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            {language === "en"
+              ? "Edit branch names or disable branches that are no longer used."
+              : language === "ko"
+              ? "분기관명을 수정하거나 사용하지 않는 분기관을 비활성화할 수 있습니다."
+              : "可以修改分机构名称，也可以停用暂时不用的分机构。"}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowUnitManageModal(false)}
+          className="rounded-lg px-3 py-1 text-sm text-slate-500 hover:bg-slate-100"
+        >
+          {language === "en" ? "Close" : language === "ko" ? "닫기" : "关闭"}
+        </button>
+      </div>
+
+      <div className="mt-6 space-y-3">
+        {branchUnits.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+            {language === "en"
+              ? "No branches have been created yet."
+              : language === "ko"
+              ? "아직 생성된 분기관이 없습니다."
+              : "当前还没有新增分机构。"}
+          </div>
+        ) : (
+          branchUnits.map((unit) => {
+            const form = unitManageForms[unit.id] || {
+              name: unit.name || "",
+              note: unit.note || "",
+              is_active: unit.is_active === true,
+            };
+            const isSaving = savingManagedUnitId === unit.id;
+
+            return (
+              <div
+                key={unit.id}
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+              >
+                <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold text-slate-500">
+                      {language === "en"
+                        ? "Branch Name"
+                        : language === "ko"
+                        ? "분기관명"
+                        : "分机构名称"}
+                    </label>
+                    <input
+                      value={form.name}
+                      onChange={(e) =>
+                        handleManagedUnitChange(unit.id, "name", e.target.value)
+                      }
+                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold text-slate-500">
+                      {language === "en"
+                        ? "Note"
+                        : language === "ko"
+                        ? "비고"
+                        : "备注"}
+                    </label>
+                    <input
+                      value={form.note}
+                      onChange={(e) =>
+                        handleManagedUnitChange(unit.id, "note", e.target.value)
+                      }
+                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSaveManagedUnit(unit)}
+                      disabled={isSaving}
+                      className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                    >
+                      {isSaving
+                        ? language === "en"
+                          ? "Saving..."
+                          : language === "ko"
+                          ? "저장 중..."
+                          : "保存中..."
+                        : language === "en"
+                        ? "Save"
+                        : language === "ko"
+                        ? "저장"
+                        : "保存"}
+                    </button>
+
+                    {form.is_active ? (
+                      <button
+                        type="button"
+                        onClick={() => handleSaveManagedUnit(unit, false)}
+                        disabled={isSaving}
+                        className="rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60"
+                      >
+                        {language === "en"
+                          ? "Disable"
+                          : language === "ko"
+                          ? "비활성화"
+                          : "停用"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleSaveManagedUnit(unit, true)}
+                        disabled={isSaving}
+                        className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                      >
+                        {language === "en"
+                          ? "Enable"
+                          : language === "ko"
+                          ? "활성화"
+                          : "启用"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-3 text-xs text-slate-500">
+                  {form.is_active
+                    ? language === "en"
+                      ? "Status: Active"
+                      : language === "ko"
+                      ? "상태: 사용 중"
+                      : "状态：启用中"
+                    : language === "en"
+                    ? "Status: Disabled"
+                    : language === "ko"
+                    ? "상태: 비활성화"
+                    : "状态：已停用"}
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   </div>
