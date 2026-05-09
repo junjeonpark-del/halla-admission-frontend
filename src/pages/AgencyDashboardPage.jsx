@@ -475,43 +475,54 @@ function AgencyDashboardPage() {
   };
 
   useEffect(() => {
-    async function loadData() {
-      if (!agencySession?.agency_id) return;
+  async function loadData() {
+    if (!agencySession?.agency_id) return;
 
-      try {
-        setLoading(true);
-        setLoadError("");
+    try {
+      setLoading(true);
+      setLoadError("");
 
-        const [
-          { data: applicationsData, error: applicationsError },
-          { data: intakesData, error: intakesError },
-        ] = await Promise.all([
-          supabase
-            .from("applications")
-            .select("*")
-            .eq("agency_id", agencySession.agency_id)
-            .order("created_at", { ascending: false }),
-                    supabase
-            .from("intakes")
-            .select("*")
-            .order("open_at", { ascending: true }),
-        ]);
+      const applicationsQuery = supabase
+        .from("applications")
+        .select("*")
+        .eq("agency_id", agencySession.agency_id)
+        .order("created_at", { ascending: false });
 
-        if (applicationsError) throw applicationsError;
-        if (intakesError) throw intakesError;
-
-        setApplications(applicationsData || []);
-        setIntakes(intakesData || []);
-      } catch (error) {
-        console.error("AgencyDashboardPage loadData error:", error);
-        setLoadError(error.message || t.defaultLoadError);
-      } finally {
-        setLoading(false);
+      if (agencySession?.is_primary !== true) {
+        applicationsQuery.eq("agency_unit_id", agencySession?.agency_unit_id || "");
       }
-    }
 
-    loadData();
-  }, [agencySession?.agency_id, t.defaultLoadError]);
+      const [
+        { data: applicationsData, error: applicationsError },
+        { data: intakesData, error: intakesError },
+      ] = await Promise.all([
+        applicationsQuery,
+        supabase
+          .from("intakes")
+          .select("*")
+          .order("open_at", { ascending: true }),
+      ]);
+
+      if (applicationsError) throw applicationsError;
+      if (intakesError) throw intakesError;
+
+      setApplications(applicationsData || []);
+      setIntakes(intakesData || []);
+    } catch (error) {
+      console.error("AgencyDashboardPage loadData error:", error);
+      setLoadError(error.message || t.defaultLoadError);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  loadData();
+}, [
+  agencySession?.agency_id,
+  agencySession?.agency_unit_id,
+  agencySession?.is_primary,
+  t.defaultLoadError,
+]);
 
       const intakeOptions = useMemo(() => {
     const map = new Map();
