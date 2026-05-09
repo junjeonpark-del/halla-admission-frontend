@@ -517,57 +517,78 @@ function AgencyMaterialsPage() {
   };
 
   useEffect(() => {
-    async function loadData() {
-      if (!agencySession?.agency_id) return;
+  async function loadData() {
+    if (!agencySession?.agency_id) return;
 
-      try {
-        setLoading(true);
-        setLoadError("");
+    try {
+      setLoading(true);
+      setLoadError("");
 
-        const nowIso = new Date().toISOString();
+      const nowIso = new Date().toISOString();
 
-        const [
-          { data: intakeData, error: intakeError },
-          { data: applicationsData, error: applicationsError },
-          filesResponse,
-        ] = await Promise.all([
-                    supabase
-            .from("intakes")
-            .select("*")
-            .eq("is_active", true)
-            .lte("open_at", nowIso)
-            .gte("close_at", nowIso)
-            .order("open_at", { ascending: true }),
+      const applicationsQuery = supabase
+        .from("applications")
+        .select("*")
+        .eq("agency_id", agencySession.agency_id)
+        .order("updated_at", { ascending: false });
 
-          supabase
-            .from("applications")
-            .select("*")
-            .eq("agency_id", agencySession.agency_id)
-            .order("updated_at", { ascending: false }),
-          supabase
-            .from("application_files")
-            .select("*")
-            .order("created_at", { ascending: false }),
-        ]);
-
-        if (intakeError) throw intakeError;
-        if (applicationsError) throw applicationsError;
-        if (filesResponse.error) throw filesResponse.error;
-
-                setCurrentIntakes(intakeData || []);
-        setApplications(applicationsData || []);
-        setApplicationFiles(filesResponse.data || []);
-
-      } catch (error) {
-        console.error("AgencyMaterialsPage loadData error:", error);
-        setLoadError(error.message || t.loadError);
-      } finally {
-        setLoading(false);
+      if (agencySession?.is_primary !== true) {
+        applicationsQuery.eq("agency_unit_id", agencySession?.agency_unit_id || "");
       }
-    }
 
-    loadData();
-  }, [agencySession?.agency_id, t.loadError]);
+      const [
+        { data: intakeData, error: intakeError },
+        { data: applicationsData, error: applicationsError },
+      ] = await Promise.all([
+        supabase
+          .from("intakes")
+          .select("*")
+          .eq("is_active", true)
+          .lte("open_at", nowIso)
+          .gte("close_at", nowIso)
+          .order("open_at", { ascending: true }),
+        applicationsQuery,
+      ]);
+
+      if (intakeError) throw intakeError;
+      if (applicationsError) throw applicationsError;
+
+      const visibleApplications = applicationsData || [];
+      const visiblePublicIds = visibleApplications
+        .map((item) => item.public_id)
+        .filter(Boolean);
+
+      let filesData = [];
+
+      if (visiblePublicIds.length > 0) {
+        const { data, error } = await supabase
+          .from("application_files")
+          .select("*")
+          .in("public_id", visiblePublicIds)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        filesData = data || [];
+      }
+
+      setCurrentIntakes(intakeData || []);
+      setApplications(visibleApplications);
+      setApplicationFiles(filesData);
+    } catch (error) {
+      console.error("AgencyMaterialsPage loadData error:", error);
+      setLoadError(error.message || t.loadError);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  loadData();
+}, [
+  agencySession?.agency_id,
+  agencySession?.agency_unit_id,
+  agencySession?.is_primary,
+  t.loadError,
+]);
 
   const handleDeleteApplication = async (row) => {
     const studentName = row.studentName || "Student";
@@ -619,11 +640,17 @@ function AgencyMaterialsPage() {
         if (fileDeleteError) throw fileDeleteError;
       }
 
-      const { error: applicationDeleteError } = await supabase
-        .from("applications")
-        .delete()
-        .eq("id", applicationId)
-        .eq("agency_id", agencySession.agency_id);
+      const applicationDeleteQuery = supabase
+  .from("applications")
+  .delete()
+  .eq("id", applicationId)
+  .eq("agency_id", agencySession.agency_id);
+
+if (agencySession?.is_primary !== true) {
+  applicationDeleteQuery.eq("agency_unit_id", agencySession?.agency_unit_id || "");
+}
+
+const { error: applicationDeleteError } = await applicationDeleteQuery;
 
       if (applicationDeleteError) throw applicationDeleteError;
 
