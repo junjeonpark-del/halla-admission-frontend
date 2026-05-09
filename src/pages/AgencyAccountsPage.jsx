@@ -29,6 +29,7 @@ const messages = {
       desc: "当前机构下全部主账号和子账号",
       username: "用户名",
       name: "姓名",
+      unit: "所属分机构",
       phone: "电话",
       email: "邮箱",
       type: "账号类型",
@@ -146,6 +147,7 @@ const messages = {
   desc: "All primary and sub-accounts under the current agency",
   username: "ID",
   name: "Name",
+  unit: "Branch",
       phone: "Phone",
       email: "Email",
       type: "Account Type",
@@ -263,6 +265,7 @@ const messages = {
       desc: "현재 기관에 속한 모든 주계정 및 하위 계정",
       username: "아이디",
       name: "이름",
+      unit: "소속 분기관",
       phone: "전화",
       email: "이메일",
       type: "계정 유형",
@@ -1228,8 +1231,9 @@ const handleCreateUnit = async () => {
               <thead className="bg-slate-50 text-left text-slate-500">
                 <tr>
                   <th className="px-6 py-4 font-semibold">{t.table.username}</th>
-                  <th className="px-6 py-4 font-semibold">{t.table.name}</th>
-                  <th className="px-6 py-4 font-semibold">{t.table.phone}</th>
+<th className="px-6 py-4 font-semibold">{t.table.name}</th>
+<th className="px-6 py-4 font-semibold">{t.table.unit}</th>
+<th className="px-6 py-4 font-semibold">{t.table.phone}</th>
                   <th className="px-6 py-4 font-semibold">{t.table.email}</th>
                   <th className="px-6 py-4 font-semibold">{t.table.type}</th>
                   <th className="px-6 py-4 font-semibold">{t.table.active}</th>
@@ -1247,11 +1251,21 @@ const handleCreateUnit = async () => {
                       <EllipsisText text={account.username || "-"} widthClass="max-w-[140px]" />
                     </td>
                     <td className="px-6 py-4 text-slate-600">
-                      <EllipsisText text={account.account_name || "-"} widthClass="max-w-[120px]" />
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">
-                      <EllipsisText text={account.phone || "-"} widthClass="max-w-[140px]" />
-                    </td>
+  <EllipsisText text={account.account_name || "-"} widthClass="max-w-[120px]" />
+</td>
+<td className="px-6 py-4 text-slate-600">
+  <EllipsisText
+    text={agencyUnitMap[account.agency_unit_id]?.name
+      ? agencyUnitMap[account.agency_unit_id].name
+          .replace(/（本部）$/, "")
+          .replace(/\s*\(本部\)$/, "")
+      : "-"}
+    widthClass="max-w-[180px]"
+  />
+</td>
+<td className="px-6 py-4 text-slate-600">
+  <EllipsisText text={account.phone || "-"} widthClass="max-w-[140px]" />
+</td>
                     <td className="px-6 py-4 text-slate-600">
                       <EllipsisText text={account.email || "-"} widthClass="max-w-[180px]" />
                     </td>
