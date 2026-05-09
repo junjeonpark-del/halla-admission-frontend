@@ -277,16 +277,42 @@ function AgencyHistoryPage() {
   const t = messages[language] || messages.zh;
 
   const [applications, setApplications] = useState([]);
-  const [historyIntakes, setHistoryIntakes] = useState([]);
-  const [applicationFiles, setApplicationFiles] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
+const [historyIntakes, setHistoryIntakes] = useState([]);
+const [applicationFiles, setApplicationFiles] = useState([]);
+const [agencyUnits, setAgencyUnits] = useState([]);
+const [loading, setLoading] = useState(true);
+const [loadError, setLoadError] = useState("");
 
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [expandedYears, setExpandedYears] = useState({});
+const [searchKeyword, setSearchKeyword] = useState("");
+const [expandedYears, setExpandedYears] = useState({});
 const [expandedTypes, setExpandedTypes] = useState({});
 const [expandedMonths, setExpandedMonths] = useState({});
 const [selectedNode, setSelectedNode] = useState({ type: "all" });
+
+const isPrimarySession = agencySession?.is_primary === true;
+const agencyUnitColumnLabel =
+  language === "en" ? "Branch" : language === "ko" ? "소속 분기관" : "所属分机构";
+
+const agencyUnitMap = useMemo(() => {
+  const map = new Map();
+
+  agencyUnits.forEach((unit) => {
+    map.set(unit.id, unit.name || "-");
+  });
+
+  return map;
+}, [agencyUnits]);
+
+const formatAgencyUnitName = (name) => {
+  return String(name || "-")
+    .replace(/\s*（本部）\s*$/u, "")
+    .replace(/\s*\(本部\)\s*$/u, "");
+};
+
+const getAgencyUnitName = (item) => {
+  const unitName = agencyUnitMap.get(item?.agency_unit_id);
+  return formatAgencyUnitName(unitName || agencySession?.agency_name || "-");
+};
 
   const getStudentName = (student) => {
     return (
@@ -557,18 +583,29 @@ const getMonthDisplay = (itemOrMonth, applicationType) => {
       }
 
       const [
-        { data: intakesData, error: intakesError },
-        { data: applicationsData, error: applicationsError },
-      ] = await Promise.all([
-        supabase
-          .from("intakes")
-          .select("*")
-          .order("open_at", { ascending: false }),
-        applicationsQuery,
-      ]);
+  { data: intakesData, error: intakesError },
+  { data: applicationsData, error: applicationsError },
+  { data: agencyUnitsData, error: agencyUnitsError },
+] = await Promise.all([
+  supabase
+    .from("intakes")
+    .select("*")
+    .order("open_at", { ascending: false }),
+  applicationsQuery,
+  agencySession?.is_primary === true
+    ? supabase
+        .from("agency_units")
+        .select("id, name")
+        .eq("agency_id", agencySession.agency_id)
+        .eq("is_active", true)
+        .order("is_default", { ascending: false })
+        .order("created_at", { ascending: true })
+    : Promise.resolve({ data: [], error: null }),
+]);
 
-      if (intakesError) throw intakesError;
-      if (applicationsError) throw applicationsError;
+if (intakesError) throw intakesError;
+if (applicationsError) throw applicationsError;
+if (agencyUnitsError) throw agencyUnitsError;
 
       const visibleApplications = applicationsData || [];
       const visiblePublicIds = visibleApplications
@@ -591,8 +628,9 @@ const getMonthDisplay = (itemOrMonth, applicationType) => {
       const availableIntakes = intakesData || [];
 
       setHistoryIntakes(availableIntakes);
-      setApplications(visibleApplications);
-      setApplicationFiles(filesData);
+setApplications(visibleApplications);
+setApplicationFiles(filesData);
+setAgencyUnits(agencyUnitsData || []);
 
       const initialExpandedYears = {};
       const initialExpandedTypes = {};
@@ -816,7 +854,8 @@ if (selectedNode.type === "year") {
   application_type: student.application_type || "undergraduate",
 intake_id: student.intake_id || "",
   studentName: getStudentName(student),
-  year: getIntakeYear(linkedIntake || student),
+agencyUnitName: getAgencyUnitName(student),
+year: getIntakeYear(linkedIntake || student),
   intake: getIntakeLabel(linkedIntake || student),
         applicationReviewNote: student.review_note || "",
         applicationForm,
@@ -1179,7 +1218,10 @@ const toggleMonth = (year, applicationType, month) => {
                   <tr>
                     <th className="px-6 py-4 font-semibold">{t.table.index}</th>
                     <th className="px-6 py-4 font-semibold">{t.table.studentName}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.year}</th>
+{isPrimarySession ? (
+  <th className="px-6 py-4 font-semibold">{agencyUnitColumnLabel}</th>
+) : null}
+<th className="px-6 py-4 font-semibold">{t.table.year}</th>
                     <th className="px-6 py-4 font-semibold">{t.table.intake}</th>
                     <th className="px-6 py-4 font-semibold">{t.table.applicationForm}</th>
                     <th className="px-6 py-4 font-semibold">{t.table.passport}</th>
@@ -1208,9 +1250,14 @@ const toggleMonth = (year, applicationType, month) => {
                           {index + 1}
                         </td>
                         <td className="px-6 py-4 font-medium text-slate-800">
-                          <EllipsisText text={row.studentName} widthClass="max-w-[140px]" />
-                        </td>
-                        <td className="px-6 py-4 text-slate-600">{row.year}</td>
+  <EllipsisText text={row.studentName} widthClass="max-w-[140px]" />
+</td>
+{isPrimarySession ? (
+  <td className="px-6 py-4 text-slate-600">
+    <EllipsisText text={row.agencyUnitName} widthClass="max-w-[170px]" />
+  </td>
+) : null}
+<td className="px-6 py-4 text-slate-600">{row.year}</td>
                         <td className="px-6 py-4 text-slate-600">
                           <EllipsisText text={row.intake} widthClass="max-w-[180px]" />
                         </td>
