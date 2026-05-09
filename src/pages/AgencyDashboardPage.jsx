@@ -247,11 +247,37 @@ function AgencyDashboardPage() {
   const t = messages[language] || messages.zh;
 
   const [applications, setApplications] = useState([]);
-  const [intakes, setIntakes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
-    const [selectedApplicationType, setSelectedApplicationType] = useState("all");
-  const [selectedIntake, setSelectedIntake] = useState("all");
+const [intakes, setIntakes] = useState([]);
+const [agencyUnits, setAgencyUnits] = useState([]);
+const [loading, setLoading] = useState(true);
+const [loadError, setLoadError] = useState("");
+const [selectedApplicationType, setSelectedApplicationType] = useState("all");
+const [selectedIntake, setSelectedIntake] = useState("all");
+
+const isPrimarySession = agencySession?.is_primary === true;
+const agencyUnitColumnLabel =
+  language === "en" ? "Branch" : language === "ko" ? "소속 분기관" : "所属分机构";
+
+const agencyUnitMap = useMemo(() => {
+  const map = new Map();
+
+  agencyUnits.forEach((unit) => {
+    map.set(unit.id, unit.name || "-");
+  });
+
+  return map;
+}, [agencyUnits]);
+
+const formatAgencyUnitName = (name) => {
+  return String(name || "-")
+    .replace(/\s*（本部）\s*$/u, "")
+    .replace(/\s*\(本部\)\s*$/u, "");
+};
+
+const getAgencyUnitName = (item) => {
+  const unitName = agencyUnitMap.get(item?.agency_unit_id);
+  return formatAgencyUnitName(unitName || agencySession?.agency_name || "-");
+};
 
   const formatStatusLabel = (status) => {
     const s = String(status || "").toLowerCase();
@@ -493,21 +519,34 @@ function AgencyDashboardPage() {
       }
 
       const [
-        { data: applicationsData, error: applicationsError },
-        { data: intakesData, error: intakesError },
-      ] = await Promise.all([
-        applicationsQuery,
-        supabase
-          .from("intakes")
-          .select("*")
-          .order("open_at", { ascending: true }),
-      ]);
+  { data: applicationsData, error: applicationsError },
+  { data: intakesData, error: intakesError },
+  { data: agencyUnitsData, error: agencyUnitsError },
+] = await Promise.all([
+  applicationsQuery,
+  supabase
+    .from("intakes")
+    .select("*")
+    .order("open_at", { ascending: true }),
+  agencySession?.is_primary === true
+    ? supabase
+        .from("agency_units")
+        .select("id, name")
+        .eq("agency_id", agencySession.agency_id)
+        .eq("is_active", true)
+        .order("is_default", { ascending: false })
+        .order("created_at", { ascending: true })
+    : Promise.resolve({ data: [], error: null }),
+]);
 
-      if (applicationsError) throw applicationsError;
-      if (intakesError) throw intakesError;
+if (applicationsError) throw applicationsError;
+if (intakesError) throw intakesError;
+if (agencyUnitsError) throw agencyUnitsError;
 
-      setApplications(applicationsData || []);
-      setIntakes(intakesData || []);
+setApplications(applicationsData || []);
+setIntakes(intakesData || []);
+setAgencyUnits(agencyUnitsData || []);
+
     } catch (error) {
       console.error("AgencyDashboardPage loadData error:", error);
       setLoadError(error.message || t.defaultLoadError);
@@ -821,6 +860,9 @@ function AgencyDashboardPage() {
                       <tr>
                         <th className="px-6 py-4 font-semibold">{t.table.index}</th>
                         <th className="px-6 py-4 font-semibold">{t.table.studentName}</th>
+{isPrimarySession ? (
+  <th className="px-6 py-4 font-semibold">{agencyUnitColumnLabel}</th>
+) : null}
 <th className="px-6 py-4 font-semibold">{t.table.applicationType}</th>
 <th className="px-6 py-4 font-semibold">{t.table.intake}</th>
 <th className="px-6 py-4 font-semibold">{t.table.major}</th>
@@ -845,7 +887,13 @@ function AgencyDashboardPage() {
                             <td className="px-6 py-4 font-medium text-slate-800">
   <EllipsisText text={getStudentName(student)} widthClass="max-w-[140px]" />
 </td>
+{isPrimarySession ? (
+  <td className="px-6 py-4 text-slate-600">
+    <EllipsisText text={getAgencyUnitName(student)} widthClass="max-w-[170px]" />
+  </td>
+) : null}
 <td className="px-6 py-4 text-slate-600">
+
   <EllipsisText
     text={getApplicationTypeLabel(student)}
     widthClass="max-w-[120px]"
