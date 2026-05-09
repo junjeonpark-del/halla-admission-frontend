@@ -171,14 +171,19 @@ function saveLanguage(value) {
   }
 }
 
-function buildMenuItems(t) {
-  return [
+function buildMenuItems(t, isPrimarySession) {
+  const items = [
     { to: "/agency/dashboard", label: t.nav.dashboard },
     { to: "/agency/applications", label: t.nav.applications },
     { to: "/agency/materials", label: t.nav.materials },
     { to: "/agency/history", label: t.nav.history },
-    { to: "/agency/accounts", label: t.nav.accounts },
   ];
+
+  if (isPrimarySession) {
+    items.push({ to: "/agency/accounts", label: t.nav.accounts });
+  }
+
+  return items;
 }
 
 function getPageMeta(pathname, t) {
@@ -218,7 +223,12 @@ function AgencyLayout() {
   const [language, setLanguage] = useState(() => readLanguage());
 
   const t = messages[language] || messages.zh;
-  const menuItems = useMemo(() => buildMenuItems(t), [t]);
+  const isPrimarySession = session?.is_primary === true;
+const menuItems = useMemo(
+  () => buildMenuItems(t, isPrimarySession),
+  [t, isPrimarySession]
+);
+
   const pageMeta = useMemo(
     () => getPageMeta(location.pathname, t),
     [location.pathname, t]
@@ -272,6 +282,12 @@ function AgencyLayout() {
   useEffect(() => {
     verifySession();
   }, [location.pathname, verifySession]);
+
+  useEffect(() => {
+  if (!checking && session && session.is_primary !== true && location.pathname.startsWith("/agency/accounts")) {
+    navigate("/agency/dashboard", { replace: true });
+  }
+}, [checking, session, location.pathname, navigate]);
 
   const handleLogout = async () => {
     try {
