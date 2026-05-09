@@ -544,11 +544,19 @@ setAgencyUnits(unitRows || []);
 const agencyUnitOptions = useMemo(() => {
   return agencyUnits
     .filter((item) => item.is_active !== false)
-    .map((item) => ({
-      value: item.id,
-      label: item.name || "-",
-      isDefault: item.is_default === true,
-    }));
+    .map((item) => {
+      const rawName = item.name || "-";
+      const displayName =
+        item.is_default === true
+          ? rawName.replace(/（本部）$/, "").replace(/\s*\(本部\)$/, "")
+          : rawName;
+
+      return {
+        value: item.id,
+        label: displayName,
+        isDefault: item.is_default === true,
+      };
+    });
 }, [agencyUnits]);
 
 const filteredAccounts = useMemo(() => {
