@@ -253,14 +253,40 @@ function AgencyMaterialsPage() {
   const navigate = useNavigate();
 
   const [applications, setApplications] = useState([]);
-  const [applicationFiles, setApplicationFiles] = useState([]);
-    const [currentIntakes, setCurrentIntakes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
+const [applicationFiles, setApplicationFiles] = useState([]);
+const [currentIntakes, setCurrentIntakes] = useState([]);
+const [agencyUnits, setAgencyUnits] = useState([]);
+const [loading, setLoading] = useState(true);
+const [loadError, setLoadError] = useState("");
 
-    const [searchKeyword, setSearchKeyword] = useState("");
-  const [applicationTypeFilter, setApplicationTypeFilter] = useState("all");
-  const [overallFilter, setOverallFilter] = useState("all");
+const [searchKeyword, setSearchKeyword] = useState("");
+const [applicationTypeFilter, setApplicationTypeFilter] = useState("all");
+const [overallFilter, setOverallFilter] = useState("all");
+
+const isPrimarySession = agencySession?.is_primary === true;
+const agencyUnitColumnLabel =
+  language === "en" ? "Branch" : language === "ko" ? "소속 분기관" : "所属分机构";
+
+const agencyUnitMap = useMemo(() => {
+  const map = new Map();
+
+  agencyUnits.forEach((unit) => {
+    map.set(unit.id, unit.name || "-");
+  });
+
+  return map;
+}, [agencyUnits]);
+
+const formatAgencyUnitName = (name) => {
+  return String(name || "-")
+    .replace(/\s*（本部）\s*$/u, "")
+    .replace(/\s*\(本部\)\s*$/u, "");
+};
+
+const getAgencyUnitName = (item) => {
+  const unitName = agencyUnitMap.get(item?.agency_unit_id);
+  return formatAgencyUnitName(unitName || agencySession?.agency_name || "-");
+};
 
     const getStudentName = (student) => {
     return (
@@ -537,23 +563,35 @@ function AgencyMaterialsPage() {
       }
 
       const [
-        { data: intakeData, error: intakeError },
-        { data: applicationsData, error: applicationsError },
-      ] = await Promise.all([
-        supabase
-          .from("intakes")
-          .select("*")
-          .eq("is_active", true)
-          .lte("open_at", nowIso)
-          .gte("close_at", nowIso)
-          .order("open_at", { ascending: true }),
-        applicationsQuery,
-      ]);
+  { data: intakeData, error: intakeError },
+  { data: applicationsData, error: applicationsError },
+  { data: agencyUnitsData, error: agencyUnitsError },
+] = await Promise.all([
+  supabase
+    .from("intakes")
+    .select("*")
+    .eq("is_active", true)
+    .lte("open_at", nowIso)
+    .gte("close_at", nowIso)
+    .order("open_at", { ascending: true }),
+  applicationsQuery,
+  agencySession?.is_primary === true
+    ? supabase
+        .from("agency_units")
+        .select("id, name")
+        .eq("agency_id", agencySession.agency_id)
+        .eq("is_active", true)
+        .order("is_default", { ascending: false })
+        .order("created_at", { ascending: true })
+    : Promise.resolve({ data: [], error: null }),
+]);
 
-      if (intakeError) throw intakeError;
-      if (applicationsError) throw applicationsError;
+if (intakeError) throw intakeError;
+if (applicationsError) throw applicationsError;
+if (agencyUnitsError) throw agencyUnitsError;
 
-      const visibleApplications = applicationsData || [];
+const visibleApplications = applicationsData || [];
+
       const visiblePublicIds = visibleApplications
         .map((item) => item.public_id)
         .filter(Boolean);
@@ -572,8 +610,10 @@ function AgencyMaterialsPage() {
       }
 
       setCurrentIntakes(intakeData || []);
-      setApplications(visibleApplications);
-      setApplicationFiles(filesData);
+setApplications(visibleApplications);
+setApplicationFiles(filesData);
+setAgencyUnits(agencyUnitsData || []);
+
     } catch (error) {
       console.error("AgencyMaterialsPage loadData error:", error);
       setLoadError(error.message || t.loadError);
@@ -776,7 +816,8 @@ const { error: applicationDeleteError } = await applicationDeleteQuery;
         application_type: student.application_type || "undergraduate",
 intake_id: student.intake_id || "",
         studentName: getStudentName(student),
-        applicationType: getApplicationTypeLabel(student),
+agencyUnitName: getAgencyUnitName(student),
+applicationType: getApplicationTypeLabel(student),
         intake: getIntakeLabel(student),
         applicationReviewNote: student.review_note || "",
         applicationForm,
@@ -902,6 +943,9 @@ intake_id: student.intake_id || "",
                 <tr>
                   <th className="px-6 py-4 font-semibold">{t.table.index}</th>
 <th className="px-6 py-4 font-semibold">{t.table.studentName}</th>
+{isPrimarySession ? (
+  <th className="px-6 py-4 font-semibold">{agencyUnitColumnLabel}</th>
+) : null}
 <th className="px-6 py-4 font-semibold">
   {language === "en" ? "Application Type" : language === "ko" ? "지원 유형" : "申请类型"}
 </th>
@@ -931,6 +975,11 @@ intake_id: student.intake_id || "",
                     <td className="px-6 py-4 font-medium text-slate-800">
   <EllipsisText text={row.studentName} widthClass="max-w-[140px]" />
 </td>
+{isPrimarySession ? (
+  <td className="px-6 py-4 text-slate-600">
+    <EllipsisText text={row.agencyUnitName} widthClass="max-w-[170px]" />
+  </td>
+) : null}
 <td className="px-6 py-4 text-slate-600">
   <EllipsisText text={row.applicationType} widthClass="max-w-[120px]" />
 </td>
