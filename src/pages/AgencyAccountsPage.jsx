@@ -483,7 +483,8 @@ const [unitForm, setUnitForm] = useState({
   const [newPassword, setNewPassword] = useState("");
 
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+const [statusFilter, setStatusFilter] = useState("all");
+const [unitFilter, setUnitFilter] = useState("all");
 
   async function loadData() {
     try {
@@ -575,15 +576,18 @@ const filteredAccounts = useMemo(() => {
       String(item.phone || "").toLowerCase().includes(keyword);
 
     const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "active" && item.is_active === true) ||
-      (statusFilter === "inactive" && item.is_active !== true) ||
-      (statusFilter === "primary" && item.is_primary === true) ||
-      (statusFilter === "sub" && item.is_primary !== true);
+  statusFilter === "all" ||
+  (statusFilter === "active" && item.is_active === true) ||
+  (statusFilter === "inactive" && item.is_active !== true) ||
+  (statusFilter === "primary" && item.is_primary === true) ||
+  (statusFilter === "sub" && item.is_primary !== true);
 
-    return matchesKeyword && matchesStatus;
+const matchesUnit =
+  unitFilter === "all" || item.agency_unit_id === unitFilter;
+
+return matchesKeyword && matchesStatus && matchesUnit;
   });
-}, [accounts, searchKeyword, statusFilter]);
+}, [accounts, searchKeyword, statusFilter, unitFilter]);
 
   const primaryAccount = useMemo(() => {
     return accounts.find((item) => item.is_primary === true) || null;
@@ -1194,7 +1198,7 @@ const handleCreateUnit = async () => {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
               {t.filters.keyword}
@@ -1223,6 +1227,33 @@ const handleCreateUnit = async () => {
               <option value="inactive">{t.filters.inactive}</option>
             </select>
           </div>
+          <div>
+  <label className="mb-2 block text-sm font-medium text-slate-700">
+    {language === "en"
+      ? "Branch Filter"
+      : language === "ko"
+      ? "분기관 필터"
+      : "分机构筛选"}
+  </label>
+  <select
+    value={unitFilter}
+    onChange={(e) => setUnitFilter(e.target.value)}
+    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+  >
+    <option value="all">
+      {language === "en"
+        ? "All Branches"
+        : language === "ko"
+        ? "전체 분기관"
+        : "全部分机构"}
+    </option>
+    {agencyUnitOptions.map((unit) => (
+      <option key={unit.value} value={unit.value}>
+        {unit.label}
+      </option>
+    ))}
+  </select>
+</div>
         </div>
       </div>
 
