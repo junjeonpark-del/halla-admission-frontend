@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import { supabase } from "../lib/supabase";
 import { useAgencySession } from "../contexts/AgencySessionContext";
 
@@ -893,9 +894,338 @@ year: getIntakeYear(linkedIntake || student),
         canPostDeadlineMaterialEdit,
       };
     });
-  }, [filteredApplications, fileMap, historyIntakeMap, language]);
+    }, [filteredApplications, fileMap, historyIntakeMap, language]);
+
+  const sanitizeExportFileSegment = (value, fallback = "export") => {
+    const text = String(value || "").trim();
+    const safe = text.replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_");
+    return safe || fallback;
+  };
+
+  const parseEducationRow = (value) => {
+    const text = String(value || "").trim();
+    if (!text) {
+      return {
+        institution: "",
+        startDate: "",
+        endDate: "",
+        location: "",
+      };
+    }
+
+    const parts = text.split("|").map((item) => item.trim());
+
+    return {
+      institution: parts[0] || text,
+      startDate: parts[1] || "",
+      endDate: parts[2] || "",
+      location: parts[3] || "",
+    };
+  };
+
+  const getExportLabels = () => {
+    if (language === "en") {
+      return {
+        button: "Export Excel",
+        noData: "There is no application data to export.",
+        failed: "Export failed: ",
+        sheetName: "Applications",
+        filePrefix: "agency_applications",
+        all: "All",
+        index: "No.",
+        branch: "Branch",
+        applicationCategory: "Application Type",
+        intake: "Intake",
+        studentName: "Student Name",
+        monthSeason: "Month/Season",
+        degreeLevel: "Degree Level",
+        major: "Major",
+        admissionType: "Admission Type",
+        admissionGrade: "Admission Grade",
+        programTrack: "Program Language",
+        dormitory: "Dormitory",
+        status: "Status",
+        passportNo: "Passport No.",
+        gender: "Gender",
+        nationality: "Nationality",
+        birth: "Date of Birth",
+        tel: "Phone",
+        email: "Email",
+        address: "Address",
+        edu1School: "Education 1 School",
+        edu1Location: "Education 1 Location",
+        edu1Start: "Education 1 Start",
+        edu1End: "Education 1 End",
+        edu2School: "Education 2 School",
+        edu2Location: "Education 2 Location",
+        edu2Start: "Education 2 Start",
+        edu2End: "Education 2 End",
+        edu3School: "Education 3 School",
+        edu3Location: "Education 3 Location",
+        edu3Start: "Education 3 Start",
+        edu3End: "Education 3 End",
+        languageLevel: "Language Level",
+        bankSubmitted: "Bank Certificate Submitted",
+        fatherName: "Father Name",
+        motherName: "Mother Name",
+        studentFormStatus: "Student Form Status",
+        createdAt: "Created At",
+        updatedAt: "Updated At",
+        publicId: "public_id",
+      };
+    }
+
+    if (language === "ko") {
+      return {
+        button: "Excel 내보내기",
+        noData: "내보낼 지원 데이터가 없습니다.",
+        failed: "내보내기 실패: ",
+        sheetName: "지원정보",
+        filePrefix: "agency_applications",
+        all: "전체",
+        index: "번호",
+        branch: "소속 분기관",
+        applicationCategory: "지원 유형",
+        intake: "차수",
+        studentName: "학생 이름",
+        monthSeason: "월/시즌",
+        degreeLevel: "학위 과정",
+        major: "전공",
+        admissionType: "지원 구분",
+        admissionGrade: "지원 학년",
+        programTrack: "과정 언어",
+        dormitory: "기숙사 신청",
+        status: "상태",
+        passportNo: "여권번호",
+        gender: "성별",
+        nationality: "국적",
+        birth: "생년월일",
+        tel: "전화",
+        email: "이메일",
+        address: "주소",
+        edu1School: "학력1 학교",
+        edu1Location: "학력1 소재지",
+        edu1Start: "학력1 시작",
+        edu1End: "학력1 종료",
+        edu2School: "학력2 학교",
+        edu2Location: "학력2 소재지",
+        edu2Start: "학력2 시작",
+        edu2End: "학력2 종료",
+        edu3School: "학력3 학교",
+        edu3Location: "학력3 소재지",
+        edu3Start: "학력3 시작",
+        edu3End: "학력3 종료",
+        languageLevel: "어학 등급",
+        bankSubmitted: "잔고증명 제출 여부",
+        fatherName: "부친 이름",
+        motherName: "모친 이름",
+        studentFormStatus: "학생 작성 상태",
+        createdAt: "생성일",
+        updatedAt: "수정일",
+        publicId: "public_id",
+      };
+    }
+
+    return {
+      button: "导出 Excel",
+      noData: "当前没有可导出的申请数据。",
+      failed: "导出失败：",
+      sheetName: "申请信息",
+      filePrefix: "机构历史申请",
+      all: "全部",
+      index: "序号",
+      branch: "所属分机构",
+      applicationCategory: "申请项目类型",
+      intake: "申请批次",
+      studentName: "学生姓名",
+      monthSeason: "月份/季节",
+      degreeLevel: "学位课程",
+      major: "专业",
+      admissionType: "申请类型",
+      admissionGrade: "申请年级",
+      programTrack: "课程语言",
+      dormitory: "是否申请寝室",
+      status: "状态",
+      passportNo: "护照号",
+      gender: "性别",
+      nationality: "国籍",
+      birth: "出生日期",
+      tel: "电话",
+      email: "邮箱",
+      address: "地址",
+      edu1School: "学历1_毕业院校",
+      edu1Location: "学历1_所在地",
+      edu1Start: "学历1_入学时间",
+      edu1End: "学历1_毕业时间",
+      edu2School: "学历2_毕业院校",
+      edu2Location: "学历2_所在地",
+      edu2Start: "学历2_入学时间",
+      edu2End: "学历2_毕业时间",
+      edu3School: "学历3_毕业院校",
+      edu3Location: "学历3_所在地",
+      edu3Start: "学历3_入学时间",
+      edu3End: "学历3_毕业时间",
+      languageLevel: "语言等级",
+      bankSubmitted: "存款证明是否提交",
+      fatherName: "父亲姓名",
+      motherName: "母亲姓名",
+      studentFormStatus: "学生填写状态",
+      createdAt: "创建时间",
+      updatedAt: "更新时间",
+      publicId: "public_id",
+    };
+  };
+
+  const handleExportExcel = () => {
+    try {
+      if (!filteredApplications || filteredApplications.length === 0) {
+        alert(getExportLabels().noData);
+        return;
+      }
+
+      const labels = getExportLabels();
+
+      const exportRows = filteredApplications.map((student, index) => {
+        const linkedIntake =
+          (student.intake_id && historyIntakeMap.byId?.[student.intake_id]) ||
+          historyIntakeMap.byLabel?.[getIntakeLabel(student)] ||
+          null;
+
+        const source = linkedIntake || student;
+        const applicationType = getApplicationType(source);
+        const files = fileMap[student.public_id] || {};
+        const hasBankStatement =
+          Array.isArray(files.bankStatement) && files.bankStatement.length > 0;
+
+        const educationRows = [
+          parseEducationRow(student.education1),
+          parseEducationRow(student.education2),
+          parseEducationRow(student.education3),
+        ];
+
+        const row = {
+          [labels.index]: index + 1,
+        };
+
+        if (isPrimarySession) {
+          row[labels.branch] = getAgencyUnitName(student);
+        }
+
+        row[labels.applicationCategory] = getApplicationTypeLabel({ application_type: applicationType });
+        row[labels.intake] = getIntakeLabel(source);
+        row[labels.studentName] =
+          student.english_name ||
+          student.full_name_passport ||
+          student.fullNamePassport ||
+          student.name ||
+          "-";
+        row[labels.monthSeason] = getMonthDisplay(getIntakeMonth(source), applicationType);
+        row[labels.degreeLevel] =
+          student.degree_level === "master"
+            ? language === "en"
+              ? "Master"
+              : language === "ko"
+              ? "석사"
+              : "硕士"
+            : student.degree_level === "doctor"
+            ? language === "en"
+              ? "Doctor"
+              : language === "ko"
+              ? "박사"
+              : "博士"
+            : "";
+        row[labels.major] = student.major || student.department || "-";
+        row[labels.admissionType] = student.admission_type || "";
+        row[labels.admissionGrade] = student.admission_grade || "";
+        row[labels.programTrack] = student.program_track || "";
+        row[labels.dormitory] = student.dormitory || "";
+        row[labels.status] = formatStatusLabel(student.status);
+        row[labels.passportNo] = student.passport_no || "";
+        row[labels.gender] = student.gender || "";
+        row[labels.nationality] =
+          student.nationality_applicant || student.nationality || "";
+        row[labels.birth] = student.date_of_birth || "";
+        row[labels.tel] = student.tel || student.phone || "";
+        row[labels.email] = student.email || "";
+        row[labels.address] = student.address || "";
+        row[labels.edu1School] = educationRows[0].institution;
+        row[labels.edu1Location] = educationRows[0].location;
+        row[labels.edu1Start] = educationRows[0].startDate;
+        row[labels.edu1End] = educationRows[0].endDate;
+        row[labels.edu2School] = educationRows[1].institution;
+        row[labels.edu2Location] = educationRows[1].location;
+        row[labels.edu2Start] = educationRows[1].startDate;
+        row[labels.edu2End] = educationRows[1].endDate;
+        row[labels.edu3School] = educationRows[2].institution;
+        row[labels.edu3Location] = educationRows[2].location;
+        row[labels.edu3Start] = educationRows[2].startDate;
+        row[labels.edu3End] = educationRows[2].endDate;
+        row[labels.languageLevel] = [
+          student.topik ? `TOPIK ${student.topik}` : "",
+          student.ska ? `SKA ${student.ska}` : "",
+          student.kiip ? `KIIP ${student.kiip}` : "",
+          student.ielts ? `IELTS ${student.ielts}` : "",
+          student.toefl ? `TOEFL ${student.toefl}` : "",
+          student.toefl_ibt ? `TOEFL iBT ${student.toefl_ibt}` : "",
+          student.cefr ? `CEFR ${student.cefr}` : "",
+          student.teps ? `TEPS ${student.teps}` : "",
+          student.new_teps ? `NEW TEPS ${student.new_teps}` : "",
+        ]
+          .filter(Boolean)
+          .join(" / ");
+        row[labels.bankSubmitted] = hasBankStatement ? "O" : "X";
+        row[labels.fatherName] =
+          student.father_name ||
+          student.father_full_name ||
+          student.parent_father_name ||
+          student.parent_father_full_name ||
+          "";
+        row[labels.motherName] =
+          student.mother_name ||
+          student.mother_full_name ||
+          student.parent_mother_name ||
+          student.parent_mother_full_name ||
+          "";
+        row[labels.studentFormStatus] = student.student_form_status || "";
+        row[labels.createdAt] = student.created_at || "";
+        row[labels.updatedAt] = student.updated_at || "";
+        row[labels.publicId] = student.public_id || "";
+
+        return row;
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(exportRows);
+      worksheet["!cols"] = Object.keys(exportRows[0] || {}).map((key) => ({
+        wch: Math.min(Math.max(String(key).length + 6, 12), 28),
+      }));
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, labels.sheetName);
+
+      const dateText = new Date().toISOString().slice(0, 10);
+      const nodeText =
+        selectedNode.intakeLabel ||
+        selectedNode.monthLabel ||
+        selectedNode.applicationTypeLabel ||
+        selectedNode.year ||
+        labels.all;
+      const branchText =
+        isPrimarySession && agencyUnitFilter !== "all"
+          ? getAgencyUnitName({ agency_unit_id: agencyUnitFilter })
+          : labels.all;
+
+      XLSX.writeFile(
+        workbook,
+        `${sanitizeExportFileSegment(labels.filePrefix)}_${sanitizeExportFileSegment(nodeText)}_${sanitizeExportFileSegment(branchText)}_${dateText}.xlsx`
+      );
+    } catch (error) {
+      console.error("handleExportExcel error:", error);
+      alert(`${getExportLabels().failed}${error.message}`);
+    }
+  };
 
   const headerTitle = useMemo(() => {
+
   if (selectedNode.type === "year") {
     return t.page.yearTitle(selectedNode.year);
   }
@@ -1230,10 +1560,20 @@ const toggleMonth = (year, applicationType, month) => {
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 px-6 py-5">
-            <h3 className="text-lg font-bold text-slate-900">{t.detailTitle}</h3>
-            <p className="mt-1 text-sm text-slate-500">{t.detailDesc}</p>
-          </div>
+          <div className="flex flex-col gap-3 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+  <div>
+    <h3 className="text-lg font-bold text-slate-900">{t.detailTitle}</h3>
+    <p className="mt-1 text-sm text-slate-500">{t.detailDesc}</p>
+  </div>
+
+  <button
+    type="button"
+    onClick={handleExportExcel}
+    className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+  >
+    {getExportLabels().button}
+  </button>
+</div>
 
           {loading ? (
             <div className="px-6 py-8 text-sm text-slate-500">
