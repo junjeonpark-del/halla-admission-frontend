@@ -408,6 +408,7 @@ function getInitialEditForm() {
     account_name: "",
     phone: "",
     email: "",
+    agency_unit_id: "",
     is_active: true,
     is_primary: false,
   };
@@ -721,14 +722,15 @@ const handleCreateUnit = async () => {
   const handleOpenEdit = (account) => {
 
     setEditForm({
-      id: account.id || "",
-      username: account.username || "",
-      account_name: account.account_name || "",
-      phone: account.phone || "",
-      email: account.email || "",
-      is_active: account.is_active === true,
-      is_primary: account.is_primary === true,
-    });
+  id: account.id || "",
+  username: account.username || "",
+  account_name: account.account_name || "",
+  phone: account.phone || "",
+  email: account.email || "",
+  agency_unit_id: account.agency_unit_id || "",
+  is_active: account.is_active === true,
+  is_primary: account.is_primary === true,
+});
     setShowEditModal(true);
   };
 
@@ -871,6 +873,16 @@ const handleCreateUnit = async () => {
         alert(t.alerts.primaryCannotDisable);
         return;
       }
+      if (!editForm.is_primary && !editForm.agency_unit_id) {
+  alert(
+    language === "en"
+      ? "Please select a branch"
+      : language === "ko"
+      ? "소속 분기관을 선택해 주세요"
+      : "请选择所属分机构"
+  );
+  return;
+}
 
       setEditing(true);
 
@@ -881,13 +893,14 @@ const handleCreateUnit = async () => {
         },
         credentials: "include",
         body: JSON.stringify({
-          id: editForm.id,
-          username: editForm.username,
-          account_name: editForm.account_name,
-          phone: editForm.phone,
-          email: editForm.email,
-          is_active: editForm.is_active,
-        }),
+  id: editForm.id,
+  username: editForm.username,
+  account_name: editForm.account_name,
+  phone: editForm.phone,
+  email: editForm.email,
+  agency_unit_id: editForm.agency_unit_id,
+  is_active: editForm.is_active,
+}),
       });
 
       const text = await response.text();
@@ -1628,6 +1641,46 @@ const handleCreateUnit = async () => {
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                 />
               </div>
+
+<div className="md:col-span-2">
+  <label className="mb-2 block text-sm font-medium text-slate-700">
+    {language === "en"
+      ? "Branch"
+      : language === "ko"
+      ? "소속 분기관"
+      : "所属分机构"}
+  </label>
+  <select
+    value={editForm.agency_unit_id}
+    onChange={(e) => handleEditChange("agency_unit_id", e.target.value)}
+    disabled={editForm.is_primary}
+    className={`w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 ${
+      editForm.is_primary ? "cursor-not-allowed opacity-60" : ""
+    }`}
+  >
+    <option value="">
+      {language === "en"
+        ? "Please select"
+        : language === "ko"
+        ? "선택해 주세요"
+        : "请选择"}
+    </option>
+    {agencyUnitOptions.map((unit) => (
+      <option key={unit.value} value={unit.value}>
+        {unit.label}
+      </option>
+    ))}
+  </select>
+  {editForm.is_primary ? (
+    <div className="mt-2 text-xs text-slate-500">
+      {language === "en"
+        ? "Primary account can view all branches, so its branch cannot be changed here."
+        : language === "ko"
+        ? "주계정은 모든 분기관을 볼 수 있으므로 여기에서 소속을 변경하지 않습니다."
+        : "主账号可查看全部分机构，因此这里不修改主账号归属。"}
+    </div>
+  ) : null}
+</div>
 
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-medium text-slate-700">
