@@ -619,23 +619,29 @@ function AgencyApplicationsPage() {
 
         const nowIso = new Date().toISOString();
 
-        const [
-          { data: intakeData, error: intakeError },
-          { data: applicationsData, error: applicationsError },
-        ] = await Promise.all([
-          supabase
-            .from("intakes")
-            .select("*")
-            .eq("is_active", true)
-            .lte("open_at", nowIso)
-            .gte("close_at", nowIso)
-            .order("open_at", { ascending: true }),
-          supabase
-            .from("applications")
-            .select("*")
-            .eq("agency_id", agencySession.agency_id)
-            .order("updated_at", { ascending: false }),
-        ]);
+        const applicationQuery = supabase
+  .from("applications")
+  .select("*")
+  .eq("agency_id", agencySession.agency_id)
+  .order("updated_at", { ascending: false });
+
+if (agencySession?.is_primary !== true) {
+  applicationQuery.eq("agency_unit_id", agencySession?.agency_unit_id || "");
+}
+
+const [
+  { data: intakeData, error: intakeError },
+  { data: applicationsData, error: applicationsError },
+] = await Promise.all([
+  supabase
+    .from("intakes")
+    .select("*")
+    .eq("is_active", true)
+    .lte("open_at", nowIso)
+    .gte("close_at", nowIso)
+    .order("open_at", { ascending: true }),
+  applicationQuery,
+]);
 
         if (intakeError) throw intakeError;
         if (applicationsError) throw applicationsError;
@@ -651,7 +657,12 @@ function AgencyApplicationsPage() {
     }
 
     loadData();
-  }, [agencySession?.agency_id, t.loadError]);
+  }, [
+  agencySession?.agency_id,
+  agencySession?.agency_unit_id,
+  agencySession?.is_primary,
+  t.loadError,
+]);
 
   const handleDeleteApplication = async (applicationId, studentName = "") => {
     try {
@@ -694,11 +705,17 @@ function AgencyApplicationsPage() {
 
       if (fileDeleteError) throw fileDeleteError;
 
-      const { error: applicationDeleteError } = await supabase
-        .from("applications")
-        .delete()
-        .eq("id", applicationId)
-        .eq("agency_id", agencySession.agency_id);
+      const deleteQuery = supabase
+  .from("applications")
+  .delete()
+  .eq("id", applicationId)
+  .eq("agency_id", agencySession.agency_id);
+
+if (agencySession?.is_primary !== true) {
+  deleteQuery.eq("agency_unit_id", agencySession?.agency_unit_id || "");
+}
+
+const { error: applicationDeleteError } = await deleteQuery;
 
       if (applicationDeleteError) throw applicationDeleteError;
 
