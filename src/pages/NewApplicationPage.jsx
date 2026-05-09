@@ -1207,6 +1207,21 @@ const applyCurrentIntake = (intake) => {
   return;
 }
 
+if (
+  agencySession?.is_primary !== true &&
+  data.agency_unit_id !== agencySession?.agency_unit_id
+) {
+  alert(
+    language === "en"
+      ? "You do not have permission to edit applications from another branch."
+      : language === "ko"
+      ? "다른 분기관의 신청서는 편집할 수 없습니다."
+      : "你无权编辑其他分机构的申请"
+  );
+  window.location.href = "/agency/applications";
+  return;
+}
+
 const isDraftApplication = String(data.status || "draft").toLowerCase() === "draft";
 const shouldUseSavedIntake =
   Boolean(data.intake_id) && (!isDraftApplication || isMaterialOnlyMode);
