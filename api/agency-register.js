@@ -93,10 +93,25 @@ export default async function handler(req, res) {
 
     if (agencyError) throw agencyError;
 
-    createdAgencyId = agencyRow.id;
+        createdAgencyId = agencyRow.id;
+
+    const { data: defaultUnit, error: defaultUnitError } = await supabaseAdmin
+      .from("agency_units")
+      .insert({
+        agency_id: createdAgencyId,
+        name: String(agency_name).trim(),
+        note: null,
+        is_default: true,
+        is_active: true,
+      })
+      .select("id")
+      .single();
+
+    if (defaultUnitError) throw defaultUnitError;
 
     const accountPayload = {
       agency_id: createdAgencyId,
+      agency_unit_id: defaultUnit.id,
       username: String(username).trim(),
       password: hashPassword(String(password)),
       account_name: String(account_name).trim() || null,

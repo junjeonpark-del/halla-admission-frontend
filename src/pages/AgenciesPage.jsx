@@ -831,13 +831,31 @@ function AgenciesPage() {
         is_active: createForm.is_active,
       };
 
-      const { error: accountError } = await supabase
+            const { error: accountError } = await supabase
         .from("agency_accounts")
         .insert(accountPayload);
 
       if (accountError) throw accountError;
 
+      const syncResponse = await fetch("/api/admin-agency-default-unit-sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          agency_id: createdAgencyId,
+        }),
+      });
+
+      const syncResult = await syncResponse.json();
+
+      if (!syncResponse.ok || !syncResult.success) {
+        throw new Error(syncResult.message || "同步机构本部失败");
+      }
+
       alert(t.alerts.createSuccess);
+
       setShowCreateModal(false);
       await loadAgencies();
     } catch (error) {
@@ -922,7 +940,24 @@ function AgenciesPage() {
 
       if (error) throw error;
 
-      if (nextStatus === "approved") {
+            if (nextStatus === "approved") {
+        const syncResponse = await fetch("/api/admin-agency-default-unit-sync", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            agency_id: agencyId,
+          }),
+        });
+
+        const syncResult = await syncResponse.json();
+
+        if (!syncResponse.ok || !syncResult.success) {
+          throw new Error(syncResult.message || "同步机构本部失败");
+        }
+
         await supabase
           .from("agency_accounts")
           .update({ is_active: true })
