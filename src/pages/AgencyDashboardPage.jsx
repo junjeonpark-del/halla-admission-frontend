@@ -602,17 +602,16 @@ setAgencyUnits(agencyUnitsData || []);
   }, [applications, selectedApplicationType, selectedIntake, language]);
 
   const totalApplications = useMemo(() => {
-    return filteredApplications.filter((item) => {
-      const status = String(item.status || "").toLowerCase();
-      return (
-                status === "submitted" ||
-        status === "under_review" ||
-        status === "missing_documents" ||
-        status === "approved" ||
-        status === "rejected"
-      );
-    });
-  }, [filteredApplications]);
+  return filteredApplications.filter((item) => {
+    const status = String(item.status || "").toLowerCase();
+    return (
+      status === "submitted" ||
+      status === "under_review" ||
+      status === "missing_documents" ||
+      status === "approved"
+    );
+  });
+}, [filteredApplications]);
 
   const stats = useMemo(() => {
     const total = totalApplications.length;

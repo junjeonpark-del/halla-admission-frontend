@@ -517,30 +517,48 @@ const getAgencyUnitName = (item) => {
     };
   };
 
-  const getOverallStatus = (statuses) => {
-    const requiredStatuses = statuses.filter((item) => !item.exempt && !item.systemGenerated);
+  const getOverallStatus = (statuses, student) => {
+  const applicationStatus = String(student?.status || "").toLowerCase();
 
-    const hasMissingRequired = requiredStatuses.some(
-      (item) => item.required && item.label === t.material.missing
-    );
+  if (applicationStatus === "rejected") {
+    return {
+      label:
+        language === "en"
+          ? "Rejected"
+          : language === "ko"
+          ? "거절"
+          : "已拒绝",
+      type: "danger",
+    };
+  }
 
-    if (hasMissingRequired) {
-      return { label: t.overall.needSupplement, type: "danger" };
-    }
+  if (applicationStatus === "missing_documents") {
+    return { label: t.overall.needSupplement, type: "danger" };
+  }
 
-    const hasPendingOptional = requiredStatuses.some(
-      (item) =>
-        !item.required &&
-        item.label !== t.material.uploaded &&
-        item.label !== t.material.optional
-    );
+  const requiredStatuses = statuses.filter((item) => !item.exempt && !item.systemGenerated);
 
-    if (hasPendingOptional) {
-      return { label: t.overall.pending, type: "warning" };
-    }
+  const hasMissingRequired = requiredStatuses.some(
+    (item) => item.required && item.label === t.material.missing
+  );
 
-    return { label: t.overall.complete, type: "success" };
-  };
+  if (hasMissingRequired) {
+    return { label: t.overall.needSupplement, type: "danger" };
+  }
+
+  const hasPendingOptional = requiredStatuses.some(
+    (item) =>
+      !item.required &&
+      item.label !== t.material.uploaded &&
+      item.label !== t.material.optional
+  );
+
+  if (hasPendingOptional) {
+    return { label: t.overall.pending, type: "warning" };
+  }
+
+  return { label: t.overall.complete, type: "success" };
+};
 
   useEffect(() => {
   async function loadData() {
@@ -798,18 +816,18 @@ const { error: applicationDeleteError } = await applicationDeleteQuery;
       );
 
       const overall = getOverallStatus([
-        { ...passport, required: true },
-        { ...finalTranscript, required: true },
-        { ...finalDiploma, required: true },
-        { ...languageCertificate, required: !bilingualTrack, exempt: bilingualTrack },
-        { ...arc, required: inKorea, exempt: !inKorea },
-        { ...bankStatement, required: true },
-        {
-          ...guarantorEmploymentIncome,
-          required: financialGuaranteeRequired,
-          exempt: !financialGuaranteeRequired,
-        },
-      ]);
+  { ...passport, required: true },
+  { ...finalTranscript, required: true },
+  { ...finalDiploma, required: true },
+  { ...languageCertificate, required: !bilingualTrack, exempt: bilingualTrack },
+  { ...arc, required: inKorea, exempt: !inKorea },
+  { ...bankStatement, required: true },
+  {
+    ...guarantorEmploymentIncome,
+    required: financialGuaranteeRequired,
+    exempt: !financialGuaranteeRequired,
+  },
+], student);
 
             return {
         student,
