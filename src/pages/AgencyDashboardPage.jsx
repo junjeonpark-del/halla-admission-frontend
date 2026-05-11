@@ -605,10 +605,11 @@ setAgencyUnits(agencyUnitsData || []);
     return filteredApplications.filter((item) => {
       const status = String(item.status || "").toLowerCase();
       return (
-        status === "submitted" ||
+                status === "submitted" ||
         status === "under_review" ||
         status === "missing_documents" ||
-        status === "approved"
+        status === "approved" ||
+        status === "rejected"
       );
     });
   }, [filteredApplications]);

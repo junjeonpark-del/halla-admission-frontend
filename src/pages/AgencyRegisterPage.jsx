@@ -268,7 +268,7 @@ function AgencyRegisterPage() {
         throw new Error(result.message || t.alerts.failed);
       }
 
-      alert(result.message || t.alerts.success);
+            alert(t.alerts.success);
       navigate("/login");
     } catch (error) {
       console.error("AgencyRegisterPage handleSubmit error:", error);

@@ -738,10 +738,11 @@ const { error: applicationDeleteError } = await applicationDeleteQuery;
       const status = String(item.status || "").toLowerCase();
 
       if (
-        status !== "submitted" &&
+                status !== "submitted" &&
         status !== "under_review" &&
         status !== "missing_documents" &&
-        status !== "approved"
+        status !== "approved" &&
+        status !== "rejected"
       ) {
         return false;
       }

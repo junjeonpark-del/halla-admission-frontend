@@ -2187,16 +2187,34 @@ function ApplicationReviewPage() {
       review_note: reviewNote || null,
     };
 
-    if (nextStatus) {
+        if (nextStatus) {
       payload.review_status = nextStatus;
     }
 
     await updateApplicationFileReview(selectedItem.fileId, payload);
 
+    const shouldSyncApplicationStatus =
+      nextStatus === "missing_documents" || nextStatus === "rejected";
+
+    if (shouldSyncApplicationStatus) {
+      const { error: applicationStatusError } = await supabase
+        .from("applications")
+        .update({
+          status: nextStatus,
+          admin_editing_by_account_id: adminSession?.admin_id || null,
+          admin_editing_by_account_name:
+            adminSession?.name || adminSession?.username || "Admin",
+          admin_editing_started_at: new Date().toISOString(),
+        })
+        .eq("id", student.id);
+
+      if (applicationStatusError) throw applicationStatusError;
+    }
+
     const { data: refreshedApplication, error: refreshedApplicationError } = await supabase
       .from("applications")
       .select(
-        "id, updated_at, admin_editing_by_account_id, admin_editing_by_account_name, admin_editing_started_at"
+        "id, status, updated_at, admin_editing_by_account_id, admin_editing_by_account_name, admin_editing_started_at"
       )
       .eq("id", student.id)
       .single();
