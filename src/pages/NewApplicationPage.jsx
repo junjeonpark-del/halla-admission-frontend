@@ -2130,9 +2130,9 @@ const buildApplicationPayload = (statusValue = "draft", publicIdValue) => {
       ? normalizedLoadedStatus
       : statusValue;
 
-  const shouldBindIntake = finalStatusValue === "submitted" || isMaterialOnlyMode;
-  const payloadIntakeId = shouldBindIntake ? selectedIntakeId || null : null;
-  const payloadIntakeName = shouldBindIntake ? selectedIntakeLabel || null : null;
+  const shouldBindIntake = finalStatusValue !== "draft" || isMaterialOnlyMode;
+const payloadIntakeId = shouldBindIntake ? selectedIntakeId || null : null;
+const payloadIntakeName = shouldBindIntake ? selectedIntakeLabel || null : null;
 
   if (isMaterialOnlyMode && applicationId) {
     return {
