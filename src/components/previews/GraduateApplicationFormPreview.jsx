@@ -137,13 +137,12 @@ function yesNo(value) {
 
 function LogoBox() {
   return (
-    <div className="flex h-[95px] flex-col items-center justify-center border border-black">
-      <div className="text-[32px] font-bold leading-none text-blue-700">H</div>
-      <div className="mt-1 text-center text-[10px] font-bold leading-3 text-blue-900">
-        HALLA
-        <br />
-        UNIVERSITY
-      </div>
+    <div className="flex h-[95px] items-center justify-center border border-black bg-white p-2">
+      <img
+        src="/halla-logo.png"
+        alt="Halla University"
+        className="max-h-full max-w-full object-contain"
+      />
     </div>
   );
 }
