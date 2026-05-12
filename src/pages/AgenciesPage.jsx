@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import { supabase } from "../lib/supabase";
 import { useAdminSession } from "../contexts/AdminSessionContext";
 import {
@@ -1101,6 +1102,264 @@ const handleGenerateCommissionClaim = async () => {
   }
 };
 
+const handleExportAgenciesExcel = async () => {
+  try {
+    const exportAgencies = filteredAgencies;
+
+    if (!exportAgencies.length) {
+      alert(
+        language === "en"
+          ? "There is no agency data to export."
+          : language === "ko"
+          ? "내보낼 기관 데이터가 없습니다."
+          : "没有可导出的机构数据。"
+      );
+      return;
+    }
+
+    const agencyIds = exportAgencies.map((agency) => agency.id);
+
+    const [unitsResult, applicationsResult, intakesResult] = await Promise.all([
+      supabase
+        .from("agency_units")
+        .select("id, agency_id, is_default, is_active")
+        .in("agency_id", agencyIds),
+      supabase
+        .from("applications")
+        .select("id, agency_id, status, intake_id")
+        .in("agency_id", agencyIds),
+      supabase
+        .from("intakes")
+        .select("id, year"),
+    ]);
+
+    if (unitsResult.error) throw unitsResult.error;
+    if (applicationsResult.error) throw applicationsResult.error;
+    if (intakesResult.error) throw intakesResult.error;
+
+    const intakeYearMap = new Map(
+      (intakesResult.data || []).map((intake) => [
+        intake.id,
+        Number(intake.year),
+      ])
+    );
+
+    const unitsByAgency = new Map();
+    (unitsResult.data || []).forEach((unit) => {
+      if (!unitsByAgency.has(unit.agency_id)) {
+        unitsByAgency.set(unit.agency_id, []);
+      }
+      unitsByAgency.get(unit.agency_id).push(unit);
+    });
+
+    const applicationsByAgency = new Map();
+    (applicationsResult.data || []).forEach((application) => {
+      if (!applicationsByAgency.has(application.agency_id)) {
+        applicationsByAgency.set(application.agency_id, []);
+      }
+      applicationsByAgency.get(application.agency_id).push(application);
+    });
+
+    const formalStatuses = new Set([
+      "submitted",
+      "under_review",
+      "missing_documents",
+      "approved",
+      "rejected",
+    ]);
+
+    const years = Array.from(
+      new Set(
+        (applicationsResult.data || [])
+          .map((application) => intakeYearMap.get(application.intake_id))
+          .filter((year) => Number.isFinite(year))
+      )
+    ).sort((a, b) => a - b);
+
+    const getStatusLabelForExport = (status) => {
+      const value = String(status || "").toLowerCase();
+
+      if (language === "en") {
+        if (value === "approved") return "Approved";
+        if (value === "rejected") return "Rejected";
+        if (value === "disabled") return "Disabled";
+        return "Pending";
+      }
+
+      if (language === "ko") {
+        if (value === "approved") return "승인";
+        if (value === "rejected") return "거절";
+        if (value === "disabled") return "비활성";
+        return "대기";
+      }
+
+      if (value === "approved") return "已通过";
+      if (value === "rejected") return "已拒绝";
+      if (value === "disabled") return "已停用";
+      return "待审核";
+    };
+
+    const getHeaders = () => {
+      if (language === "en") {
+        return {
+          index: "No.",
+          agencyName: "Agency Name",
+          country: "Country",
+          legalRepresentative: "Legal Representative",
+          contactName: "Contact",
+          phone: "Phone",
+          email: "Email",
+          createdAt: "Registered At",
+          branchCount: "Branch Count",
+          totalAll: "Total Applications (All)",
+          approvedAll: "Approved (All)",
+          rejectedAll: "Rejected (All)",
+          sheetName: "Agencies",
+          filePrefix: "Agencies",
+        };
+      }
+
+      if (language === "ko") {
+        return {
+          index: "번호",
+          agencyName: "기관명",
+          country: "국가",
+          legalRepresentative: "대표자",
+          contactName: "담당자",
+          phone: "연락처",
+          email: "이메일",
+          createdAt: "등록일",
+          branchCount: "분기관 수",
+          totalAll: "총 지원 수(전체)",
+          approvedAll: "승인 수(전체)",
+          rejectedAll: "거절 수(전체)",
+          sheetName: "기관정보",
+          filePrefix: "기관정보",
+        };
+      }
+
+      return {
+        index: "序号",
+        agencyName: "机构名称",
+        country: "国家",
+        legalRepresentative: "法人代表",
+        contactName: "联系人",
+        phone: "联系电话",
+        email: "邮箱",
+        createdAt: "注册时间",
+        branchCount: "分机构数量",
+        totalAll: "总申请数（全部）",
+        approvedAll: "总通过数（全部）",
+        rejectedAll: "总拒绝数（全部）",
+        sheetName: "机构信息",
+        filePrefix: "机构信息",
+      };
+    };
+
+    const headers = getHeaders();
+
+    const getYearHeader = (type, year) => {
+      if (language === "en") {
+        if (type === "total") return `Total Applications (${year})`;
+        if (type === "approved") return `Approved (${year})`;
+        return `Rejected (${year})`;
+      }
+
+      if (language === "ko") {
+        if (type === "total") return `총 지원 수(${year})`;
+        if (type === "approved") return `승인 수(${year})`;
+        return `거절 수(${year})`;
+      }
+
+      if (type === "total") return `总申请数（${year}）`;
+      if (type === "approved") return `总通过数（${year}）`;
+      return `总拒绝数（${year}）`;
+    };
+
+    const exportRows = exportAgencies.map((agency, index) => {
+      const primaryAccount = getPrimaryAccount(agency.agency_accounts || []);
+      const units = unitsByAgency.get(agency.id) || [];
+      const branchCount = units.filter((unit) => unit.is_default !== true).length;
+      const applications = applicationsByAgency.get(agency.id) || [];
+      const formalApplications = applications.filter((application) =>
+        formalStatuses.has(String(application.status || "").toLowerCase())
+      );
+
+      const row = {
+        [headers.index]: index + 1,
+        [headers.agencyName]: agency.agency_name || "",
+        [headers.country]: agency.country || "",
+        [headers.legalRepresentative]: agency.legal_representative || "",
+        [headers.contactName]: agency.contact_name || "",
+        [headers.phone]: agency.phone || primaryAccount?.phone || "",
+        [headers.email]: agency.email || primaryAccount?.email || "",
+        [headers.createdAt]: agency.created_at || "",
+        [headers.branchCount]: branchCount,
+        [headers.totalAll]: formalApplications.length,
+      };
+
+      years.forEach((year) => {
+        row[getYearHeader("total", year)] = formalApplications.filter(
+          (application) => intakeYearMap.get(application.intake_id) === year
+        ).length;
+      });
+
+      row[headers.approvedAll] = formalApplications.filter(
+        (application) =>
+          String(application.status || "").toLowerCase() === "approved"
+      ).length;
+
+      years.forEach((year) => {
+        row[getYearHeader("approved", year)] = formalApplications.filter(
+          (application) =>
+            String(application.status || "").toLowerCase() === "approved" &&
+            intakeYearMap.get(application.intake_id) === year
+        ).length;
+      });
+
+      row[headers.rejectedAll] = formalApplications.filter(
+        (application) =>
+          String(application.status || "").toLowerCase() === "rejected"
+      ).length;
+
+      years.forEach((year) => {
+        row[getYearHeader("rejected", year)] = formalApplications.filter(
+          (application) =>
+            String(application.status || "").toLowerCase() === "rejected" &&
+            intakeYearMap.get(application.intake_id) === year
+        ).length;
+      });
+
+      return row;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    worksheet["!cols"] = Object.keys(exportRows[0] || {}).map((key) => ({
+      wch: Math.max(12, String(key).length + 4),
+    }));
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, headers.sheetName);
+
+    const now = new Date();
+    const dateText = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(now.getDate()).padStart(2, "0")}`;
+
+    XLSX.writeFile(workbook, `${headers.filePrefix}_${dateText}.xlsx`);
+  } catch (error) {
+    console.error("handleExportAgenciesExcel error:", error);
+    alert(
+      language === "en"
+        ? `Export failed: ${error.message}`
+        : language === "ko"
+        ? `내보내기 실패: ${error.message}`
+        : `导出失败：${error.message}`
+    );
+  }
+};
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -1110,13 +1369,27 @@ const handleGenerateCommissionClaim = async () => {
             <p className="mt-1 text-sm text-slate-500">{t.filtersDesc}</p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleOpenCreate}
-            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
-          >
-            {t.createAgency}
-          </button>
+          <div className="flex flex-wrap gap-3">
+  <button
+    type="button"
+    onClick={handleExportAgenciesExcel}
+    className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+  >
+    {language === "en"
+      ? "Export Agency Info"
+      : language === "ko"
+      ? "기관정보 내보내기"
+      : "导出机构信息"}
+  </button>
+
+  <button
+    type="button"
+    onClick={handleOpenCreate}
+    className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+  >
+    {t.createAgency}
+  </button>
+</div>
         </div>
 
                 <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
