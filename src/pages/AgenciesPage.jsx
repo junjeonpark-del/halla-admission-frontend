@@ -5,6 +5,10 @@ import {
   generateAuthorizationLetterDocx,
   generateMouKoEnDocx,
 } from "../utils/generateAgencyDocuments";
+import {
+  generateCommissionClaimDocx,
+  getCommissionSettlementSeason,
+} from "../utils/generateCommissionClaimDocument";
 
 const messages = {
   zh: {
@@ -1031,6 +1035,72 @@ const handleDownloadMouZhKo = () => {
   );
 };
 
+const handleGenerateCommissionClaim = async () => {
+  if (!detailAgency) return;
+
+  try {
+    const season = getCommissionSettlementSeason();
+
+    const { data: seasonIntakes, error: intakesError } = await supabase
+      .from("intakes")
+      .select("id, title, application_type, year, intake_month, round_number")
+      .eq("year", season.year)
+      .eq("intake_month", season.intakeMonth);
+
+    if (intakesError) throw intakesError;
+
+    const intakeIds = (seasonIntakes || []).map((item) => item.id);
+
+    if (intakeIds.length === 0) {
+      alert(
+        language === "en"
+          ? `No intake found for ${season.year}-${season.intakeMonth}.`
+          : language === "ko"
+          ? `${season.year}년 ${season.intakeMonth}월 학기 차수를 찾을 수 없습니다.`
+          : `没有找到 ${season.year}年${season.intakeMonth}月 的批次。`
+      );
+      return;
+    }
+
+    const { data: approvedApplications, error: applicationsError } =
+      await supabase
+        .from("applications")
+        .select(
+          "id, public_id, application_type, degree_level, english_name, full_name_passport, gender, sex, date_of_birth, birth_date, created_at, intake_id"
+        )
+        .eq("agency_id", detailAgency.id)
+        .eq("status", "approved")
+        .in("intake_id", intakeIds);
+
+    if (applicationsError) throw applicationsError;
+
+    if (!approvedApplications || approvedApplications.length === 0) {
+      alert(
+        language === "en"
+          ? "There are no approved students for the latest settlement season."
+          : language === "ko"
+          ? "최근 정산 학기에 승인된 학생이 없습니다."
+          : "最近结算申请季没有已通过的学生。"
+      );
+      return;
+    }
+
+    await generateCommissionClaimDocx(detailAgency, approvedApplications, {
+      season,
+      issuedAt: new Date(),
+    });
+  } catch (error) {
+    console.error("generate commission claim error:", error);
+    alert(
+      language === "en"
+        ? `Failed to generate commission claim: ${error.message}`
+        : language === "ko"
+        ? `운영비 청구서 생성에 실패했습니다: ${error.message}`
+        : `生成运营费申请表失败：${error.message}`
+    );
+  }
+};
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -1696,6 +1766,18 @@ const handleDownloadMouZhKo = () => {
                     ? "위촉장 생성"
                     : "生成授权书"}
                 </button>
+
+<button
+  type="button"
+  onClick={handleGenerateCommissionClaim}
+  className="rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700"
+>
+  {language === "en"
+    ? "Generate Commission Claim"
+    : language === "ko"
+    ? "운영비 청구서 생성"
+    : "生成运营费申请表"}
+</button>
 
                 <button
                   type="button"
