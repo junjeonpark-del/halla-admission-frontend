@@ -2013,7 +2013,7 @@ const buildApplicationPayload = (statusValue = "draft", publicIdValue) => {
       ? normalizedLoadedStatus
       : statusValue;
 
-  const shouldBindIntake = finalStatusValue === "submitted" || isMaterialOnlyMode;
+  const shouldBindIntake = finalStatusValue !== "draft" || isMaterialOnlyMode;
   const payloadIntakeId = shouldBindIntake ? selectedIntakeId || null : null;
   const payloadIntakeName = shouldBindIntake ? selectedIntakeLabel || null : null;
 
