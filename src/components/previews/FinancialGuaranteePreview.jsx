@@ -107,7 +107,7 @@ export default function FinancialGuaranteePreview({ student }) {
   const guarantorSignatureImage = getGuarantorSignatureImage(student, guarantorName);
 
   return (
-    <div className="mx-auto w-full max-w-[980px] bg-[#f3f3f3] p-4 text-black">
+    <div className="financial-guarantee-form mx-auto w-full max-w-[980px] bg-[#f3f3f3] p-4 text-black">
       <div className="bg-white p-4">
         {/* 顶部 */}
         <div className="flex items-start gap-6">

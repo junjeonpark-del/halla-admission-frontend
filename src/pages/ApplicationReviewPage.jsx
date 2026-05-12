@@ -2455,6 +2455,17 @@ function ApplicationReviewPage() {
       font-size: 11px !important;
       line-height: 1.2 !important;
     }
+          .financial-guarantee-form {
+      zoom: 0.92;
+      background: #ffffff !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+
+    .financial-guarantee-form .bg-\\[\\#f3f3f3\\] {
+      background: #ffffff !important;
+    }
+
         .personal-info-consent-form {
       zoom: 1.42;
       background: #ffffff !important;
