@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "../lib/supabase";
 import { useAgencySession } from "../contexts/AgencySessionContext";
+import { getLocalizedMajorLabel, getMajorCatalog } from "../data/majorCatalog";
 
 const messages = {
   zh: {
@@ -1076,46 +1077,75 @@ year: getIntakeYear(linkedIntake || student),
     };
   };
 
-    const formatAdmissionTypeForExport = (value) => {
-    const text = String(value || "").trim();
+    const formatAdmissionGradeForExport = (value) => {
+  const text = String(value || "").trim();
+  if (!text) return "";
 
-    if (text === "Freshman") {
-      return language === "en" ? "Freshman" : language === "ko" ? "신입" : "新入";
-    }
+  const gradeMatch = text.match(/\d+/);
+  if (!gradeMatch) return text;
 
-    if (text.startsWith("Transfer")) {
-      const gradeMatch = text.match(/\d+/);
-      const grade = gradeMatch ? gradeMatch[0] : "";
+  const grade = gradeMatch[0];
+  if (language === "en") return `Year ${grade}`;
+  if (language === "ko") return `${grade}학년`;
+  return `${grade}年级`;
+};
 
-      if (language === "en") return grade ? `Transfer (Year ${grade})` : "Transfer";
-      if (language === "ko") return grade ? `편입 (${grade}학년)` : "편입";
-      return grade ? `插班（${grade}年级）` : "插班";
-    }
+const getAdmissionExportParts = (student) => {
+  const admissionType = String(student?.admission_type || "").trim();
+  const admissionGrade = String(student?.admission_grade || "").trim();
 
-    if (text.startsWith("Dual Degree")) {
-      const gradeMatch = text.match(/\d+/);
-      const grade = gradeMatch ? gradeMatch[0] : "";
+  if (admissionType === "Freshman") {
+    return {
+      type: language === "en" ? "Freshman" : language === "ko" ? "신입" : "新入",
+      grade: "",
+    };
+  }
 
-      if (language === "en") return grade ? `Dual Degree (Year ${grade})` : "Dual Degree";
-      if (language === "ko") return grade ? `복수학위 (${grade}학년)` : "복수학위";
-      return grade ? `双学位（${grade}年级）` : "双学位";
-    }
+  if (admissionType.startsWith("Transfer")) {
+    const gradeMatch = admissionType.match(/\d+/);
+    return {
+      type: language === "en" ? "Transfer" : language === "ko" ? "편입" : "插班",
+      grade: gradeMatch
+        ? formatAdmissionGradeForExport(gradeMatch[0])
+        : formatAdmissionGradeForExport(admissionGrade),
+    };
+  }
 
-    return text;
+  if (admissionType === "Dual Degree (2+2)") {
+    return {
+      type: language === "en" ? "Dual Degree" : language === "ko" ? "복수학위" : "双学位",
+      grade: formatAdmissionGradeForExport("3"),
+    };
+  }
+
+  if (admissionType === "Dual Degree (3+1)") {
+    return {
+      type: language === "en" ? "Dual Degree" : language === "ko" ? "복수학위" : "双学位",
+      grade: formatAdmissionGradeForExport("4"),
+    };
+  }
+
+  return {
+    type: admissionType,
+    grade: formatAdmissionGradeForExport(admissionGrade),
   };
+};
 
-  const formatAdmissionGradeForExport = (value) => {
-    const text = String(value || "").trim();
-    if (!text) return "";
+const formatMajorForExport = (student) => {
+  const rawMajor = String(student?.major || student?.department || "").trim();
+  if (!rawMajor) return "-";
 
-    const gradeMatch = text.match(/\d+/);
-    if (!gradeMatch) return text;
+  const applicationType = getApplicationType(student);
+  const catalog = getMajorCatalog(applicationType);
 
-    const grade = gradeMatch[0];
-    if (language === "en") return `Year ${grade}`;
-    if (language === "ko") return `${grade}학년`;
-    return `${grade}年级`;
-  };
+  const matchedMajor = catalog.find((major) => {
+    return [major.zh, major.ko, major.en, major.id]
+      .filter(Boolean)
+      .some((value) => String(value).trim() === rawMajor);
+  });
+
+  return matchedMajor ? getLocalizedMajorLabel(matchedMajor, language) : rawMajor;
+};
 
   const formatProgramTrackForExport = (value) => {
     const text = String(value || "").trim();
@@ -1178,6 +1208,7 @@ year: getIntakeYear(linkedIntake || student),
 
         const source = linkedIntake || student;
         const applicationType = getApplicationType(source);
+        const admissionExport = getAdmissionExportParts(student);
         const files = fileMap[student.public_id] || {};
         const hasBankStatement =
           Array.isArray(files.bankStatement) && files.bankStatement.length > 0;
@@ -1219,9 +1250,9 @@ year: getIntakeYear(linkedIntake || student),
               ? "박사"
               : "博士"
             : "";
-        row[labels.major] = student.major || student.department || "-";
-                row[labels.admissionType] = formatAdmissionTypeForExport(student.admission_type);
-        row[labels.admissionGrade] = formatAdmissionGradeForExport(student.admission_grade);
+        row[labels.major] = formatMajorForExport(student);
+row[labels.admissionType] = admissionExport.type;
+row[labels.admissionGrade] = admissionExport.grade;
         row[labels.programTrack] = formatProgramTrackForExport(student.program_track);
         row[labels.dormitory] = student.dormitory || "";
         row[labels.status] = formatStatusLabel(student.status);

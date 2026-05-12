@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "../lib/supabase";
 import { useAdminSession } from "../contexts/AdminSessionContext";
+import { getLocalizedMajorLabel, getMajorCatalog } from "../data/majorCatalog";
 
 const messages = {
   zh: {
@@ -1160,6 +1161,20 @@ const toggleMonth = (year, applicationType, month) => {
   }));
 };
 
+const formatMajorForExport = (student, applicationType) => {
+  const rawMajor = String(student?.major || student?.department || "").trim();
+  if (!rawMajor) return "-";
+
+  const catalog = getMajorCatalog(applicationType);
+
+  const matchedMajor = catalog.find((major) => {
+    return [major.zh, major.ko, major.en, major.id]
+      .filter(Boolean)
+      .some((value) => String(value).trim() === rawMajor);
+  });
+
+  return matchedMajor ? getLocalizedMajorLabel(matchedMajor, language) : rawMajor;
+};
 
   const handleExportExcel = async () => {
     try {
@@ -1345,7 +1360,7 @@ const toggleMonth = (year, applicationType, month) => {
             "-",          
           [t.exportHeaders.monthSeason]: monthSeasonText,
           [t.exportHeaders.degreeLevel]: degreeLevelText,
-          [t.exportHeaders.major]: student.major || student.department || "-",
+          [t.exportHeaders.major]: formatMajorForExport(student, applicationType),
           [t.exportHeaders.admissionType]: admissionTypeText,
           [t.exportHeaders.admissionGrade]: admissionGradeText,
           [t.exportHeaders.programTrack]: programTrack,
