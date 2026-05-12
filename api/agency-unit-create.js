@@ -1,8 +1,7 @@
 import {
   json,
-  parseCookies,
   supabaseAdmin,
-  verifySession,
+  validateAgencySession,
 } from "./_agencyAuth.js";
 
 export default async function handler(req, res) {
@@ -11,34 +10,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const cookies = parseCookies(req);
-    const token = cookies.agency_session;
-    const session = verifySession(token);
+        const session = await validateAgencySession(req);
 
-    if (!session || !session.agency_id || !session.agency_account_id) {
+    if (!session?.agency_id || !session?.agency_account_id) {
       return json(res, 401, { success: false, message: "登录已失效" });
     }
 
-    const { data: currentAccount, error: currentAccountError } = await supabaseAdmin
-      .from("agency_accounts")
-      .select("id, agency_id, is_primary, is_active")
-      .eq("id", session.agency_account_id)
-      .eq("agency_id", session.agency_id)
-      .single();
-
-    if (currentAccountError) throw currentAccountError;
-
-    if (!currentAccount || currentAccount.is_primary !== true) {
+    if (session.is_primary !== true) {
       return json(res, 403, {
         success: false,
         message: "只有主账号可以新增分机构",
-      });
-    }
-
-    if (currentAccount.is_active !== true) {
-      return json(res, 403, {
-        success: false,
-        message: "当前账号已停用",
       });
     }
 

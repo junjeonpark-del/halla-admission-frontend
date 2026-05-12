@@ -517,48 +517,62 @@ const getAgencyUnitName = (item) => {
     };
   };
 
-  const getOverallStatus = (statuses, student) => {
-  const applicationStatus = String(student?.status || "").toLowerCase();
+    const getOverallStatus = (statuses, student) => {
+    const applicationStatus = String(student?.status || "").toLowerCase();
 
-  if (applicationStatus === "rejected") {
-    return {
-      label:
-        language === "en"
-          ? "Rejected"
-          : language === "ko"
-          ? "거절"
-          : "已拒绝",
-      type: "danger",
-    };
-  }
+    if (applicationStatus === "rejected") {
+      return {
+        label:
+          language === "en"
+            ? "Rejected"
+            : language === "ko"
+            ? "거절됨"
+            : "已拒绝",
+        type: "danger",
+      };
+    }
 
-  if (applicationStatus === "missing_documents") {
-    return { label: t.overall.needSupplement, type: "danger" };
-  }
+    if (applicationStatus === "approved") {
+      return {
+        label:
+          language === "en"
+            ? "Approved"
+            : language === "ko"
+            ? "승인됨"
+            : "已通过",
+        type: "success",
+      };
+    }
 
-  const requiredStatuses = statuses.filter((item) => !item.exempt && !item.systemGenerated);
+    if (applicationStatus === "missing_documents") {
+      return { label: t.overall.needSupplement, type: "danger" };
+    }
 
-  const hasMissingRequired = requiredStatuses.some(
-    (item) => item.required && item.label === t.material.missing
-  );
+    const requiredStatuses = statuses.filter(
+      (item) => !item.exempt && !item.systemGenerated
+    );
 
-  if (hasMissingRequired) {
-    return { label: t.overall.needSupplement, type: "danger" };
-  }
+    const hasMissingRequired = requiredStatuses.some(
+      (item) => item.required && item.label === t.material.missing
+    );
 
-  const hasPendingOptional = requiredStatuses.some(
-    (item) =>
-      !item.required &&
-      item.label !== t.material.uploaded &&
-      item.label !== t.material.optional
-  );
+    if (hasMissingRequired) {
+      return { label: t.overall.needSupplement, type: "danger" };
+    }
 
-  if (hasPendingOptional) {
-    return { label: t.overall.pending, type: "warning" };
-  }
+    const hasPendingOptional = requiredStatuses.some(
+      (item) =>
+        !item.required &&
+        item.label !== t.material.uploaded &&
+        item.label !== t.material.optional
+    );
 
-  return { label: t.overall.complete, type: "success" };
-};
+    if (hasPendingOptional) {
+      return { label: t.overall.pending, type: "warning" };
+    }
+
+    return { label: t.overall.complete, type: "success" };
+  };
 
   useEffect(() => {
   async function loadData() {
