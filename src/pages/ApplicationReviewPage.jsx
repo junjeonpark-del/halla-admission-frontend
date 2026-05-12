@@ -2456,7 +2456,7 @@ function ApplicationReviewPage() {
       line-height: 1.2 !important;
     }
           .financial-guarantee-form {
-      zoom: 0.92;
+      zoom: 0.96;
       background: #ffffff !important;
       page-break-inside: avoid !important;
       break-inside: avoid !important;
