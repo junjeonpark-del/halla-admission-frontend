@@ -851,13 +851,6 @@ function ApplicationsPage() {
             <p className="mt-1 text-sm text-slate-500">{t.filtersDesc}</p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
-          >
-            {t.exportExcel}
-          </button>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">

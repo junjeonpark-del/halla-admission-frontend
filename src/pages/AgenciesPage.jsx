@@ -631,8 +631,6 @@ function AgenciesPage() {
   const [loadError, setLoadError] = useState("");
 
     const [keyword, setKeyword] = useState("");
-  const [contactKeyword, setContactKeyword] = useState("");
-  const [licenseKeyword, setLicenseKeyword] = useState("");
   const [countryKeyword, setCountryKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -705,8 +703,6 @@ function AgenciesPage() {
 
     const filteredAgencies = useMemo(() => {
     const keywordText = keyword.trim().toLowerCase();
-    const contactText = contactKeyword.trim().toLowerCase();
-    const licenseText = licenseKeyword.trim().toLowerCase();
     const countryText = countryKeyword.trim().toLowerCase();
 
     return agencies.filter((agency) => {
@@ -718,15 +714,6 @@ function AgenciesPage() {
         String(agency.agency_name || "").toLowerCase().includes(keywordText) ||
         String(primaryAccount?.username || "").toLowerCase().includes(keywordText);
 
-      const matchContact =
-        !contactText ||
-        String(agency.contact_name || "").toLowerCase().includes(contactText) ||
-        String(primaryAccount?.account_name || "").toLowerCase().includes(contactText);
-
-      const matchLicense =
-        !licenseText ||
-        String(agency.business_license_no || "").toLowerCase().includes(licenseText);
-
       const matchCountry =
         !countryText ||
         String(agency.country || "").toLowerCase().includes(countryText);
@@ -734,9 +721,9 @@ function AgenciesPage() {
       const matchStatus =
         statusFilter === "all" || statusMeta.label === statusFilter;
 
-      return matchKeyword && matchContact && matchLicense && matchCountry && matchStatus;
+      return matchKeyword && matchCountry && matchStatus;
     });
-  }, [agencies, keyword, contactKeyword, licenseKeyword, countryKeyword, statusFilter]);
+  }, [agencies, keyword, countryKeyword, statusFilter]);
 
   const handleCreateChange = (field, value) => {
     setCreateForm((prev) => ({
@@ -1366,7 +1353,13 @@ const handleExportAgenciesExcel = async () => {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h3 className="text-lg font-bold text-slate-900">{t.filtersTitle}</h3>
-            <p className="mt-1 text-sm text-slate-500">{t.filtersDesc}</p>
+            <p className="mt-1 text-sm text-slate-500">
+              {language === "en"
+                ? "View agency accounts by agency name, country, and review status"
+                : language === "ko"
+                ? "기관명, 국가, 심사 상태로 기관 계정을 확인합니다"
+                : "按机构名称、国家和审核状态查看机构账号"}
+            </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
@@ -1392,7 +1385,7 @@ const handleExportAgenciesExcel = async () => {
 </div>
         </div>
 
-                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
               {t.filters.keyword}
@@ -1402,30 +1395,6 @@ const handleExportAgenciesExcel = async () => {
               onChange={(e) => setKeyword(e.target.value)}
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               placeholder={t.filters.keywordPlaceholder}
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              {t.filters.contact}
-            </label>
-            <input
-              value={contactKeyword}
-              onChange={(e) => setContactKeyword(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-              placeholder={t.filters.contactPlaceholder}
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              {t.filters.license}
-            </label>
-            <input
-              value={licenseKeyword}
-              onChange={(e) => setLicenseKeyword(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-              placeholder={t.filters.licensePlaceholder}
             />
           </div>
 
