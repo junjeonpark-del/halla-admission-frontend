@@ -2482,6 +2482,79 @@ function ApplicationReviewPage() {
       background: #ffffff !important;
     }
 
+    .personal-info-consent-form .p-4 {
+      padding: 10px !important;
+    }
+
+    .personal-info-consent-form .py-5 {
+      padding-top: 10px !important;
+      padding-bottom: 10px !important;
+    }
+
+    .personal-info-consent-form .py-4 {
+      padding-top: 8px !important;
+      padding-bottom: 8px !important;
+    }
+
+    .personal-info-consent-form .py-3 {
+      padding-top: 6px !important;
+      padding-bottom: 6px !important;
+    }
+
+    .personal-info-consent-form .py-2 {
+      padding-top: 4px !important;
+      padding-bottom: 4px !important;
+    }
+
+    .personal-info-consent-form .px-4,
+    .personal-info-consent-form .px-3 {
+      padding-left: 8px !important;
+      padding-right: 8px !important;
+    }
+
+    .personal-info-consent-form .mt-8 {
+      margin-top: 10px !important;
+    }
+
+    .personal-info-consent-form .mt-5 {
+      margin-top: 8px !important;
+    }
+
+    .personal-info-consent-form .mt-4 {
+      margin-top: 6px !important;
+    }
+
+    .personal-info-consent-form .mt-2 {
+      margin-top: 4px !important;
+    }
+
+    .personal-info-consent-form .text-\\[20px\\] {
+      font-size: 17px !important;
+      line-height: 1.2 !important;
+    }
+
+    .personal-info-consent-form .text-\\[13px\\] {
+      font-size: 11px !important;
+      line-height: 1.2 !important;
+    }
+
+    .personal-info-consent-form .text-\\[12px\\] {
+      font-size: 11px !important;
+      line-height: 1.25 !important;
+    }
+
+    .personal-info-consent-form .text-\\[11px\\] {
+      font-size: 10px !important;
+      line-height: 1.25 !important;
+    }
+
+    .personal-info-consent-form table,
+    .personal-info-consent-form tr,
+    .personal-info-consent-form td {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
+
   }
 </style>
       </head>
