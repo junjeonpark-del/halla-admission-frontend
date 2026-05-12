@@ -5,7 +5,7 @@ function CheckMark({ checked }) {
 function TableCell({ children, center = false, head = false, className = "" }) {
   return (
     <div
-      className={`border border-black px-3 py-2 text-[11px] leading-5 ${
+      className={`border border-black px-2 py-1 text-[9px] leading-[1.25] ${
         center ? "text-center" : ""
       } ${head ? "bg-[#eef3f8] font-semibold" : ""} ${className}`}
     >
@@ -125,38 +125,38 @@ export default function PersonalInfoConsentPreview({ student }) {
         <div className="personal-info-consent-form mx-auto flex flex-col items-center gap-6 bg-transparent text-black">
             {/* 第1页 */}
       <div
-        className="consent-page bg-white"
+        className="consent-page bg-white text-[9px] leading-[1.25]"
         style={{
           width: "210mm",
           height: "297mm",
-          padding: "10mm",
+          padding: "7mm",
           boxSizing: "border-box",
           overflow: "hidden",
           breakAfter: "page",
           pageBreakAfter: "always",
         }}
       >
-        <div className="border border-black px-4 py-5 text-center">
-          <div className="text-[20px] font-bold">개인정보수집·이용 제공 동의서 [1-3]</div>
-          <div className="mt-1 text-[13px]">
+        <div className="border border-black px-2 py-3 text-center">
+          <div className="text-[15px] font-bold">개인정보수집·이용 제공 동의서 [1-3]</div>
+          <div className="mt-1 text-[9px]">
             (Consent to the Collection and Use of Personal Information)
           </div>
         </div>
 
-        <div className="mt-4 border border-black px-4 py-4 text-[11px] leading-6">
+        <div className="mt-2 border border-black px-2 py-2 text-[9px] leading-1.25">
           <p>
             외국인 입학 심사 신청서 접수 및 심사 과정에서 수집된 지원자의 개인정보는 아래의 범위 내에서 처리되며,
             이 과정에서 대학은 「개인정보 보호법」 등 관련 법령에 따라 아래에 명시된 수집 항목, 목적,
             보유 및 이용 기간의 범위 내에서 이를 처리합니다.
           </p>
 
-          <p className="mt-2">
+          <p className="mt-1">
             The personal information collected in the process of admission for students with foreign nationality
             will be processed in the scope specified below and the university will collect, use, and retain such
             information based on the relevant laws, such as the Personal Information Protection Act (PIPA).
           </p>
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-2 space-y-1">
             <div>
               1. 개인정보 항목: 성명, 국적, 생년월일, 성별, 주소, 이메일, 전화번호, 학력 및 성적, 가족관계
               <br />
@@ -192,8 +192,8 @@ export default function PersonalInfoConsentPreview({ student }) {
             </div>
           </div>
 
-          <div className="mt-5">
-            <table className="w-full border-collapse text-[11px] leading-5">
+          <div className="mt-3">
+            <table className="w-full border-collapse text-[9px] leading-1.25">
               <colgroup>
                 <col style={{ width: "66%" }} />
                 <col style={{ width: "17%" }} />
@@ -201,12 +201,12 @@ export default function PersonalInfoConsentPreview({ student }) {
               </colgroup>
               <tbody>
                 <tr>
-                  <td className="border border-black bg-[#eef3f8] px-3 py-2 font-semibold">
+                  <td className="border border-black bg-[#eef3f8] px-2 py-2 font-semibold">
                     개인정보 수집·이용에 동의하십니까?
                     <br />
                     Do you agree to allow Halla University to collect and use your personal information?
                   </td>
-                  <td className="border border-black bg-[#eef3f8] px-3 py-2 align-top">
+                  <td className="border border-black bg-[#eef3f8] px-2 py-2 align-top">
                     <div className="flex items-center gap-2">
                       <CheckMark checked={agree} />
                       <span>동의함</span>
@@ -216,7 +216,7 @@ export default function PersonalInfoConsentPreview({ student }) {
                       <span>I agree</span>
                     </div>
                   </td>
-                  <td className="border border-black bg-[#eef3f8] px-3 py-2 align-top">
+                  <td className="border border-black bg-[#eef3f8] px-2 py-2 align-top">
                     <div className="flex items-center gap-2">
                       <CheckMark checked={disagree} />
                       <span>동의하지 않음</span>
@@ -228,7 +228,7 @@ export default function PersonalInfoConsentPreview({ student }) {
                   </td>
                 </tr>
                 <tr>
-                  <td colSpan={3} className="border border-black px-3 py-2">
+                  <td colSpan={3} className="border border-black px-2 py-2">
                     개인정보 수집 및 이용에 동의하지 않을 경우, 외국인 입학 심사 신청서를 접수할 수 없습니다.
                     <br />
                     If you disagree, we cannot process your application for admission of students with foreign nationality.
@@ -238,7 +238,7 @@ export default function PersonalInfoConsentPreview({ student }) {
             </table>
           </div>
 
-          <div className="mt-5 space-y-3">
+          <div className="mt-3 space-y-1">
             <div>
               6. &lt;외국인 지원자 화상 면접 녹화에 대한 안내&gt;
               <br />
@@ -272,37 +272,37 @@ export default function PersonalInfoConsentPreview({ student }) {
 
             {/* 第2页 */}
       <div
-        className="consent-page bg-white"
+        className="consent-page bg-white text-[9px] leading-[1.25]"
         style={{
           width: "210mm",
           height: "297mm",
-          padding: "10mm",
+          padding: "7mm",
           boxSizing: "border-box",
           overflow: "hidden",
         }}
       >
         {/* 8 */}
         <div className="border border-black">
-          <div className="border-b border-black bg-[#eef3f8] px-3 py-2 text-[12px] font-bold leading-6">
+          <div className="border-b border-black bg-[#eef3f8] px-2 py-2 text-[9px] font-bold leading-1.25">
             8. &lt;개인정보 처리 위탁&gt;
             <br />
             8. &lt;Personal information handling consignment&gt;
           </div>
 
-          <div className="border-b border-black px-3 py-3 text-[11px] leading-6">
+          <div className="border-b border-black px-2 py-2 text-[9px] leading-1.25">
             <div>
               외국인 입학 심사 신청서 접수 및 심사를 위해, 필요시 관련 법령에 따라 개인정보 처리를 위탁할 수 있습니다.
               위탁 계약을 체결할 때는 개인정보 보호 및 관리 감독에 관한 의무 사항을 명시합니다.
             </div>
 
-            <div className="mt-2">
+            <div className="mt-1">
               Halla University consigns the collected personal information to a third party if it is legally required
               to process the admission of students with foreign nationality. When personal information is consigned,
               the university specifies the regulations needed to safeguard such personal information.
             </div>
           </div>
 
-          <table className="w-full border-collapse text-[11px] leading-5">
+          <table className="w-full border-collapse text-[9px] leading-1.25">
             <colgroup>
               <col style={{ width: "150px" }} />
               <col style={{ width: "165px" }} />
@@ -311,22 +311,22 @@ export default function PersonalInfoConsentPreview({ student }) {
             </colgroup>
             <tbody>
               <tr>
-                <td className="border border-black bg-[#eef3f8] px-3 py-2 text-center font-semibold">
+                <td className="border border-black bg-[#eef3f8] px-2 py-2 text-center font-semibold">
                   위탁기관
                   <br />
                   Consignment agency
                 </td>
-                <td className="border border-black bg-[#eef3f8] px-3 py-2 text-center font-semibold">
+                <td className="border border-black bg-[#eef3f8] px-2 py-2 text-center font-semibold">
                   위탁업무범위
                   <br />
                   Details of consignment
                 </td>
-                <td className="border border-black bg-[#eef3f8] px-3 py-2 text-center font-semibold">
+                <td className="border border-black bg-[#eef3f8] px-2 py-2 text-center font-semibold">
                   위탁 업무 처리 개인정보 항목
                   <br />
                   Types of personal information for consignment
                 </td>
-                <td className="border border-black bg-[#eef3f8] px-3 py-2 text-center font-semibold">
+                <td className="border border-black bg-[#eef3f8] px-2 py-2 text-center font-semibold">
                   개인정보 보유 및 이용 기간
                   <br />
                   Personal Information retention period
@@ -334,22 +334,22 @@ export default function PersonalInfoConsentPreview({ student }) {
               </tr>
 
               <tr>
-                <td className="border border-black px-3 py-3 text-center">
+                <td className="border border-black px-2 py-2 text-center">
                   한라대학교
                   <br />
                   Halla University
                 </td>
-                <td className="border border-black px-3 py-3 text-center">
+                <td className="border border-black px-2 py-2 text-center">
                   입학서류
                   <br />
                   Documents collected in the process of admission
                 </td>
-                <td className="border border-black px-3 py-3 text-center">
+                <td className="border border-black px-2 py-2 text-center">
                   개인정보 수집 항목 동일
                   <br />
                   Same as the personal information stated above
                 </td>
-                <td className="border border-black px-3 py-3 text-center">
+                <td className="border border-black px-2 py-2 text-center">
                   준영구
                   <br />
                   semi-permanent
@@ -360,19 +360,19 @@ export default function PersonalInfoConsentPreview({ student }) {
         </div>
 
         {/* 9 */}
-        <div className="mt-4 border border-black">
-          <div className="border-b border-black bg-[#eef3f8] px-3 py-2 text-[12px] font-bold leading-6">
+        <div className="mt-2 border border-black">
+          <div className="border-b border-black bg-[#eef3f8] px-2 py-2 text-[9px] font-bold leading-1.25">
             9. &lt;개인정보의 제 3자 제공 동의&gt;
             <br />
             9. &lt;Disclosure of personal information to a third party&gt;
           </div>
 
-          <div className="border-b border-black px-3 py-3 text-[11px] leading-6">
+          <div className="border-b border-black px-2 py-2 text-[9px] leading-1.25">
             <div>제 3자에게 이하의 개인 정보를 제공합니다.</div>
-            <div className="mt-2">Halla University provides personal information to a third party.</div>
+            <div className="mt-1">Halla University provides personal information to a third party.</div>
           </div>
 
-          <table className="w-full border-collapse text-[11px] leading-5">
+          <table className="w-full border-collapse text-[9px] leading-1.25">
             <colgroup>
               <col style={{ width: "150px" }} />
               <col style={{ width: "180px" }} />
@@ -381,22 +381,22 @@ export default function PersonalInfoConsentPreview({ student }) {
             </colgroup>
             <tbody>
               <tr>
-                <td className="border border-black bg-[#eef3f8] px-3 py-2 text-center font-semibold">
+                <td className="border border-black bg-[#eef3f8] px-2 py-2 text-center font-semibold">
                   제공받는 자
                   <br />
                   Recipient
                 </td>
-                <td className="border border-black bg-[#eef3f8] px-3 py-2 text-center font-semibold">
+                <td className="border border-black bg-[#eef3f8] px-2 py-2 text-center font-semibold">
                   개인 정보 사용하는 목적
                   <br />
                   Recipient's purposes of using personal information
                 </td>
-                <td className="border border-black bg-[#eef3f8] px-3 py-2 text-center font-semibold">
+                <td className="border border-black bg-[#eef3f8] px-2 py-2 text-center font-semibold">
                   제공하는 개인정보 항목
                   <br />
                   Provided personal information
                 </td>
-                <td className="border border-black bg-[#eef3f8] px-3 py-2 text-center font-semibold">
+                <td className="border border-black bg-[#eef3f8] px-2 py-2 text-center font-semibold">
                   제공된 개인정보 보유 및 이용 기간
                   <br />
                   Recipient's retention and use period
@@ -404,23 +404,23 @@ export default function PersonalInfoConsentPreview({ student }) {
               </tr>
 
               <tr>
-                <td className="border border-black px-3 py-3 text-center">
+                <td className="border border-black px-2 py-2 text-center">
                   한국 법무부 출입국외국인정책본부
                   <br />
                   Ministry of Justice, Policy Agency for Foreigner Entry and Exit
                 </td>
-                <td className="border border-black px-3 py-3 text-center">
+                <td className="border border-black px-2 py-2 text-center">
                   표준 입학 허가서 발급 및 비자 발급 업무
                   <br />
                   Issuance of standard admissions letter and other visas
                 </td>
-                <td className="border border-black px-3 py-3 text-center">
+                <td className="border border-black px-2 py-2 text-center">
                   이름, 생년월일, 외국인등록번호, 성별, 여권번호, 국적, 메일, 입학유형 등
                   <br />
                   Name, birthdate, Alien Registration Number, gender, passport number, nationality, e-mail,
                   admission type, etc.
                 </td>
-                <td className="border border-black px-3 py-3 text-center">
+                <td className="border border-black px-2 py-2 text-center">
                   처리 목적이 달성되었을 때
                   <br />
                   Until the purposes are fulfilled
@@ -431,8 +431,8 @@ export default function PersonalInfoConsentPreview({ student }) {
         </div>
 
         {/* 확인 */}
-        <div className="mt-5 border border-black">
-          <div className="flex items-center justify-between border-b border-black bg-[#eef3f8] px-3 py-3 text-[11px] leading-5">
+        <div className="mt-3 border border-black">
+          <div className="flex items-center justify-between border-b border-black bg-[#eef3f8] px-2 py-2 text-[9px] leading-1.25">
             <div>
               위 내용 확인하셨습니까?
               <br />
@@ -445,12 +445,12 @@ export default function PersonalInfoConsentPreview({ student }) {
             </div>
           </div>
 
-          <div className="px-3 py-8 text-[11px] leading-6">
+          <div className="px-2 py-4 text-[9px] leading-1.25">
                         <div>
               {dateParts.year}년(Year) {dateParts.month}월(Month) {dateParts.day}일(Day)
             </div>
 
-                        <div className="mt-8 flex items-center gap-2">
+                        <div className="mt-4 flex items-center gap-2">
               <span>신청인(Applicant) ：</span>
 
               <div className="flex h-[36px] min-w-[150px] items-center border-b border-black">
