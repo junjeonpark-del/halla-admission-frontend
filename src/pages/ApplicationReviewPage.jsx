@@ -2428,7 +2428,7 @@ function ApplicationReviewPage() {
     .school-application-form {
       width: 100%;
       margin: 0 auto;
-      zoom: 0.96;
+      zoom: 1.00;
     }
 
     .school-application-form * {
