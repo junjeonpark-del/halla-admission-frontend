@@ -85,13 +85,24 @@ export function signSession(payload) {
 export function verifySession(token) {
   if (!token || !token.includes(".")) return null;
 
-  const [body, sig] = token.split(".");
+  const parts = String(token).split(".");
+  if (parts.length !== 2) return null;
+
+  const [body, sig] = parts;
+
+  if (!body || !sig) return null;
+
   const expected = crypto
     .createHmac("sha256", AGENCY_SESSION_SECRET)
     .update(body)
     .digest("base64url");
 
-  if (sig !== expected) return null;
+  const sigBuffer = Buffer.from(sig);
+  const expectedBuffer = Buffer.from(expected);
+
+  if (sigBuffer.length !== expectedBuffer.length) return null;
+
+  if (!crypto.timingSafeEqual(sigBuffer, expectedBuffer)) return null;
 
   try {
     const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));

@@ -928,12 +928,18 @@ applicationType: getApplicationTypeLabel(student),
             <label className="mb-2 block text-sm font-medium text-slate-700">
               {t.overallLabel}
             </label>
-            <select
+                        <select
               value={overallFilter}
               onChange={(e) => setOverallFilter(e.target.value)}
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
             >
               <option value="all">{t.allStatus}</option>
+              <option value={language === "en" ? "Approved" : language === "ko" ? "승인됨" : "已通过"}>
+                {language === "en" ? "Approved" : language === "ko" ? "승인됨" : "已通过"}
+              </option>
+              <option value={language === "en" ? "Rejected" : language === "ko" ? "거절됨" : "已拒绝"}>
+                {language === "en" ? "Rejected" : language === "ko" ? "거절됨" : "已拒绝"}
+              </option>
               <option value={t.overall.complete}>{t.overall.complete}</option>
               <option value={t.overall.needSupplement}>{t.overall.needSupplement}</option>
               <option value={t.overall.pending}>{t.overall.pending}</option>
