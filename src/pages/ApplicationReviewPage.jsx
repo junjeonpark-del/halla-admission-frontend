@@ -2431,7 +2431,7 @@ function ApplicationReviewPage() {
 }
 
 .print-mode-single .school-application-form {
-  zoom: 0.92;
+  zoom: 0.94;
 }
 
 .print-mode-package .school-application-form {
