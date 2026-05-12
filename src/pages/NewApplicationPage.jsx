@@ -1031,6 +1031,8 @@ const [passportCheckWarnings, setPassportCheckWarnings] = useState([]);
 const sessionLoading = !agencySession;
 const [loadedUpdatedAt, setLoadedUpdatedAt] = useState("");
 const [loadedApplicationStatus, setLoadedApplicationStatus] = useState("draft");
+const [loadedAgencyAccountId, setLoadedAgencyAccountId] = useState("");
+const [loadedAgencyUnitId, setLoadedAgencyUnitId] = useState("");
 const [, setLockChecked] = useState(false);
 const LOCK_TIMEOUT_MINUTES = 20;
 const studentFillLink = studentFillToken
@@ -1320,7 +1322,9 @@ if (lockError) throw lockError;
       setStudentFillToken(data.student_fill_token || "");
       setStudentFillEnabled(data.student_fill_enabled !== false);
       setLoadedUpdatedAt(lockedRow?.updated_at || data.updated_at || "");
-      setLoadedApplicationStatus(String(data.status || "draft").toLowerCase());
+setLoadedApplicationStatus(String(data.status || "draft").toLowerCase());
+setLoadedAgencyAccountId(data.agency_account_id || "");
+setLoadedAgencyUnitId(data.agency_unit_id || "");
 
       const loadedIntakeLabel =
         intakeRow?.title && String(intakeRow.title).trim() !== ""
@@ -2134,13 +2138,21 @@ const buildApplicationPayload = (statusValue = "draft", publicIdValue) => {
 const payloadIntakeId = shouldBindIntake ? selectedIntakeId || null : null;
 const payloadIntakeName = shouldBindIntake ? selectedIntakeLabel || null : null;
 
+const payloadAgencyAccountId = applicationId
+  ? loadedAgencyAccountId || agencySession?.agency_account_id || null
+  : agencySession?.agency_account_id || null;
+
+const payloadAgencyUnitId = applicationId
+  ? loadedAgencyUnitId || agencySession?.agency_unit_id || null
+  : agencySession?.agency_unit_id || null;
+
   if (isMaterialOnlyMode && applicationId) {
     return {
       ...(publicIdValue ? { public_id: publicIdValue } : {}),
       status: finalStatusValue,
       agency_id: agencySession?.agency_id || null,
-      agency_account_id: agencySession?.agency_account_id || null,
-      agency_unit_id: agencySession?.agency_unit_id || null,
+      agency_account_id: payloadAgencyAccountId,
+agency_unit_id: payloadAgencyUnitId,
             intake_id: payloadIntakeId,
       intake_name: payloadIntakeName,
 
@@ -2206,8 +2218,8 @@ const payloadIntakeName = shouldBindIntake ? selectedIntakeLabel || null : null;
     ...(publicIdValue ? { public_id: publicIdValue } : {}),
     status: finalStatusValue,
     agency_id: agencySession?.agency_id || null,
-agency_account_id: agencySession?.agency_account_id || null,
-agency_unit_id: agencySession?.agency_unit_id || null,
+agency_account_id: payloadAgencyAccountId,
+agency_unit_id: payloadAgencyUnitId,
     student_fill_enabled: true,
         intake_id: payloadIntakeId,
     intake_name: payloadIntakeName,
