@@ -126,7 +126,7 @@ function yesNo(value) {
 
 function LogoBox() {
   return (
-    <div className="flex h-[95px] items-center justify-center border border-black bg-white p-2">
+    <div className="flex h-[95px] items-center justify-center bg-white p-2">
       <img
         src="/halla-logo.png"
         alt="Halla University"
