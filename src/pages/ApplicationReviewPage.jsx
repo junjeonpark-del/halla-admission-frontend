@@ -2318,7 +2318,7 @@ function ApplicationReviewPage() {
     }
   };
 
-  const buildPrintDocument = (title, contentBlocks = []) => {
+  const buildPrintDocument = (title, contentBlocks = [], printMode = "single") => {
     const styleTags = Array.from(
       document.querySelectorAll('link[rel="stylesheet"], style')
     )
@@ -2426,10 +2426,17 @@ function ApplicationReviewPage() {
     }
 
     .school-application-form {
-      width: 100%;
-      margin: 0 auto;
-      zoom: 0.98;
-    }
+  width: 100%;
+  margin: 0 auto;
+}
+
+.print-mode-single .school-application-form {
+  zoom: 0.96;
+}
+
+.print-mode-package .school-application-form {
+  zoom: 0.98;
+}
 
     .school-application-form * {
       box-sizing: border-box;
@@ -2569,7 +2576,7 @@ function ApplicationReviewPage() {
   }
 </style>
       </head>
-      <body>
+      <body class="print-mode-${printMode}">
         <div class="print-page">
           ${contentBlocks
             .map((block) => `<div class="print-block">${block}</div>`)
@@ -2610,7 +2617,7 @@ function ApplicationReviewPage() {
 
       printWindow.document.open();
       printWindow.document.write(
-        buildPrintDocument(buildSingleDownloadBaseName(item), [html])
+        buildPrintDocument(buildSingleDownloadBaseName(item), [html], "single")
       );
 
       printWindow.document.close();
@@ -2652,7 +2659,7 @@ function ApplicationReviewPage() {
 
       printWindow.document.open();
       printWindow.document.write(
-        buildPrintDocument(buildFullPackageDownloadTitle(), contentBlocks)
+        buildPrintDocument(buildFullPackageDownloadTitle(), contentBlocks, "package")
       );
 
       printWindow.document.close();
