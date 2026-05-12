@@ -122,9 +122,20 @@ export default function PersonalInfoConsentPreview({ student }) {
   const autoSignatureImage = buildAutoSignature(fullName);
 
   return (
-    <div className="personal-info-consent-form mx-auto w-full max-w-[980px] space-y-8 bg-[#f3f3f3] p-4 text-black">
-      {/* 第1页 */}
-      <div className="bg-white p-4">
+        <div className="personal-info-consent-form mx-auto flex flex-col items-center gap-6 bg-transparent text-black">
+            {/* 第1页 */}
+      <div
+        className="consent-page bg-white"
+        style={{
+          width: "210mm",
+          height: "297mm",
+          padding: "10mm",
+          boxSizing: "border-box",
+          overflow: "hidden",
+          breakAfter: "page",
+          pageBreakAfter: "always",
+        }}
+      >
         <div className="border border-black px-4 py-5 text-center">
           <div className="text-[20px] font-bold">개인정보수집·이용 제공 동의서 [1-3]</div>
           <div className="mt-1 text-[13px]">
@@ -259,8 +270,17 @@ export default function PersonalInfoConsentPreview({ student }) {
         </div>
       </div>
 
-      {/* 第2页 */}
-      <div className="bg-white p-4">
+            {/* 第2页 */}
+      <div
+        className="consent-page bg-white"
+        style={{
+          width: "210mm",
+          height: "297mm",
+          padding: "10mm",
+          boxSizing: "border-box",
+          overflow: "hidden",
+        }}
+      >
         {/* 8 */}
         <div className="border border-black">
           <div className="border-b border-black bg-[#eef3f8] px-3 py-2 text-[12px] font-bold leading-6">
