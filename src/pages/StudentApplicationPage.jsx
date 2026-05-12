@@ -1319,10 +1319,11 @@ student_form_status: submitMode === "submitted" ? "submitted" : "draft",
       const payload = buildPayload(submitMode);
 
       const { error } = await supabase
-        .from("applications")
-        .update(payload)
-        .eq("id", applicationId)
-        .eq("student_fill_enabled", true);
+  .from("applications")
+  .update(payload)
+  .eq("id", applicationId)
+  .eq("student_fill_token", token)
+  .eq("student_fill_enabled", true);
 
       if (error) throw error;
 
