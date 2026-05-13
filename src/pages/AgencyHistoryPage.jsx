@@ -243,10 +243,10 @@ function TreeButton({ active, children, onClick, className = "" }) {
       type="button"
       onClick={onClick}
       className={[
-        "w-full rounded-xl px-3 py-2 text-left text-sm transition",
+        "flex w-full min-w-0 items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition",
         active
-          ? "bg-emerald-50 font-semibold text-emerald-700"
-          : "text-slate-700 hover:bg-slate-100",
+          ? "bg-emerald-600 font-semibold text-white shadow-sm"
+          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
         className,
       ].join(" ")}
     >
@@ -1396,194 +1396,240 @@ const toggleMonth = (year, applicationType, month) => {
 
   return (
         <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-slate-900">{t.sidebarTitle}</h3>
-            <p className="mt-1 text-sm text-slate-500">{t.sidebarDesc}</p>
-          </div>
-
-          <Link
-            to="/agency/applications"
-            className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200"
-          >
-            {t.back}
-          </Link>
-        </div>
-
-        <div className="mt-5">
-          <TreeButton
-            active={selectedNode.type === "all"}
-            onClick={() => setSelectedNode({ type: "all" })}
-          >
-            {t.allApplications}
-          </TreeButton>
-        </div>
-
-        <div className="mt-4 space-y-3">
-          {loading ? (
-            <div className="text-sm text-slate-500">{t.loadingIntakes}</div>
-          ) : intakeTree.length === 0 ? (
-            <div className="text-sm text-slate-500">{t.noIntakes}</div>
-          ) : (
-            intakeTree.map((yearItem) => (
-              <div key={yearItem.year} className="rounded-2xl border border-slate-200 p-3">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => toggleYear(yearItem.year)}
-                    className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200"
-                  >
-                    {expandedYears[yearItem.year] ? "−" : "+"}
-                  </button>
-
-                  <TreeButton
-                    active={
-                      selectedNode.type === "year" &&
-                      selectedNode.year === yearItem.year
-                    }
-                    onClick={() =>
-                      setSelectedNode({
-                        type: "year",
-                        year: yearItem.year,
-                      })
-                    }
-                    className="px-2 py-1.5"
-                  >
-                    {yearItem.year}{language === "en" ? "" : t.yearSuffix}
-                  </TreeButton>
-                </div>
-
-                {expandedYears[yearItem.year] ? (
-  <div className="mt-3 space-y-3 pl-4">
-    {yearItem.types.map((typeItem) => {
-      const typeKey = `${yearItem.year}-${typeItem.applicationType}`;
-
-      return (
-        <div key={typeKey}>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => toggleType(yearItem.year, typeItem.applicationType)}
-              className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-md bg-slate-100 text-xs text-slate-700 hover:bg-slate-200"
-            >
-              {expandedTypes[typeKey] ? "-" : "+"}
-            </button>
-
-            <TreeButton
-              active={
-                selectedNode.type === "applicationType" &&
-                selectedNode.year === yearItem.year &&
-                selectedNode.applicationType === typeItem.applicationType
-              }
-              onClick={() =>
-                setSelectedNode({
-                  type: "applicationType",
-                  year: yearItem.year,
-                  applicationType: typeItem.applicationType,
-                  applicationTypeLabel: typeItem.label,
-                })
-              }
-              className="px-2 py-1.5 text-sm"
-            >
-              {typeItem.label}
-            </TreeButton>
-          </div>
-
-          {expandedTypes[typeKey] ? (
-            <div className="mt-2 space-y-3 pl-4">
-              {typeItem.months.map((monthItem) => {
-                const monthKey = `${yearItem.year}-${typeItem.applicationType}-${monthItem.month}`;
-
-                return (
-                  <div key={monthKey}>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          toggleMonth(yearItem.year, typeItem.applicationType, monthItem.month)
-                        }
-                        className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-md bg-slate-100 text-xs text-slate-700 hover:bg-slate-200"
-                      >
-                        {expandedMonths[monthKey] ? "-" : "+"}
-                      </button>
-
-                      <TreeButton
-                        active={
-                          selectedNode.type === "month" &&
-                          selectedNode.year === yearItem.year &&
-                          selectedNode.applicationType === typeItem.applicationType &&
-                          selectedNode.month === monthItem.month
-                        }
-                        onClick={() =>
-                          setSelectedNode({
-                            type: "month",
-                            year: yearItem.year,
-                            applicationType: typeItem.applicationType,
-                            applicationTypeLabel: typeItem.label,
-                            month: monthItem.month,
-                            monthLabel: monthItem.label,
-                          })
-                        }
-                        className="px-2 py-1.5 text-sm"
-                      >
-                        {monthItem.label}
-                      </TreeButton>
-                    </div>
-
-                    {expandedMonths[monthKey] ? (
-                      <div className="mt-2 space-y-2 pl-4">
-                        {monthItem.intakes.map((intake) => (
-                          <button
-                            key={intake.id}
-                            type="button"
-                            onClick={() =>
-                              setSelectedNode({
-                                type: "intake",
-                                year: yearItem.year,
-                                applicationType: typeItem.applicationType,
-                                applicationTypeLabel: typeItem.label,
-                                month: monthItem.month,
-                                monthLabel: monthItem.label,
-                                intakeId: intake.id,
-                                intakeLabel: getIntakeLabel(intake),
-                              })
-                            }
-                            className={[
-                              "w-full cursor-pointer rounded-xl border px-3 py-3 text-left transition",
-                              selectedNode.type === "intake" &&
-                              selectedNode.intakeId === intake.id
-                                ? "border-emerald-300 bg-emerald-50"
-                                : "border-slate-200 hover:bg-slate-50",
-                            ].join(" ")}
-                          >
-                            <div className="text-sm font-semibold text-slate-800">
-                              {getIntakeLabel(intake)}
-                            </div>
-                            <div className="mt-1 text-xs text-slate-500">
-                              {formatDate(intake.open_at)} ~ {formatDate(intake.close_at)}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
-      );
-    })}
-  </div>
-) : null}
-              </div>
-            ))
-          )}
-        </div>
+  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+      <div>
+        <h3 className="text-lg font-bold text-slate-900">{t.sidebarTitle}</h3>
+        <p className="mt-1 text-sm text-slate-500">{t.sidebarDesc}</p>
       </div>
 
-            <div className="min-w-0 space-y-6">
+      <Link
+        to="/agency/applications"
+        className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+      >
+        {t.back}
+      </Link>
+    </div>
+
+    <div className="max-h-[720px] overflow-y-auto p-4">
+      <TreeButton
+        active={selectedNode.type === "all"}
+        onClick={() => setSelectedNode({ type: "all" })}
+      >
+        <span>{t.allApplications}</span>
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+          {historyIntakes.length}
+        </span>
+      </TreeButton>
+
+      <div className="mt-4">
+        {loading ? (
+          <div className="rounded-xl bg-slate-50 px-3 py-4 text-sm text-slate-500">
+            {t.loadingIntakes}
+          </div>
+        ) : intakeTree.length === 0 ? (
+          <div className="rounded-xl bg-slate-50 px-3 py-4 text-sm text-slate-500">
+            {t.noIntakes}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {intakeTree.map((yearItem) => {
+              const yearCount = yearItem.types.reduce(
+                (sum, typeItem) =>
+                  sum +
+                  typeItem.months.reduce(
+                    (monthSum, monthItem) => monthSum + monthItem.intakes.length,
+                    0
+                  ),
+                0
+              );
+
+              return (
+                <div key={yearItem.year} className="space-y-1">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => toggleYear(yearItem.year)}
+                      className="h-8 w-8 rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      {expandedYears[yearItem.year] ? "▾" : "▸"}
+                    </button>
+
+                    <TreeButton
+                      active={
+                        selectedNode.type === "year" &&
+                        selectedNode.year === yearItem.year
+                      }
+                      onClick={() =>
+                        setSelectedNode({
+                          type: "year",
+                          year: yearItem.year,
+                        })
+                      }
+                    >
+                      <span>
+                        {yearItem.year}
+                        {language === "en" ? "" : t.yearSuffix}
+                      </span>
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                        {yearCount}
+                      </span>
+                    </TreeButton>
+                  </div>
+
+                  {expandedYears[yearItem.year] ? (
+                    <div className="ml-4 space-y-1 border-l border-slate-200 pl-3">
+                      {yearItem.types.map((typeItem) => {
+                        const typeKey = `${yearItem.year}-${typeItem.applicationType}`;
+                        const typeCount = typeItem.months.reduce(
+                          (sum, monthItem) => sum + monthItem.intakes.length,
+                          0
+                        );
+
+                        return (
+                          <div key={typeKey} className="space-y-1">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  toggleType(yearItem.year, typeItem.applicationType)
+                                }
+                                className="h-8 w-8 rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                              >
+                                {expandedTypes[typeKey] ? "▾" : "▸"}
+                              </button>
+
+                              <TreeButton
+                                active={
+                                  selectedNode.type === "applicationType" &&
+                                  selectedNode.year === yearItem.year &&
+                                  selectedNode.applicationType ===
+                                    typeItem.applicationType
+                                }
+                                onClick={() =>
+                                  setSelectedNode({
+                                    type: "applicationType",
+                                    year: yearItem.year,
+                                    applicationType: typeItem.applicationType,
+                                    applicationTypeLabel: typeItem.label,
+                                  })
+                                }
+                              >
+                                <span>{typeItem.label}</span>
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                                  {typeCount}
+                                </span>
+                              </TreeButton>
+                            </div>
+
+                            {expandedTypes[typeKey] ? (
+                              <div className="ml-4 space-y-1 border-l border-slate-100 pl-3">
+                                {typeItem.months.map((monthItem) => {
+                                  const monthKey = `${yearItem.year}-${typeItem.applicationType}-${monthItem.month}`;
+
+                                  return (
+                                    <div key={monthKey} className="space-y-1">
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            toggleMonth(
+                                              yearItem.year,
+                                              typeItem.applicationType,
+                                              monthItem.month
+                                            )
+                                          }
+                                          className="h-8 w-8 rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                                        >
+                                          {expandedMonths[monthKey] ? "▾" : "▸"}
+                                        </button>
+
+                                        <TreeButton
+                                          active={
+                                            selectedNode.type === "month" &&
+                                            selectedNode.year === yearItem.year &&
+                                            selectedNode.applicationType ===
+                                              typeItem.applicationType &&
+                                            selectedNode.month === monthItem.month
+                                          }
+                                          onClick={() =>
+                                            setSelectedNode({
+                                              type: "month",
+                                              year: yearItem.year,
+                                              applicationType:
+                                                typeItem.applicationType,
+                                              applicationTypeLabel: typeItem.label,
+                                              month: monthItem.month,
+                                              monthLabel: monthItem.label,
+                                            })
+                                          }
+                                        >
+                                          <span>{monthItem.label}</span>
+                                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                                            {monthItem.intakes.length}
+                                          </span>
+                                        </TreeButton>
+                                      </div>
+
+                                      {expandedMonths[monthKey] ? (
+                                        <div className="ml-4 space-y-1 border-l border-slate-100 pl-3">
+                                          {monthItem.intakes.map((intake) => (
+                                            <TreeButton
+                                              key={intake.id}
+                                              active={
+                                                selectedNode.type === "intake" &&
+                                                selectedNode.intakeId === intake.id
+                                              }
+                                              onClick={() =>
+                                                setSelectedNode({
+                                                  type: "intake",
+                                                  year: yearItem.year,
+                                                  applicationType:
+                                                    typeItem.applicationType,
+                                                  applicationTypeLabel:
+                                                    typeItem.label,
+                                                  month: monthItem.month,
+                                                  monthLabel: monthItem.label,
+                                                  intakeId: intake.id,
+                                                  intakeLabel:
+                                                    getIntakeLabel(intake),
+                                                })
+                                              }
+                                              className="py-2.5"
+                                            >
+                                              <span className="min-w-0">
+                                                <span className="block truncate">
+                                                  {getIntakeLabel(intake)}
+                                                </span>
+                                                <span className="mt-0.5 block truncate text-xs font-normal opacity-70">
+                                                  {formatDate(intake.open_at)} ~{" "}
+                                                  {formatDate(intake.close_at)}
+                                                </span>
+                                              </span>
+                                            </TreeButton>
+                                          ))}
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+
+            <div className="min-w-0 space-y-6">         
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
