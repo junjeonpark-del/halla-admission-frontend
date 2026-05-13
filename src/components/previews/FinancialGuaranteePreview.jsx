@@ -111,12 +111,13 @@ export default function FinancialGuaranteePreview({ student }) {
       <div className="bg-white p-4">
         {/* 顶部 */}
         <div className="flex items-start gap-6">
-          {/* 如果你已有学校 logo，就把下面这个方框替换成 img */}
-          <div className="flex h-[88px] w-[88px] shrink-0 items-center justify-center border border-black text-center text-[12px] font-bold leading-4">
-            HALLA
-            <br />
-            UNIVERSITY
-          </div>
+          <div className="flex h-[88px] w-[88px] shrink-0 items-center justify-center bg-white">
+  <img
+    src="/halla-logo.png"
+    alt="Halla University"
+    className="max-h-full max-w-full object-contain"
+  />
+</div>
 
           <div className="pt-2">
             <div className="text-[24px] font-semibold leading-8">
