@@ -936,6 +936,46 @@ const historicalApplications = useMemo(() => {
   });
 }, [applications]);
 
+function countHistoricalApplicationsForNode(node) {
+  return historicalApplications.filter((item) => {
+    if (node.type === "all") return true;
+
+    if (node.type === "year") {
+      return getIntakeYear(item) === node.year;
+    }
+
+    if (node.type === "applicationType") {
+      return (
+        getIntakeYear(item) === node.year &&
+        getApplicationType(item) === node.applicationType
+      );
+    }
+
+    if (node.type === "month") {
+      return (
+        getIntakeYear(item) === node.year &&
+        getApplicationType(item) === node.applicationType &&
+        getIntakeMonth(item) === node.month
+      );
+    }
+
+    if (node.type === "intake") {
+      if (node.intakeId && item.intake_id) {
+        return item.intake_id === node.intakeId;
+      }
+
+      return (
+        getIntakeYear(item) === node.year &&
+        getApplicationType(item) === node.applicationType &&
+        getIntakeMonth(item) === node.month &&
+        getIntakeLabel(item) === node.intakeLabel
+      );
+    }
+
+    return false;
+  }).length;
+}
+
   const fileMap = useMemo(() => getFileTypeMap(applicationFiles), [applicationFiles]);
 
   const intakeTree = useMemo(() => {
@@ -1646,7 +1686,7 @@ const formatMajorForExport = (student, applicationType) => {
       >
         <span>{t.sidebar.all}</span>
         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-          {historyIntakes.length}
+          {countHistoricalApplicationsForNode({ type: "all" })}
         </span>
       </TreeButton>
 
@@ -1701,7 +1741,10 @@ const formatMajorForExport = (student, applicationType) => {
                           : `${yearItem.year}${t.sidebar.yearSuffix}`}
                       </span>
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                        {yearCount}
+                        {countHistoricalApplicationsForNode({
+  type: "year",
+  year: yearItem.year,
+})}
                       </span>
                     </TreeButton>
                   </div>
@@ -1746,7 +1789,11 @@ const formatMajorForExport = (student, applicationType) => {
                               >
                                 <span>{typeItem.label}</span>
                                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                                  {typeCount}
+                                  {countHistoricalApplicationsForNode({
+  type: "applicationType",
+  year: yearItem.year,
+  applicationType: typeItem.applicationType,
+})}
                                 </span>
                               </TreeButton>
                             </div>
@@ -1795,7 +1842,12 @@ const formatMajorForExport = (student, applicationType) => {
                                         >
                                           <span>{monthItem.label}</span>
                                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                                            {monthItem.intakes.length}
+                                            {countHistoricalApplicationsForNode({
+  type: "month",
+  year: yearItem.year,
+  applicationType: typeItem.applicationType,
+  month: monthItem.month,
+})}
                                           </span>
                                         </TreeButton>
                                       </div>
