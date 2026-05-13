@@ -49,13 +49,23 @@ const messages = {
       accountEmail: "请输入账号邮箱",
     },
     alerts: {
-      agencyName: "请填写机构名称",
-      username: "请填写登录账号",
-      password: "请填写登录密码",
-      failed: "注册失败",
-      success: "注册成功，等待管理员审核通过后启用账号",
-      failedWithMessage: (message) => `注册失败：${message}`,
-    },
+  agencyName: "请填写机构名称",
+  country: "请填写国家",
+  contactName: "请填写联系人",
+  phone: "请填写联系电话",
+  email: "请填写机构邮箱",
+  username: "请填写登录账号",
+  password: "请填写登录密码",
+  accountName: "请填写账号姓名",
+  accountPhone: "请填写账号电话",
+  accountEmail: "请填写账号邮箱",
+  usernameLength: "登录账号长度必须为 4~20 位",
+  usernameNoChinese: "登录账号不能包含中文",
+  failed: "注册失败",
+  success: "注册成功，等待管理员审核通过后启用账号",
+  failedWithMessage: (message) => `注册失败：${message}`,
+},
+
   },
   en: {
     title: "Agency Registration",
@@ -98,13 +108,23 @@ const messages = {
       accountEmail: "Enter account email",
     },
     alerts: {
-      agencyName: "Please enter the agency name",
-      username: "Please enter the login ID",
-      password: "Please enter the login password",
-      failed: "Registration failed",
-      success: "Registration submitted. The account will be enabled after administrator approval.",
-      failedWithMessage: (message) => `Registration failed: ${message}`,
-    },
+  agencyName: "Please enter the agency name",
+  country: "Please enter the country",
+  contactName: "Please enter the contact person",
+  phone: "Please enter the phone number",
+  email: "Please enter the agency email",
+  username: "Please enter the login ID",
+  password: "Please enter the login password",
+  accountName: "Please enter the account name",
+  accountPhone: "Please enter the account phone",
+  accountEmail: "Please enter the account email",
+  usernameLength: "Login ID must be 4-20 characters",
+  usernameNoChinese: "Login ID cannot contain Chinese characters",
+  failed: "Registration failed",
+  success: "Registration submitted. The account will be enabled after administrator approval.",
+  failedWithMessage: (message) => `Registration failed: ${message}`,
+},
+
   },
   ko: {
     title: "기관 등록",
@@ -147,13 +167,23 @@ const messages = {
       accountEmail: "계정 이메일을 입력하세요",
     },
     alerts: {
-      agencyName: "기관명을 입력해 주세요",
-      username: "로그인 계정을 입력해 주세요",
-      password: "로그인 비밀번호를 입력해 주세요",
-      failed: "등록 실패",
-      success: "등록이 제출되었습니다. 관리자 승인 후 계정이 활성화됩니다.",
-      failedWithMessage: (message) => `등록 실패: ${message}`,
-    },
+  agencyName: "기관명을 입력해 주세요",
+  country: "국가를 입력해 주세요",
+  contactName: "담당자를 입력해 주세요",
+  phone: "연락처를 입력해 주세요",
+  email: "기관 이메일을 입력해 주세요",
+  username: "로그인 계정을 입력해 주세요",
+  password: "로그인 비밀번호를 입력해 주세요",
+  accountName: "계정 이름을 입력해 주세요",
+  accountPhone: "계정 연락처를 입력해 주세요",
+  accountEmail: "계정 이메일을 입력해 주세요",
+  usernameLength: "로그인 계정은 4~20자여야 합니다",
+  usernameNoChinese: "로그인 계정에는 중국어를 사용할 수 없습니다",
+  failed: "등록 실패",
+  success: "등록이 제출되었습니다. 관리자 승인 후 계정이 활성화됩니다.",
+  failedWithMessage: (message) => `등록 실패: ${message}`,
+},
+
   },
 };
 
@@ -199,11 +229,13 @@ function FormField({
   placeholder,
   type = "text",
   className = "",
+  required = false,
 }) {
   return (
     <div className={className}>
       <label className="mb-2 block text-sm font-medium text-slate-700">
         {label}
+        {required ? <span className="ml-1 text-red-500">*</span> : null}
       </label>
       <input
         type={type}
@@ -236,47 +268,68 @@ function AgencyRegisterPage() {
   };
 
   const handleSubmit = async () => {
-    try {
-      if (!form.agency_name.trim()) {
-        alert(t.alerts.agencyName);
+  try {
+    const requiredFields = [
+      [form.agency_name, t.alerts.agencyName],
+      [form.country, t.alerts.country],
+      [form.contact_name, t.alerts.contactName],
+      [form.phone, t.alerts.phone],
+      [form.email, t.alerts.email],
+      [form.username, t.alerts.username],
+      [form.password, t.alerts.password],
+      [form.account_name, t.alerts.accountName],
+      [form.account_phone, t.alerts.accountPhone],
+      [form.account_email, t.alerts.accountEmail],
+    ];
+
+    for (const [value, message] of requiredFields) {
+      if (!String(value || "").trim()) {
+        alert(message);
         return;
       }
-
-      if (!form.username.trim()) {
-        alert(t.alerts.username);
-        return;
-      }
-
-      if (!form.password.trim()) {
-        alert(t.alerts.password);
-        return;
-      }
-
-      setSubmitting(true);
-
-      const response = await fetch("/api/agency-register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || t.alerts.failed);
-      }
-
-            alert(t.alerts.success);
-      navigate("/login");
-    } catch (error) {
-      console.error("AgencyRegisterPage handleSubmit error:", error);
-      alert(t.alerts.failedWithMessage(error.message));
-    } finally {
-      setSubmitting(false);
     }
-  };
+
+    const cleanUsername = form.username.trim();
+
+    if (cleanUsername.length < 4 || cleanUsername.length > 20) {
+      alert(t.alerts.usernameLength);
+      return;
+    }
+
+    if (/[\u4e00-\u9fff]/.test(cleanUsername)) {
+      alert(t.alerts.usernameNoChinese);
+      return;
+    }
+
+    setSubmitting(true);
+
+    const response = await fetch("/api/agency-register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ...form,
+        username: cleanUsername,
+        language,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || t.alerts.failed);
+    }
+
+    alert(result.message || t.alerts.success);
+    navigate("/login");
+  } catch (error) {
+    console.error("AgencyRegisterPage handleSubmit error:", error);
+    alert(t.alerts.failedWithMessage(error.message));
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-slate-100 py-10">
@@ -322,14 +375,16 @@ function AgencyRegisterPage() {
               {t.agencyInfo}
             </h2>
             <div className="grid gap-4 md:grid-cols-2">
-                            <FormField
-                label={t.fields.agencyName}
+                <FormField
+  label={t.fields.agencyName}
+  required
                 value={form.agency_name}
                 onChange={(e) => handleChange("agency_name", e.target.value)}
                 placeholder={t.placeholders.agencyName}
               />
               <FormField
-                label={language === "en" ? "Country" : language === "ko" ? "국가" : "国家"}
+  label={language === "en" ? "Country" : language === "ko" ? "국가" : "国家"}
+  required
                 value={form.country}
                 onChange={(e) => handleChange("country", e.target.value)}
                 placeholder={language === "en" ? "Enter country" : language === "ko" ? "국가 입력" : "请输入国家"}
@@ -360,19 +415,22 @@ function AgencyRegisterPage() {
                 placeholder={t.placeholders.legalRep}
               />
               <FormField
-                label={t.fields.contactName}
+  label={t.fields.contactName}
+  required
                 value={form.contact_name}
                 onChange={(e) => handleChange("contact_name", e.target.value)}
                 placeholder={t.placeholders.contactName}
               />
               <FormField
-                label={t.fields.phone}
+  label={t.fields.phone}
+  required
                 value={form.phone}
                 onChange={(e) => handleChange("phone", e.target.value)}
                 placeholder={t.placeholders.phone}
               />
               <FormField
-                label={t.fields.email}
+  label={t.fields.email}
+  required
                 value={form.email}
                 onChange={(e) => handleChange("email", e.target.value)}
                 placeholder={t.placeholders.email}
@@ -389,26 +447,30 @@ function AgencyRegisterPage() {
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <FormField
-                label={t.fields.username}
+  label={t.fields.username}
+  required
                 value={form.username}
                 onChange={(e) => handleChange("username", e.target.value)}
                 placeholder={t.placeholders.username}
               />
               <FormField
-                label={t.fields.password}
+  label={t.fields.password}
+  required
                 type="password"
                 value={form.password}
                 onChange={(e) => handleChange("password", e.target.value)}
                 placeholder={t.placeholders.password}
               />
               <FormField
-                label={t.fields.accountName}
+  label={t.fields.accountName}
+  required
                 value={form.account_name}
                 onChange={(e) => handleChange("account_name", e.target.value)}
                 placeholder={t.placeholders.accountName}
               />
               <FormField
-                label={t.fields.accountPhone}
+  label={t.fields.accountPhone}
+  required
                 value={form.account_phone}
                 onChange={(e) => handleChange("account_phone", e.target.value)}
                 placeholder={t.placeholders.accountPhone}
@@ -416,6 +478,7 @@ function AgencyRegisterPage() {
               <FormField
                 className="md:col-span-2"
                 label={t.fields.accountEmail}
+                 required
                 value={form.account_email}
                 onChange={(e) => handleChange("account_email", e.target.value)}
                 placeholder={t.placeholders.accountEmail}

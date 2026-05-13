@@ -999,6 +999,7 @@ const handleDeleteManagedUnit = async (unit) => {
   email: createForm.email,
   agency_unit_id: createForm.agency_unit_id,
   is_active: createForm.is_active,
+  language,
 }),
       });
 
@@ -1232,6 +1233,7 @@ const handleDeleteManagedUnit = async (unit) => {
         body: JSON.stringify({
           id: passwordTarget.id,
           new_password: newPassword,
+          language,
         }),
       });
 

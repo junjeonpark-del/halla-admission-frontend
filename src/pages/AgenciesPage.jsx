@@ -741,27 +741,105 @@ function AgenciesPage() {
     let createdAgencyId = "";
 
     try {
-      if (!createForm.agency_name.trim()) {
-        alert(t.alerts.needAgencyName);
-        return;
-      }
+      const requiredFields = [
+  [createForm.agency_name, t.alerts.needAgencyName],
+  [
+    createForm.country,
+    language === "en"
+      ? "Please enter the country"
+      : language === "ko"
+      ? "국가를 입력해 주세요"
+      : "请填写国家",
+  ],
+  [
+    createForm.contact_name,
+    language === "en"
+      ? "Please enter the contact person"
+      : language === "ko"
+      ? "담당자를 입력해 주세요"
+      : "请填写联系人",
+  ],
+  [
+    createForm.phone,
+    language === "en"
+      ? "Please enter the phone number"
+      : language === "ko"
+      ? "연락처를 입력해 주세요"
+      : "请填写联系电话",
+  ],
+  [
+    createForm.email,
+    language === "en"
+      ? "Please enter the agency email"
+      : language === "ko"
+      ? "기관 이메일을 입력해 주세요"
+      : "请填写机构邮箱",
+  ],
+  [createForm.username, t.alerts.needUsername],
+  [createForm.password, t.alerts.needPassword],
+  [
+    createForm.account_name,
+    language === "en"
+      ? "Please enter the account name"
+      : language === "ko"
+      ? "계정 이름을 입력해 주세요"
+      : "请填写账号姓名",
+  ],
+  [
+    createForm.account_phone,
+    language === "en"
+      ? "Please enter the account phone"
+      : language === "ko"
+      ? "계정 연락처를 입력해 주세요"
+      : "请填写账号电话",
+  ],
+  [
+    createForm.account_email,
+    language === "en"
+      ? "Please enter the account email"
+      : language === "ko"
+      ? "계정 이메일을 입력해 주세요"
+      : "请填写账号邮箱",
+  ],
+];
 
-      if (!createForm.username.trim()) {
-        alert(t.alerts.needUsername);
-        return;
-      }
+for (const [value, message] of requiredFields) {
+  if (!String(value || "").trim()) {
+    alert(message);
+    return;
+  }
+}
 
-      if (!createForm.password.trim()) {
-        alert(t.alerts.needPassword);
-        return;
-      }
+const cleanUsername = createForm.username.trim();
 
-      setCreating(true);
+if (cleanUsername.length < 4 || cleanUsername.length > 20) {
+  alert(
+    language === "en"
+      ? "Username must be 4-20 characters"
+      : language === "ko"
+      ? "아이디는 4~20자여야 합니다"
+      : "用户名长度必须为 4~20 位"
+  );
+  return;
+}
+
+if (/[\u4e00-\u9fff]/.test(cleanUsername)) {
+  alert(
+    language === "en"
+      ? "Username cannot contain Chinese characters"
+      : language === "ko"
+      ? "아이디에는 중국어를 사용할 수 없습니다"
+      : "用户名不能包含中文"
+  );
+  return;
+}
+
+setCreating(true);
 
       const { data: existingUsernameRows, error: usernameCheckError } = await supabase
         .from("agency_accounts")
         .select("id, username")
-        .eq("username", createForm.username.trim())
+        .eq("username", cleanUsername)
         .limit(1);
 
       if (usernameCheckError) throw usernameCheckError;
@@ -814,7 +892,7 @@ function AgenciesPage() {
 
       const accountPayload = {
         agency_id: createdAgencyId,
-        username: createForm.username.trim(),
+        username: cleanUsername,
         password: createForm.password.trim(),
         account_name: createForm.account_name.trim() || null,
         phone: createForm.account_phone.trim() || null,
@@ -1940,6 +2018,7 @@ const handleExportAgenciesExcel = async () => {
                                       agency_id: detailAgency.id,
                                       account_id: account.id,
                                       new_password: newPassword.trim(),
+language,
                                     }),
                                   });
 
