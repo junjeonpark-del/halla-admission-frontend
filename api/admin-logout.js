@@ -6,10 +6,28 @@ import {
   validateAdminSession,
 } from "./_agencyAuth.js";
 
+const messages = {
+  zh: {
+    success: "已退出登录",
+    failed: "退出登录失败",
+  },
+  en: {
+    success: "Logged out",
+    failed: "Failed to log out",
+  },
+  ko: {
+    success: "로그아웃되었습니다",
+    failed: "로그아웃 실패",
+  },
+};
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return json(res, 405, { success: false, message: "Method Not Allowed" });
   }
+
+  const language = req.body?.language || "zh";
+  const text = messages[["zh", "en", "ko"].includes(language) ? language : "zh"];
 
   try {
     const session = await validateAdminSession(req);
@@ -31,12 +49,12 @@ export default async function handler(req, res) {
 
     return json(res, 200, {
       success: true,
-      message: "已退出登录",
+      message: text.success,
     });
   } catch (error) {
     return json(res, 500, {
       success: false,
-      message: error.message || "退出登录失败",
+      message: error.message || text.failed,
     });
   }
 }

@@ -230,7 +230,7 @@ function AdminLayout() {
 
     const verifySession = async () => {
       try {
-        const response = await fetch("/api/admin-session", {
+        const response = await fetch(`/api/admin-session?language=${language}`, {
           method: "GET",
           credentials: "include",
         });
@@ -308,7 +308,7 @@ function AdminLayout() {
         setLanguage,
         t,
         refreshSession: async () => {
-          const response = await fetch("/api/admin-session", {
+          const response = await fetch(`/api/admin-session?language=${language}`, {
             method: "GET",
             credentials: "include",
           });

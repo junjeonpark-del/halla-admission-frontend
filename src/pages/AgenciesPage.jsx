@@ -915,6 +915,7 @@ setCreating(true);
         credentials: "include",
         body: JSON.stringify({
           agency_id: createdAgencyId,
+          language,
         }),
       });
 
@@ -2018,7 +2019,7 @@ const handleExportAgenciesExcel = async () => {
                                       agency_id: detailAgency.id,
                                       account_id: account.id,
                                       new_password: newPassword.trim(),
-language,
+                                      language,
                                     }),
                                   });
 

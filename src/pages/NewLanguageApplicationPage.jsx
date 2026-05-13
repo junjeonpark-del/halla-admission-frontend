@@ -1983,6 +1983,7 @@ const runPassportOcrCheck = async (file) => {
         fileBase64,
         mimeType: file.type || "",
         fileName: file.name || "",
+        language,
       }),
     });
 
@@ -2501,6 +2502,7 @@ useEffect(() => {
       id: applicationId,
       agency_account_id: agencySession.agency_account_id,
       agency_unit_id: agencySession.agency_unit_id || null,
+      language,
     });
 
     navigator.sendBeacon?.("/api/application-release-lock", payload);

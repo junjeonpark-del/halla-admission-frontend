@@ -4,29 +4,58 @@ import {
   supabaseAdmin,
 } from "./_agencyAuth.js";
 
+const messages = {
+  zh: {
+    invalidSession: "未登录或登录失效",
+    missingParams: "缺少必要参数",
+    failed: "释放编辑锁失败",
+  },
+  en: {
+    invalidSession: "Not logged in or session has expired",
+    missingParams: "Missing required parameters",
+    failed: "Failed to release edit lock",
+  },
+  ko: {
+    invalidSession: "로그인되어 있지 않거나 로그인이 만료되었습니다",
+    missingParams: "필수 파라미터가 없습니다",
+    failed: "편집 잠금 해제 실패",
+  },
+};
+
+function getLanguage(body) {
+  const value = body?.language || "zh";
+  return ["zh", "en", "ko"].includes(value) ? value : "zh";
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return json(res, 405, { success: false, message: "Method Not Allowed" });
   }
 
+  let body = req.body;
+
+  try {
+    if (typeof body === "string") {
+      body = JSON.parse(body || "{}");
+    }
+  } catch {
+    body = {};
+  }
+
+  const text = messages[getLanguage(body)];
+
   try {
     const session = requireSession(req, "agency");
 
     if (!session?.agency_account_id) {
-      return json(res, 401, { success: false, message: "未登录或登录失效" });
-    }
-
-    let body = req.body;
-
-    if (typeof body === "string") {
-      body = JSON.parse(body || "{}");
+      return json(res, 401, { success: false, message: text.invalidSession });
     }
 
     const { id = "" } = body || {};
     const agency_account_id = session.agency_account_id;
 
     if (!String(id).trim() || !String(agency_account_id).trim()) {
-      return json(res, 400, { success: false, message: "缺少必要参数" });
+      return json(res, 400, { success: false, message: text.missingParams });
     }
 
     const { error } = await supabaseAdmin
@@ -45,7 +74,7 @@ export default async function handler(req, res) {
   } catch (error) {
     return json(res, 500, {
       success: false,
-      message: error.message || "释放编辑锁失败",
+      message: error.message || text.failed,
     });
   }
 }

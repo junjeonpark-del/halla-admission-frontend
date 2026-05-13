@@ -244,10 +244,10 @@ const menuItems = useMemo(
 
   const verifySession = useCallback(async () => {
     try {
-      const response = await fetch("/api/agency-session", {
-        method: "GET",
-        credentials: "include",
-      });
+      const response = await fetch(`/api/agency-session?language=${language}`, {
+  method: "GET",
+  credentials: "include",
+});
 
       const text = await response.text();
       let result = {};
@@ -292,9 +292,15 @@ const menuItems = useMemo(
   const handleLogout = async () => {
     try {
       await fetch("/api/agency-logout", {
-        method: "POST",
-        credentials: "include",
-      });
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  credentials: "include",
+  body: JSON.stringify({
+    language,
+  }),
+});
     } catch (error) {
       console.error("AgencyLayout handleLogout error:", error);
     } finally {

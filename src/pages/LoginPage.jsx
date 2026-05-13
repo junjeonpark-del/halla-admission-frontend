@@ -444,9 +444,10 @@ function LoginPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username: adminUsername,
-          password: adminPassword,
-        }),
+  username: adminUsername,
+  password: adminPassword,
+  language,
+}),
       });
 
       const text = await response.text();
@@ -497,9 +498,10 @@ function LoginPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username: agencyUsername,
-          password: agencyPassword,
-        }),
+  username: agencyUsername,
+  password: agencyPassword,
+  language,
+}),
       });
 
       const result = await response.json();

@@ -4,23 +4,47 @@ import {
   validateAdminSession,
 } from "./_agencyAuth.js";
 
+const messages = {
+  zh: {
+    invalidSession: "管理员登录已失效",
+    missingAgencyId: "缺少机构ID",
+    agencyMissing: "机构不存在",
+    failed: "同步机构本部失败",
+  },
+  en: {
+    invalidSession: "Admin session has expired",
+    missingAgencyId: "Missing agency ID",
+    agencyMissing: "Agency does not exist",
+    failed: "Failed to sync the agency headquarters branch",
+  },
+  ko: {
+    invalidSession: "관리자 로그인이 만료되었습니다",
+    missingAgencyId: "기관 ID가 없습니다",
+    agencyMissing: "기관이 존재하지 않습니다",
+    failed: "기관 본부 분기관 동기화 실패",
+  },
+};
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return json(res, 405, { success: false, message: "Method Not Allowed" });
   }
 
+  const language = req.body?.language || "zh";
+  const text = messages[["zh", "en", "ko"].includes(language) ? language : "zh"];
+
   try {
     const session = await validateAdminSession(req);
 
     if (!session?.admin_id) {
-      return json(res, 401, { success: false, message: "管理员登录已失效" });
+      return json(res, 401, { success: false, message: text.invalidSession });
     }
 
     const { agency_id = "" } = req.body || {};
     const agencyId = String(agency_id || "").trim();
 
     if (!agencyId) {
-      return json(res, 400, { success: false, message: "缺少机构ID" });
+      return json(res, 400, { success: false, message: text.missingAgencyId });
     }
 
     const { data: agency, error: agencyError } = await supabaseAdmin
@@ -32,7 +56,7 @@ export default async function handler(req, res) {
     if (agencyError) throw agencyError;
 
     if (!agency) {
-      return json(res, 404, { success: false, message: "机构不存在" });
+      return json(res, 404, { success: false, message: text.agencyMissing });
     }
 
     let unitId = "";
@@ -107,7 +131,7 @@ export default async function handler(req, res) {
   } catch (error) {
     return json(res, 500, {
       success: false,
-      message: error.message || "同步机构本部失败",
+      message: error.message || text.failed,
     });
   }
 }

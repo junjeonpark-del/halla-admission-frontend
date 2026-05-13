@@ -7,20 +7,50 @@ import {
   verifyPassword,
 } from "./_agencyAuth.js";
 
+const messages = {
+  zh: {
+    usernameRequired: "请输入管理员账号",
+    passwordRequired: "请输入密码",
+    accountMissing: "管理员账号不存在",
+    passwordWrong: "密码错误",
+    accountInactive: "管理员账号已停用",
+    failed: "管理员登录失败",
+  },
+  en: {
+    usernameRequired: "Please enter the admin account",
+    passwordRequired: "Please enter the password",
+    accountMissing: "Admin account does not exist",
+    passwordWrong: "Incorrect password",
+    accountInactive: "Admin account has been disabled",
+    failed: "Admin login failed",
+  },
+  ko: {
+    usernameRequired: "관리자 계정을 입력해 주세요",
+    passwordRequired: "비밀번호를 입력해 주세요",
+    accountMissing: "관리자 계정이 존재하지 않습니다",
+    passwordWrong: "비밀번호가 올바르지 않습니다",
+    accountInactive: "관리자 계정이 비활성화되었습니다",
+    failed: "관리자 로그인 실패",
+  },
+};
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return json(res, 405, { success: false, message: "Method Not Allowed" });
   }
 
+  const language = req.body?.language || "zh";
+  const text = messages[["zh", "en", "ko"].includes(language) ? language : "zh"];
+
   try {
     const { username = "", password = "" } = req.body || {};
 
     if (!String(username).trim()) {
-      return json(res, 400, { success: false, message: "请输入管理员账号" });
+      return json(res, 400, { success: false, message: text.usernameRequired });
     }
 
     if (!String(password).trim()) {
-      return json(res, 400, { success: false, message: "请输入密码" });
+      return json(res, 400, { success: false, message: text.passwordRequired });
     }
 
     const { data: admin, error: adminError } = await supabaseAdmin
@@ -33,16 +63,16 @@ export default async function handler(req, res) {
     if (adminError) throw adminError;
 
     if (!admin) {
-      return json(res, 400, { success: false, message: "管理员账号不存在" });
+      return json(res, 400, { success: false, message: text.accountMissing });
     }
 
     const passwordOk = verifyPassword(String(password), admin.password);
     if (!passwordOk) {
-      return json(res, 400, { success: false, message: "密码错误" });
+      return json(res, 400, { success: false, message: text.passwordWrong });
     }
 
-      if (admin.is_active !== true) {
-      return json(res, 403, { success: false, message: "管理员账号已停用" });
+    if (admin.is_active !== true) {
+      return json(res, 403, { success: false, message: text.accountInactive });
     }
 
     const nextSessionVersion = Number(admin.session_version || 0) + 1;
@@ -77,7 +107,7 @@ export default async function handler(req, res) {
   } catch (error) {
     return json(res, 500, {
       success: false,
-      message: error.message || "管理员登录失败",
+      message: error.message || text.failed,
     });
   }
 }

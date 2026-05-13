@@ -660,9 +660,10 @@ const handleCreateUnit = async () => {
       },
       credentials: "include",
       body: JSON.stringify({
-        name: unitForm.name,
-        note: unitForm.note,
-      }),
+  name: unitForm.name,
+  note: unitForm.note,
+  language,
+}),
     });
 
     const text = await response.text();
@@ -759,6 +760,7 @@ const handleSaveManagedUnit = async (unit, nextActive) => {
           typeof nextActive === "boolean"
             ? nextActive
             : currentForm.is_active === true,
+            language,
       }),
     });
 
@@ -819,8 +821,9 @@ const handleDeleteManagedUnit = async (unit) => {
       },
       credentials: "include",
       body: JSON.stringify({
-        id: unit.id,
-      }),
+  id: unit.id,
+  language,
+}),
     });
 
     const text = await response.text();
@@ -1179,8 +1182,9 @@ const handleDeleteManagedUnit = async (unit) => {
         },
         credentials: "include",
         body: JSON.stringify({
-          id: account.id,
-        }),
+  id: account.id,
+  language,
+}),
       });
 
       const text = await response.text();

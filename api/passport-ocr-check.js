@@ -2,6 +2,50 @@ import { json, requireSession } from "./_agencyAuth.js";
 
 const MAX_OCR_FILE_BYTES = 3 * 1024 * 1024;
 
+const messages = {
+  zh: {
+    invalidSession: "未登录或登录失效",
+    missingAzureConfig: "Azure Document Intelligence 环境变量未配置",
+    missingFile: "缺少护照文件内容",
+    fileTooLarge: "护照 OCR 文件过大。请上传 3MB 以下的 PDF，或手动核对护照信息。",
+    azureQueryFailed: (status) => `Azure 查询失败（HTTP ${status}）`,
+    azureOcrFailed: "Azure 护照识别失败",
+    azureTimeout: "Azure 护照识别超时，请稍后重试",
+    azureAnalyzeFailed: (status, text) => `Azure 分析请求失败（HTTP ${status}）：${text}`,
+    missingOperationLocation: "Azure 未返回 operation-location",
+    failed: "护照识别失败",
+  },
+  en: {
+    invalidSession: "Not logged in or session has expired",
+    missingAzureConfig: "Azure Document Intelligence environment variables are not configured",
+    missingFile: "Missing passport file content",
+    fileTooLarge: "Passport OCR file is too large. Please upload a PDF under 3MB or check the passport manually.",
+    azureQueryFailed: (status) => `Azure query failed (HTTP ${status})`,
+    azureOcrFailed: "Azure passport recognition failed",
+    azureTimeout: "Azure passport recognition timed out. Please try again later.",
+    azureAnalyzeFailed: (status, text) => `Azure analyze request failed (HTTP ${status}): ${text}`,
+    missingOperationLocation: "Azure did not return operation-location",
+    failed: "Passport recognition failed",
+  },
+  ko: {
+    invalidSession: "로그인되어 있지 않거나 로그인이 만료되었습니다",
+    missingAzureConfig: "Azure Document Intelligence 환경 변수가 설정되지 않았습니다",
+    missingFile: "여권 파일 내용이 없습니다",
+    fileTooLarge: "여권 OCR 파일이 너무 큽니다. 3MB 이하의 PDF를 업로드하거나 여권 정보를 수동으로 확인해 주세요.",
+    azureQueryFailed: (status) => `Azure 조회 실패(HTTP ${status})`,
+    azureOcrFailed: "Azure 여권 인식 실패",
+    azureTimeout: "Azure 여권 인식 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.",
+    azureAnalyzeFailed: (status, text) => `Azure 분석 요청 실패(HTTP ${status}): ${text}`,
+    missingOperationLocation: "Azure가 operation-location을 반환하지 않았습니다",
+    failed: "여권 인식 실패",
+  },
+};
+
+function getLanguage(req) {
+  const value = req.body?.language || "zh";
+  return ["zh", "en", "ko"].includes(value) ? value : "zh";
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -174,7 +218,7 @@ function buildDateOfBirth(fields, fullText) {
   );
 }
 
-async function pollAnalyzeResult(operationLocation, key) {
+async function pollAnalyzeResult(operationLocation, key, text) {
   const maxAttempts = 20;
 
   for (let i = 0; i < maxAttempts; i += 1) {
@@ -195,7 +239,7 @@ async function pollAnalyzeResult(operationLocation, key) {
     if (!response.ok) {
       throw new Error(
         (result && result.error && result.error.message) ||
-          `Azure 查询失败（HTTP ${response.status}）`
+          text.azureQueryFailed(response.status)
       );
     }
 
@@ -207,14 +251,14 @@ async function pollAnalyzeResult(operationLocation, key) {
 
     if (status === "failed") {
       throw new Error(
-        (result && result.error && result.error.message) || "Azure 护照识别失败"
+        (result && result.error && result.error.message) || text.azureOcrFailed
       );
     }
 
     await sleep(1500);
   }
 
-  throw new Error("Azure 护照识别超时，请稍后重试");
+  throw new Error(text.azureTimeout);
 }
 
 export default async function handler(req, res) {
@@ -225,13 +269,15 @@ export default async function handler(req, res) {
     });
   }
 
+  const text = messages[getLanguage(req)];
+
   try {
     const session = requireSession(req, "agency");
 
     if (!session?.agency_id) {
       return json(res, 401, {
         success: false,
-        message: "未登录或登录失效",
+        message: text.invalidSession,
       });
     }
 
@@ -241,7 +287,7 @@ export default async function handler(req, res) {
     if (!endpoint || !key) {
       return json(res, 500, {
         success: false,
-        message: "Azure Document Intelligence 环境变量未配置",
+        message: text.missingAzureConfig,
       });
     }
 
@@ -250,7 +296,7 @@ export default async function handler(req, res) {
     if (!String(fileBase64).trim()) {
       return json(res, 400, {
         success: false,
-        message: "缺少护照文件内容",
+        message: text.missingFile,
       });
     }
 
@@ -259,8 +305,7 @@ export default async function handler(req, res) {
     if (binary.byteLength > MAX_OCR_FILE_BYTES) {
       return json(res, 413, {
         success: false,
-        message:
-          "Passport OCR file is too large. Please upload a PDF under 3MB or check the passport manually.",
+        message: text.fileTooLarge,
       });
     }
 
@@ -278,9 +323,9 @@ export default async function handler(req, res) {
     });
 
     if (!analyzeResponse.ok) {
-      const text = await analyzeResponse.text();
+      const responseText = await analyzeResponse.text();
       throw new Error(
-        `Azure 分析请求失败（HTTP ${analyzeResponse.status}）：${text}`
+        text.azureAnalyzeFailed(analyzeResponse.status, responseText)
       );
     }
 
@@ -289,10 +334,10 @@ export default async function handler(req, res) {
       analyzeResponse.headers.get("Operation-Location");
 
     if (!operationLocation) {
-      throw new Error("Azure 未返回 operation-location");
+      throw new Error(text.missingOperationLocation);
     }
 
-    const result = await pollAnalyzeResult(operationLocation, key);
+    const result = await pollAnalyzeResult(operationLocation, key, text);
 
     const analyzeResult = result?.analyzeResult || {};
     const document = analyzeResult.documents?.[0] || null;
@@ -326,7 +371,7 @@ export default async function handler(req, res) {
 
     return json(res, 500, {
       success: false,
-      message: error.message || "护照识别失败",
+      message: error.message || text.failed,
     });
   }
 }

@@ -1268,7 +1268,7 @@ function ApplicationReviewPage() {
         setAgencyName("");
         setLockChecked(false);
 
-        const sessionResponse = await fetch("/api/admin-session", {
+        const sessionResponse = await fetch(`/api/admin-session?language=${language}`, {
           method: "GET",
           credentials: "include",
         });
@@ -2249,6 +2249,7 @@ function ApplicationReviewPage() {
       const payload = JSON.stringify({
         id: student.id,
         admin_account_id: adminSession.admin_id,
+        language,
       });
 
       navigator.sendBeacon?.("/api/admin-application-release-lock", payload);
