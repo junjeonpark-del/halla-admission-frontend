@@ -579,10 +579,12 @@ const getMonthDisplay = (itemOrMonth, applicationType) => {
     if (!agencySession?.agency_id) return;
 
     try {
-      setLoading(true);
-      setLoadError("");
+  setLoading(true);
+  setLoadError("");
 
-      const applicationsQuery = supabase
+  const nowIso = new Date().toISOString();
+
+  const applicationsQuery = supabase
         .from("applications")
         .select("*")
         .eq("agency_id", agencySession.agency_id)
@@ -598,9 +600,11 @@ const getMonthDisplay = (itemOrMonth, applicationType) => {
   { data: agencyUnitsData, error: agencyUnitsError },
 ] = await Promise.all([
   supabase
-    .from("intakes")
-    .select("*")
-    .order("open_at", { ascending: false }),
+  .from("intakes")
+  .select("*")
+  .lte("open_at", nowIso)
+  .order("open_at", { ascending: false }),
+
   applicationsQuery,
   agencySession?.is_primary === true
     ? supabase
