@@ -291,6 +291,12 @@ const [expandedYears, setExpandedYears] = useState({});
 const [expandedTypes, setExpandedTypes] = useState({});
 const [expandedMonths, setExpandedMonths] = useState({});
 const [selectedNode, setSelectedNode] = useState({ type: "all" });
+const [historyApplicationCountRows, setHistoryApplicationCountRows] = useState([]);
+const [filtersReady, setFiltersReady] = useState(false);
+const [page, setPage] = useState(1);
+const [pageSize, setPageSize] = useState(20);
+const [totalCount, setTotalCount] = useState(0);
+const [jumpPage, setJumpPage] = useState("");
 
 const isPrimarySession = agencySession?.is_primary === true;
 const agencyUnitColumnLabel =
@@ -579,72 +585,42 @@ const getMonthDisplay = (itemOrMonth, applicationType) => {
     if (!agencySession?.agency_id) return;
 
     try {
-  setLoading(true);
-  setLoadError("");
+      setLoading(true);
+      setLoadError("");
+      setFiltersReady(false);
 
-  const nowIso = new Date().toISOString();
-
-  const applicationsQuery = supabase
-        .from("applications")
-        .select("*")
-        .eq("agency_id", agencySession.agency_id)
-        .order("updated_at", { ascending: false });
-
-      if (agencySession?.is_primary !== true) {
-        applicationsQuery.eq("agency_unit_id", agencySession?.agency_unit_id || "");
-      }
+      const nowIso = new Date().toISOString();
 
       const [
-  { data: intakesData, error: intakesError },
-  { data: applicationsData, error: applicationsError },
-  { data: agencyUnitsData, error: agencyUnitsError },
-] = await Promise.all([
-  supabase
-  .from("intakes")
-  .select("*")
-  .lte("open_at", nowIso)
-  .order("open_at", { ascending: false }),
-
-  applicationsQuery,
-  agencySession?.is_primary === true
-    ? supabase
-        .from("agency_units")
-        .select("id, name")
-        .eq("agency_id", agencySession.agency_id)
-        .eq("is_active", true)
-        .order("is_default", { ascending: false })
-        .order("created_at", { ascending: true })
-    : Promise.resolve({ data: [], error: null }),
-]);
-
-if (intakesError) throw intakesError;
-if (applicationsError) throw applicationsError;
-if (agencyUnitsError) throw agencyUnitsError;
-
-      const visibleApplications = applicationsData || [];
-      const visiblePublicIds = visibleApplications
-        .map((item) => item.public_id)
-        .filter(Boolean);
-
-      let filesData = [];
-
-      if (visiblePublicIds.length > 0) {
-        const { data, error } = await supabase
-          .from("application_files")
+        { data: intakesData, error: intakesError },
+        { data: agencyUnitsData, error: agencyUnitsError },
+      ] = await Promise.all([
+        supabase
+          .from("intakes")
           .select("*")
-          .in("public_id", visiblePublicIds)
-          .order("created_at", { ascending: false });
+          .lte("open_at", nowIso)
+          .order("open_at", { ascending: false }),
 
-        if (error) throw error;
-        filesData = data || [];
-      }
+        agencySession?.is_primary === true
+          ? supabase
+              .from("agency_units")
+              .select("id, name")
+              .eq("agency_id", agencySession.agency_id)
+              .eq("is_active", true)
+              .order("is_default", { ascending: false })
+              .order("created_at", { ascending: true })
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      if (intakesError) throw intakesError;
+      if (agencyUnitsError) throw agencyUnitsError;
 
       const availableIntakes = intakesData || [];
 
       setHistoryIntakes(availableIntakes);
-setApplications(visibleApplications);
-setApplicationFiles(filesData);
-setAgencyUnits(agencyUnitsData || []);
+      setAgencyUnits(agencyUnitsData || []);
+      setApplications([]);
+      setApplicationFiles([]);
 
       const initialExpandedYears = {};
       const initialExpandedTypes = {};
@@ -662,6 +638,7 @@ setAgencyUnits(agencyUnitsData || []);
       setExpandedYears(initialExpandedYears);
       setExpandedTypes(initialExpandedTypes);
       setExpandedMonths(initialExpandedMonths);
+      setFiltersReady(true);
     } catch (error) {
       console.error("AgencyHistoryPage loadData error:", error);
       setLoadError(error.message || t.loadError);
@@ -699,15 +676,28 @@ setAgencyUnits(agencyUnitsData || []);
     return new Set((historyIntakes || []).map((item) => getIntakeLabel(item)));
   }, [historyIntakes, language]);
 
-    const historicalApplications = useMemo(() => {
-  return applications.filter((item) => {
+  const intakeMap = useMemo(() => {
+  return (historyIntakes || []).reduce((acc, intake) => {
+    acc[intake.id] = intake;
+    return acc;
+  }, {});
+}, [historyIntakes]);
+
+const historicalApplications = useMemo(() => {
+  return historyApplicationCountRows.filter((item) => {
     const status = String(item.status || "").toLowerCase();
     return status !== "draft";
   });
-}, [applications]);
+}, [historyApplicationCountRows]);
+
+const getApplicationNodeSource = (item) => {
+  return item?.intake_id ? intakeMap[item.intake_id] || item : item;
+};
 
 function countHistoricalApplicationsForNode(node) {
   return historicalApplications.filter((item) => {
+    const source = getApplicationNodeSource(item);
+
     const matchesAgencyUnit =
       !isPrimarySession ||
       agencyUnitFilter === "all" ||
@@ -718,132 +708,243 @@ function countHistoricalApplicationsForNode(node) {
     if (node.type === "all") return true;
 
     if (node.type === "year") {
-      return getIntakeYear(item) === node.year;
+      return getIntakeYear(source) === node.year;
     }
 
     if (node.type === "applicationType") {
       return (
-        getIntakeYear(item) === node.year &&
-        getApplicationType(item) === node.applicationType
+        getIntakeYear(source) === node.year &&
+        getApplicationType(source) === node.applicationType
       );
     }
 
     if (node.type === "month") {
       return (
-        getIntakeYear(item) === node.year &&
-        getApplicationType(item) === node.applicationType &&
-        getIntakeMonth(item) === node.month
+        getIntakeYear(source) === node.year &&
+        getApplicationType(source) === node.applicationType &&
+        getIntakeMonth(source) === node.month
       );
     }
 
     if (node.type === "intake") {
-      if (node.intakeId && item.intake_id) {
-        return item.intake_id === node.intakeId;
-      }
-
-      return (
-        getIntakeYear(item) === node.year &&
-        getApplicationType(item) === node.applicationType &&
-        getIntakeMonth(item) === node.month &&
-        getIntakeLabel(item) === node.intakeLabel
-      );
+      return node.intakeId && item.intake_id === node.intakeId;
     }
 
     return false;
   }).length;
 }
 
-  const fileMap = useMemo(() => getFileTypeMap(applicationFiles), [applicationFiles]);
+const getSelectedIntakeIds = (node = selectedNode) => {
+  if (!historyIntakes || historyIntakes.length === 0) return [];
 
-  const intakeTree = useMemo(() => {
-  const grouped = {};
+  return historyIntakes
+    .filter((intake) => {
+      if (node.type === "all") return true;
 
-  historyIntakes.forEach((intake) => {
-    const year = getIntakeYear(intake);
-    const applicationType = getApplicationType(intake);
-    const month = getIntakeMonth(intake);
+      if (node.type === "year") {
+        return getIntakeYear(intake) === node.year;
+      }
 
-    if (!grouped[year]) grouped[year] = {};
-    if (!grouped[year][applicationType]) grouped[year][applicationType] = {};
-    if (!grouped[year][applicationType][month]) grouped[year][applicationType][month] = [];
+      if (node.type === "applicationType") {
+        return (
+          getIntakeYear(intake) === node.year &&
+          getApplicationType(intake) === node.applicationType
+        );
+      }
 
-    grouped[year][applicationType][month].push(intake);
-  });
+      if (node.type === "month") {
+        return (
+          getIntakeYear(intake) === node.year &&
+          getApplicationType(intake) === node.applicationType &&
+          getIntakeMonth(intake) === node.month
+        );
+      }
 
-  const typeOrder = ["undergraduate", "language", "graduate"];
-  const years = Object.keys(grouped).sort((a, b) => Number(b) - Number(a));
+      if (node.type === "intake") {
+        return intake.id === node.intakeId;
+      }
 
-  return years.map((year) => ({
-    year,
-    types: Object.keys(grouped[year])
-      .sort((a, b) => typeOrder.indexOf(a) - typeOrder.indexOf(b))
-      .map((applicationType) => ({
-        applicationType,
-        label: getApplicationTypeLabel({ application_type: applicationType }),
-        months: Object.keys(grouped[year][applicationType])
-          .sort((a, b) => Number(a) - Number(b))
-          .map((month) => ({
-            month,
-            label: getMonthDisplay(month, applicationType),
-            intakes: grouped[year][applicationType][month].sort((a, b) => {
-              const aOpen = a.open_at ? new Date(a.open_at).getTime() : 0;
-              const bOpen = b.open_at ? new Date(b.open_at).getTime() : 0;
-              return bOpen - aOpen;
-            }),
-          })),
-      })),
-  }));
-}, [historyIntakes, language]);
+      return true;
+    })
+    .map((intake) => intake.id)
+    .filter(Boolean);
+};
 
-  const filteredApplications = useMemo(() => {
-  const keyword = searchKeyword.trim().toLowerCase();
+const buildHistoryApplicationsQuery = ({ includeCount = false } = {}) => {
+  const keyword = searchKeyword.trim().replaceAll(",", " ");
+  const selectedIntakeIds = getSelectedIntakeIds();
 
-  return historicalApplications.filter((item) => {
-    const studentName = getStudentName(item).toLowerCase();
+  let query = supabase
+    .from("applications")
+    .select("*", includeCount ? { count: "exact" } : undefined)
+    .eq("agency_id", agencySession.agency_id)
+    .neq("status", "draft")
+    .order("updated_at", { ascending: false });
 
-    const matchesKeyword = !keyword || studentName.includes(keyword);
-    const matchesAgencyUnit =
-      !isPrimarySession ||
-      agencyUnitFilter === "all" ||
-      item.agency_unit_id === agencyUnitFilter;
+  if (agencySession?.is_primary !== true) {
+    query = query.eq("agency_unit_id", agencySession?.agency_unit_id || "");
+  } else if (agencyUnitFilter !== "all") {
+    query = query.eq("agency_unit_id", agencyUnitFilter);
+  }
 
-    let matchesTree = true;
-
-if (selectedNode.type === "year") {
-  matchesTree = getIntakeYear(item) === selectedNode.year;
-} else if (selectedNode.type === "applicationType") {
-  matchesTree =
-    getIntakeYear(item) === selectedNode.year &&
-    getApplicationType(item) === selectedNode.applicationType;
-} else if (selectedNode.type === "month") {
-  matchesTree =
-    getIntakeYear(item) === selectedNode.year &&
-    getApplicationType(item) === selectedNode.applicationType &&
-    getIntakeMonth(item) === selectedNode.month;
-} else if (selectedNode.type === "intake") {
-  if (selectedNode.intakeId && item.intake_id) {
-    matchesTree = item.intake_id === selectedNode.intakeId;
+  if (selectedIntakeIds.length > 0) {
+    query = query.in("intake_id", selectedIntakeIds);
   } else {
-    matchesTree =
-      getIntakeYear(item) === selectedNode.year &&
-      getApplicationType(item) === selectedNode.applicationType &&
-      getIntakeMonth(item) === selectedNode.month &&
-      getIntakeLabel(item) === selectedNode.intakeLabel;
+    query = query.eq("intake_id", "__no_history_intake__");
+  }
+
+  if (keyword) {
+    query = query.or(
+      [
+        `english_name.ilike.%${keyword}%`,
+        `full_name_passport.ilike.%${keyword}%`,
+        `major.ilike.%${keyword}%`,
+        `department.ilike.%${keyword}%`,
+      ].join(",")
+    );
+  }
+
+  return query;
+};
+
+useEffect(() => {
+  async function loadCountRows() {
+    if (!agencySession?.agency_id || !filtersReady) return;
+
+    const intakeIds = historyIntakes.map((item) => item.id).filter(Boolean);
+
+    if (intakeIds.length === 0) {
+      setHistoryApplicationCountRows([]);
+      return;
+    }
+
+    let query = supabase
+      .from("applications")
+      .select("id, intake_id, status, agency_unit_id")
+      .eq("agency_id", agencySession.agency_id)
+      .neq("status", "draft")
+      .in("intake_id", intakeIds);
+
+    if (agencySession?.is_primary !== true) {
+      query = query.eq("agency_unit_id", agencySession?.agency_unit_id || "");
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("AgencyHistoryPage loadCountRows error:", error);
+      return;
+    }
+
+    setHistoryApplicationCountRows(data || []);
+  }
+
+  loadCountRows();
+}, [
+  agencySession?.agency_id,
+  agencySession?.agency_unit_id,
+  agencySession?.is_primary,
+  filtersReady,
+  historyIntakes,
+]);
+
+async function loadApplications() {
+  if (!agencySession?.agency_id || !filtersReady) return;
+
+  try {
+    setLoading(true);
+    setLoadError("");
+
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error, count } = await buildHistoryApplicationsQuery({
+      includeCount: true,
+    }).range(from, to);
+
+    if (error) throw error;
+
+    const pageApplications = data || [];
+    const publicIds = pageApplications.map((item) => item.public_id).filter(Boolean);
+
+    let pageFiles = [];
+
+    if (publicIds.length > 0) {
+      const { data: filesData, error: filesError } = await supabase
+        .from("application_files")
+        .select("*")
+        .in("public_id", publicIds)
+        .order("created_at", { ascending: false });
+
+      if (filesError) throw filesError;
+      pageFiles = filesData || [];
+    }
+
+    setApplications(pageApplications);
+    setApplicationFiles(pageFiles);
+    setTotalCount(count || 0);
+  } catch (error) {
+    console.error("AgencyHistoryPage loadApplications error:", error);
+    setLoadError(error.message || t.loadError);
+  } finally {
+    setLoading(false);
   }
 }
 
-      return matchesKeyword && matchesAgencyUnit && matchesTree;
-    });
-  }, [
-  historicalApplications,
+useEffect(() => {
+  setPage(1);
+  setJumpPage("");
+}, [selectedNode, searchKeyword, agencyUnitFilter, pageSize]);
+
+useEffect(() => {
+  loadApplications();
+}, [
+  agencySession?.agency_id,
+  agencySession?.agency_unit_id,
+  agencySession?.is_primary,
+  filtersReady,
+  selectedNode,
   searchKeyword,
   agencyUnitFilter,
-  selectedNode,
-  language,
-  isPrimarySession,
+  page,
+  pageSize,
 ]);
 
-  const rows = useMemo(() => {
+const fileMap = useMemo(() => getFileTypeMap(applicationFiles), [applicationFiles]);
+
+const filteredApplications = applications;
+
+const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+const goToPage = (nextPage) => {
+  const numericPage = Number(nextPage);
+  if (!Number.isFinite(numericPage)) return;
+
+  const safePage = Math.min(Math.max(1, numericPage), totalPages);
+  setPage(safePage);
+  setJumpPage("");
+};
+
+const pageNumbers = useMemo(() => {
+  const pages = [];
+  const addPage = (value) => {
+    if (!pages.includes(value) && value >= 1 && value <= totalPages) {
+      pages.push(value);
+    }
+  };
+
+  addPage(1);
+
+  for (let value = page - 2; value <= page + 2; value += 1) {
+    addPage(value);
+  }
+
+  addPage(totalPages);
+
+  return pages.sort((a, b) => a - b);
+}, [page, totalPages]);
+
+const rows = useMemo(() => {
   return filteredApplications.map((student) => {
     const publicId = student.public_id;
     const files = fileMap[publicId] || {};
@@ -852,101 +953,86 @@ if (selectedNode.type === "year") {
       historyIntakeMap.byLabel?.[getIntakeLabel(student)] ||
       null;
 
-      const intakeItem =
-        (student.intake_id && historyIntakeMap.byId[student.intake_id]) ||
-        historyIntakeMap.byLabel[getIntakeLabel(student)] ||
-        null;
+    const intakeItem =
+      (student.intake_id && historyIntakeMap.byId[student.intake_id]) ||
+      historyIntakeMap.byLabel[getIntakeLabel(student)] ||
+      null;
 
-            const now = new Date();
-      const openAt = intakeItem?.open_at ? new Date(intakeItem.open_at) : null;
-      const closeAt = intakeItem?.close_at ? new Date(intakeItem.close_at) : null;
-      const isInactive = intakeItem?.is_active === false;
-      const isNotStarted = openAt ? now < openAt : false;
-      const isClosed = closeAt ? now > closeAt : false;
-      const canPostDeadlineMaterialEdit =
-        isClosed && intakeItem?.post_deadline_material_edit_enabled === true;
-      const canContinueEdit = !isInactive && !isNotStarted && !isClosed;
+    const now = new Date();
+    const openAt = intakeItem?.open_at ? new Date(intakeItem.open_at) : null;
+    const closeAt = intakeItem?.close_at ? new Date(intakeItem.close_at) : null;
+    const isInactive = intakeItem?.is_active === false;
+    const isNotStarted = openAt ? now < openAt : false;
+    const isClosed = closeAt ? now > closeAt : false;
+    const canPostDeadlineMaterialEdit =
+      isClosed && intakeItem?.post_deadline_material_edit_enabled === true;
+    const canContinueEdit = !isInactive && !isNotStarted && !isClosed;
 
-      const bilingualTrack = student.program_track === "Bilingual Program (Chinese)";
-      const inKorea = student.residence_status === "korea";
-      const financialGuaranteeRequired =
-        student.bank_certificate_holder_type === "guarantor";
+    const bilingualTrack = student.program_track === "Bilingual Program (Chinese)";
+    const inKorea = student.residence_status === "korea";
+    const financialGuaranteeRequired =
+      student.bank_certificate_holder_type === "guarantor";
 
-      const applicationForm = getMaterialStatus(false, true, true, false);
-      const passport = getMaterialStatus(!!files.passport?.length, true, false, false);
-      const finalTranscript = getMaterialStatus(
-        !!files.finalTranscript?.length,
-        true,
-        false,
-        false
-      );
-      const finalDiploma = getMaterialStatus(
-        !!files.finalDiploma?.length,
-        true,
-        false,
-        false
-      );
-      const languageCertificate = getMaterialStatus(
-        !!files.languageCertificate?.length,
-        !bilingualTrack,
-        false,
-        bilingualTrack
-      );
-      const arc = getMaterialStatus(!!files.arc?.length, inKorea, false, !inKorea);
-      const bankStatement = getMaterialStatus(
-        !!files.bankStatement?.length,
-        true,
-        false,
-        false
-      );
-      const guarantorEmploymentIncome = getMaterialStatus(
-        !!files.guarantorEmploymentIncome?.length,
-        financialGuaranteeRequired,
-        false,
-        !financialGuaranteeRequired
-      );
+    const applicationForm = getMaterialStatus(false, true, true, false);
+    const passport = getMaterialStatus(!!files.passport?.length, true, false, false);
+    const finalTranscript = getMaterialStatus(!!files.finalTranscript?.length, true, false, false);
+    const finalDiploma = getMaterialStatus(!!files.finalDiploma?.length, true, false, false);
+    const languageCertificate = getMaterialStatus(
+      !!files.languageCertificate?.length,
+      !bilingualTrack,
+      false,
+      bilingualTrack
+    );
+    const arc = getMaterialStatus(!!files.arc?.length, inKorea, false, !inKorea);
+    const bankStatement = getMaterialStatus(!!files.bankStatement?.length, true, false, false);
+    const guarantorEmploymentIncome = getMaterialStatus(
+      !!files.guarantorEmploymentIncome?.length,
+      financialGuaranteeRequired,
+      false,
+      !financialGuaranteeRequired
+    );
 
-      const overall = getOverallStatus([
-        { ...passport, required: true },
-        { ...finalTranscript, required: true },
-        { ...finalDiploma, required: true },
-        { ...languageCertificate, required: !bilingualTrack, exempt: bilingualTrack },
-        { ...arc, required: inKorea, exempt: !inKorea },
-        { ...bankStatement, required: true },
-        {
-          ...guarantorEmploymentIncome,
-          required: financialGuaranteeRequired,
-          exempt: !financialGuaranteeRequired,
-        },
-      ]);
+    const overall = getOverallStatus([
+      { ...passport, required: true },
+      { ...finalTranscript, required: true },
+      { ...finalDiploma, required: true },
+      { ...languageCertificate, required: !bilingualTrack, exempt: bilingualTrack },
+      { ...arc, required: inKorea, exempt: !inKorea },
+      { ...bankStatement, required: true },
+      {
+        ...guarantorEmploymentIncome,
+        required: financialGuaranteeRequired,
+        exempt: !financialGuaranteeRequired,
+      },
+    ]);
 
-      return {
-  student,
-  publicId,
-  application_type: student.application_type || "undergraduate",
-intake_id: student.intake_id || "",
-  studentName: getStudentName(student),
-agencyUnitName: getAgencyUnitName(student),
-year: getIntakeYear(linkedIntake || student),
-  intake: getIntakeLabel(linkedIntake || student),
-        applicationReviewNote: student.review_note || "",
-        applicationForm,
-        passport,
-        finalTranscript,
-        finalDiploma,
-        languageCertificate,
-        arc,
-        bankStatement,
-        guarantorEmploymentIncome,
-                overall,
-        isInactive,
-        isNotStarted,
-        isClosed,
-        canContinueEdit,
-        canPostDeadlineMaterialEdit,
-      };
-    });
-    }, [filteredApplications, fileMap, historyIntakeMap, language]);
+    return {
+      student,
+      publicId,
+      application_type: student.application_type || "undergraduate",
+      intake_id: student.intake_id || "",
+      studentName: getStudentName(student),
+      agencyUnitName: getAgencyUnitName(student),
+      year: getIntakeYear(linkedIntake || student),
+      intake: getIntakeLabel(linkedIntake || student),
+      applicationReviewNote: student.review_note || "",
+      applicationForm,
+      passport,
+      finalTranscript,
+      finalDiploma,
+      languageCertificate,
+      arc,
+      bankStatement,
+      guarantorEmploymentIncome,
+      overall,
+      isInactive,
+      isNotStarted,
+      isClosed,
+      canContinueEdit,
+      canPostDeadlineMaterialEdit,
+    };
+  });
+}, [filteredApplications, fileMap, historyIntakeMap, language]);
 
   const sanitizeExportFileSegment = (value, fallback = "export") => {
     const text = String(value || "").trim();
@@ -1242,143 +1328,200 @@ const formatMajorForExport = (student) => {
       .join(" / ");
   };
 
-  const handleExportExcel = () => {
-    try {
-      if (!filteredApplications || filteredApplications.length === 0) {
-        alert(getExportLabels().noData);
-        return;
+  const fetchAllFilteredApplicationsForExport = async () => {
+  const exportRows = [];
+  let from = 0;
+  const batchSize = 1000;
+
+  while (true) {
+    const { data, error } = await buildHistoryApplicationsQuery({
+      includeCount: false,
+    }).range(from, from + batchSize - 1);
+
+    if (error) throw error;
+
+    const rows = data || [];
+    exportRows.push(...rows);
+
+    if (rows.length < batchSize) break;
+
+    from += batchSize;
+  }
+
+  return exportRows;
+};
+
+const fetchFilesForExportApplications = async (exportApplications) => {
+  const publicIds = exportApplications
+    .map((item) => item.public_id)
+    .filter(Boolean);
+
+  if (publicIds.length === 0) return {};
+
+  const fileRows = [];
+  const chunkSize = 500;
+
+  for (let index = 0; index < publicIds.length; index += chunkSize) {
+    const chunk = publicIds.slice(index, index + chunkSize);
+
+    const { data, error } = await supabase
+      .from("application_files")
+      .select("*")
+      .in("public_id", chunk)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    fileRows.push(...(data || []));
+  }
+
+  return getFileTypeMap(fileRows);
+};
+
+const handleExportExcel = async () => {
+  try {
+    const exportApplications = await fetchAllFilteredApplicationsForExport();
+
+    if (!exportApplications || exportApplications.length === 0) {
+      alert(getExportLabels().noData);
+      return;
+    }
+
+    const labels = getExportLabels();
+    const exportFileMap = await fetchFilesForExportApplications(exportApplications);
+
+    const exportRows = exportApplications.map((student, index) => {
+      const linkedIntake =
+        (student.intake_id && historyIntakeMap.byId?.[student.intake_id]) ||
+        historyIntakeMap.byLabel?.[getIntakeLabel(student)] ||
+        null;
+
+      const source = linkedIntake || student;
+      const applicationType = getApplicationType(source);
+      const admissionExport = getAdmissionExportParts(student);
+      const files = exportFileMap[student.public_id] || {};
+      const hasBankStatement =
+        Array.isArray(files.bankStatement) && files.bankStatement.length > 0;
+
+      const educationRows = [
+        parseEducationRow(student.education1),
+        parseEducationRow(student.education2),
+        parseEducationRow(student.education3),
+      ];
+
+      const row = {
+        [labels.index]: index + 1,
+      };
+
+      if (isPrimarySession) {
+        row[labels.branch] = getAgencyUnitName(student);
       }
 
-      const labels = getExportLabels();
-
-      const exportRows = filteredApplications.map((student, index) => {
-        const linkedIntake =
-          (student.intake_id && historyIntakeMap.byId?.[student.intake_id]) ||
-          historyIntakeMap.byLabel?.[getIntakeLabel(student)] ||
-          null;
-
-        const source = linkedIntake || student;
-        const applicationType = getApplicationType(source);
-        const admissionExport = getAdmissionExportParts(student);
-        const files = fileMap[student.public_id] || {};
-        const hasBankStatement =
-          Array.isArray(files.bankStatement) && files.bankStatement.length > 0;
-
-        const educationRows = [
-          parseEducationRow(student.education1),
-          parseEducationRow(student.education2),
-          parseEducationRow(student.education3),
-        ];
-
-        const row = {
-          [labels.index]: index + 1,
-        };
-
-        if (isPrimarySession) {
-          row[labels.branch] = getAgencyUnitName(student);
-        }
-
-        row[labels.applicationCategory] = getApplicationTypeLabel({ application_type: applicationType });
-        row[labels.intake] = getIntakeLabel(source);
-        row[labels.studentName] =
-          student.english_name ||
-          student.full_name_passport ||
-          student.fullNamePassport ||
-          student.name ||
-          "-";
-        row[labels.monthSeason] = getMonthDisplay(getIntakeMonth(source), applicationType);
-        row[labels.degreeLevel] =
-          student.degree_level === "master"
-            ? language === "en"
-              ? "Master"
-              : language === "ko"
-              ? "석사"
-              : "硕士"
-            : student.degree_level === "doctor"
-            ? language === "en"
-              ? "Doctor"
-              : language === "ko"
-              ? "박사"
-              : "博士"
-            : "";
-        row[labels.major] = formatMajorForExport(student);
-row[labels.admissionType] = admissionExport.type;
-row[labels.admissionGrade] = admissionExport.grade;
-        row[labels.programTrack] = formatProgramTrackForExport(student.program_track);
-        row[labels.dormitory] = student.dormitory || "";
-        row[labels.status] = formatStatusLabel(student.status);
-        row[labels.passportNo] = student.passport_no || "";
-        row[labels.gender] = student.gender || "";
-        row[labels.nationality] =
-          student.nationality_applicant || student.nationality || "";
-        row[labels.birth] = student.date_of_birth || "";
-        row[labels.tel] = student.tel || student.phone || "";
-        row[labels.email] = student.email || "";
-        row[labels.address] = student.address || "";
-        row[labels.edu1School] = educationRows[0].institution;
-        row[labels.edu1Location] = educationRows[0].location;
-        row[labels.edu1Start] = educationRows[0].startDate;
-        row[labels.edu1End] = educationRows[0].endDate;
-        row[labels.edu2School] = educationRows[1].institution;
-        row[labels.edu2Location] = educationRows[1].location;
-        row[labels.edu2Start] = educationRows[1].startDate;
-        row[labels.edu2End] = educationRows[1].endDate;
-        row[labels.edu3School] = educationRows[2].institution;
-        row[labels.edu3Location] = educationRows[2].location;
-        row[labels.edu3Start] = educationRows[2].startDate;
-        row[labels.edu3End] = educationRows[2].endDate;
-                row[labels.languageLevel] = getLanguageLevelForExport(student);
-
-        row[labels.bankSubmitted] = hasBankStatement ? "O" : "X";
-        row[labels.fatherName] =
-          student.father_name ||
-          student.father_full_name ||
-          student.parent_father_name ||
-          student.parent_father_full_name ||
-          "";
-        row[labels.motherName] =
-          student.mother_name ||
-          student.mother_full_name ||
-          student.parent_mother_name ||
-          student.parent_mother_full_name ||
-          "";
-        row[labels.studentFormStatus] = student.student_form_status || "";
-        row[labels.createdAt] = student.created_at || "";
-        row[labels.updatedAt] = student.updated_at || "";
-        row[labels.publicId] = student.public_id || "";
-
-        return row;
+      row[labels.applicationCategory] = getApplicationTypeLabel({
+        application_type: applicationType,
       });
-
-      const worksheet = XLSX.utils.json_to_sheet(exportRows);
-      worksheet["!cols"] = Object.keys(exportRows[0] || {}).map((key) => ({
-        wch: Math.min(Math.max(String(key).length + 6, 12), 28),
-      }));
-
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, labels.sheetName);
-
-      const dateText = new Date().toISOString().slice(0, 10);
-      const nodeText =
-        selectedNode.intakeLabel ||
-        selectedNode.monthLabel ||
-        selectedNode.applicationTypeLabel ||
-        selectedNode.year ||
-        labels.all;
-      const branchText =
-        isPrimarySession && agencyUnitFilter !== "all"
-          ? getAgencyUnitName({ agency_unit_id: agencyUnitFilter })
-          : labels.all;
-
-      XLSX.writeFile(
-        workbook,
-        `${sanitizeExportFileSegment(labels.filePrefix)}_${sanitizeExportFileSegment(nodeText)}_${sanitizeExportFileSegment(branchText)}_${dateText}.xlsx`
+      row[labels.intake] = getIntakeLabel(source);
+      row[labels.studentName] =
+        student.english_name ||
+        student.full_name_passport ||
+        student.fullNamePassport ||
+        student.name ||
+        "-";
+      row[labels.monthSeason] = getMonthDisplay(
+        getIntakeMonth(source),
+        applicationType
       );
-    } catch (error) {
-      console.error("handleExportExcel error:", error);
-      alert(`${getExportLabels().failed}${error.message}`);
-    }
-  };
+      row[labels.degreeLevel] =
+        student.degree_level === "master"
+          ? language === "en"
+            ? "Master"
+            : language === "ko"
+            ? "석사"
+            : "硕士"
+          : student.degree_level === "doctor"
+          ? language === "en"
+            ? "Doctor"
+            : language === "ko"
+            ? "박사"
+            : "博士"
+          : "";
+      row[labels.major] = formatMajorForExport(student);
+      row[labels.admissionType] = admissionExport.type;
+      row[labels.admissionGrade] = admissionExport.grade;
+      row[labels.programTrack] = formatProgramTrackForExport(student.program_track);
+      row[labels.dormitory] = student.dormitory || "";
+      row[labels.status] = formatStatusLabel(student.status);
+      row[labels.passportNo] = student.passport_no || "";
+      row[labels.gender] = student.gender || "";
+      row[labels.nationality] =
+        student.nationality_applicant || student.nationality || "";
+      row[labels.birth] = student.date_of_birth || "";
+      row[labels.tel] = student.tel || student.phone || "";
+      row[labels.email] = student.email || "";
+      row[labels.address] = student.address || "";
+      row[labels.edu1School] = educationRows[0].institution;
+      row[labels.edu1Location] = educationRows[0].location;
+      row[labels.edu1Start] = educationRows[0].startDate;
+      row[labels.edu1End] = educationRows[0].endDate;
+      row[labels.edu2School] = educationRows[1].institution;
+      row[labels.edu2Location] = educationRows[1].location;
+      row[labels.edu2Start] = educationRows[1].startDate;
+      row[labels.edu2End] = educationRows[1].endDate;
+      row[labels.edu3School] = educationRows[2].institution;
+      row[labels.edu3Location] = educationRows[2].location;
+      row[labels.edu3Start] = educationRows[2].startDate;
+      row[labels.edu3End] = educationRows[2].endDate;
+      row[labels.languageLevel] = getLanguageLevelForExport(student);
+      row[labels.bankSubmitted] = hasBankStatement ? "O" : "X";
+      row[labels.fatherName] =
+        student.father_name ||
+        student.father_full_name ||
+        student.parent_father_name ||
+        student.parent_father_full_name ||
+        "";
+      row[labels.motherName] =
+        student.mother_name ||
+        student.mother_full_name ||
+        student.parent_mother_name ||
+        student.parent_mother_full_name ||
+        "";
+      row[labels.studentFormStatus] = student.student_form_status || "";
+      row[labels.createdAt] = student.created_at || "";
+      row[labels.updatedAt] = student.updated_at || "";
+      row[labels.publicId] = student.public_id || "";
+
+      return row;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    worksheet["!cols"] = Object.keys(exportRows[0] || {}).map((key) => ({
+      wch: Math.min(Math.max(String(key).length + 6, 12), 28),
+    }));
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, labels.sheetName);
+
+    const dateText = new Date().toISOString().slice(0, 10);
+    const nodeText =
+      selectedNode.intakeLabel ||
+      selectedNode.monthLabel ||
+      selectedNode.applicationTypeLabel ||
+      selectedNode.year ||
+      labels.all;
+    const branchText =
+      isPrimarySession && agencyUnitFilter !== "all"
+        ? getAgencyUnitName({ agency_unit_id: agencyUnitFilter })
+        : labels.all;
+
+    XLSX.writeFile(
+      workbook,
+      `${sanitizeExportFileSegment(labels.filePrefix)}_${sanitizeExportFileSegment(nodeText)}_${sanitizeExportFileSegment(branchText)}_${dateText}.xlsx`
+    );
+  } catch (error) {
+    console.error("handleExportExcel error:", error);
+    alert(`${getExportLabels().failed}${error.message}`);
+  }
+};
 
   const headerTitle = useMemo(() => {
 
@@ -1401,10 +1544,10 @@ row[labels.admissionGrade] = admissionExport.grade;
   const headerDesc = useMemo(() => {
   const recordText =
     language === "en"
-      ? `${filteredApplications.length} applications`
+      ? `${totalCount} applications`
       : language === "ko"
-      ? `총 ${filteredApplications.length}건`
-      : `共 ${filteredApplications.length} 条申请`;
+      ? `총 ${totalCount}건`
+      : `共 ${totalCount} 条申请`;
 
   if (selectedNode.type === "intake") {
     return `${selectedNode.applicationTypeLabel} / ${selectedNode.monthLabel} / ${recordText}`;
@@ -1419,7 +1562,7 @@ row[labels.admissionGrade] = admissionExport.grade;
     return t.page.yearDesc(selectedNode.year);
   }
   return t.page.allDesc;
-}, [selectedNode, t, language, filteredApplications.length]);
+}, [selectedNode, t, language, totalCount]);
 
 
   const toggleYear = (year) => {
@@ -1446,7 +1589,7 @@ const toggleMonth = (year, applicationType, month) => {
 };
 
   return (
-        <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
+        <div className="grid items-start gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
   <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
     <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
       <div>
@@ -1844,7 +1987,7 @@ const toggleMonth = (year, applicationType, month) => {
                         className="border-t border-slate-100 hover:bg-slate-50"
                       >
                         <td className="px-6 py-4 font-medium text-slate-500">
-                          {index + 1}
+                          {(page - 1) * pageSize + index + 1}
                         </td>
                         <td className="px-6 py-4 font-medium text-slate-800">
   <EllipsisText text={row.studentName} widthClass="max-w-[140px]" />
@@ -1965,8 +2108,113 @@ const toggleMonth = (year, applicationType, month) => {
                   })}
                                 </tbody>
               </table>
-            </div>
-            </>
+</div>
+
+<div className="flex flex-col gap-3 border-t border-slate-100 px-6 py-4 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
+  <div>
+    {language === "en"
+      ? `Total ${totalCount} records`
+      : language === "ko"
+      ? `총 ${totalCount}건`
+      : `共 ${totalCount} 条`}
+  </div>
+
+  <div className="flex flex-wrap items-center gap-2">
+    <span>
+      {language === "en" ? "Per page" : language === "ko" ? "페이지당" : "每页"}
+    </span>
+
+    <select
+      value={pageSize}
+      onChange={(e) => setPageSize(Number(e.target.value))}
+      className="rounded-lg border border-slate-300 bg-white px-2 py-1 outline-none focus:border-emerald-500"
+    >
+      <option value={20}>20</option>
+      <option value={40}>40</option>
+    </select>
+
+    <button
+      type="button"
+      disabled={page <= 1}
+      onClick={() => goToPage(1)}
+      className="rounded-lg border border-slate-200 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {language === "en" ? "First" : language === "ko" ? "처음" : "首页"}
+    </button>
+
+    <button
+      type="button"
+      disabled={page <= 1}
+      onClick={() => goToPage(page - 1)}
+      className="rounded-lg border border-slate-200 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {language === "en" ? "Prev" : language === "ko" ? "이전" : "上一页"}
+    </button>
+
+    {pageNumbers.map((pageNumber, index) => {
+      const previous = pageNumbers[index - 1];
+      const showEllipsis = previous && pageNumber - previous > 1;
+
+      return (
+        <span key={pageNumber} className="inline-flex items-center gap-2">
+          {showEllipsis ? <span className="text-slate-400">...</span> : null}
+          <button
+            type="button"
+            onClick={() => goToPage(pageNumber)}
+            className={
+              pageNumber === page
+                ? "rounded-lg bg-emerald-600 px-3 py-1 font-semibold text-white"
+                : "rounded-lg border border-slate-200 px-3 py-1"
+            }
+          >
+            {pageNumber}
+          </button>
+        </span>
+      );
+    })}
+
+    <button
+      type="button"
+      disabled={page >= totalPages}
+      onClick={() => goToPage(page + 1)}
+      className="rounded-lg border border-slate-200 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {language === "en" ? "Next" : language === "ko" ? "다음" : "下一页"}
+    </button>
+
+    <button
+      type="button"
+      disabled={page >= totalPages}
+      onClick={() => goToPage(totalPages)}
+      className="rounded-lg border border-slate-200 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {language === "en" ? "Last" : language === "ko" ? "마지막" : "末页"}
+    </button>
+
+    <span className="font-semibold text-slate-700">
+      {page} / {totalPages}
+    </span>
+
+    <input
+      value={jumpPage}
+      onChange={(e) => setJumpPage(e.target.value.replace(/[^\d]/g, ""))}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") goToPage(jumpPage);
+      }}
+      placeholder={language === "en" ? "Page" : language === "ko" ? "페이지" : "页码"}
+      className="w-20 rounded-lg border border-slate-300 px-3 py-1 outline-none focus:border-emerald-500"
+    />
+
+    <button
+      type="button"
+      onClick={() => goToPage(jumpPage)}
+      className="rounded-lg bg-emerald-600 px-3 py-1 font-semibold text-white hover:bg-emerald-700"
+    >
+      {language === "en" ? "Go" : language === "ko" ? "이동" : "跳转"}
+    </button>
+  </div>
+</div>
+</>
           )}
         </div>
       </div>
