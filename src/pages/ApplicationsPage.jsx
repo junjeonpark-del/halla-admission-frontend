@@ -1065,7 +1065,8 @@ const filteredApplications = applications;
         placeholder={language === "en" ? "Page" : language === "ko" ? "페이지" : "页码"}
         className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
       />
-      <button type="button" onClick={() => goToPage(jumpPage)} disabled={!jumpPage} className="rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
+      <button type="button" onClick={() => goToPage(jumpPage)} disabled={totalPages <= 1 || !jumpPage}
+ className="rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
         {language === "en" ? "Go" : language === "ko" ? "이동" : "跳转"}
       </button>
     </div>
