@@ -321,16 +321,23 @@ function AgencyApplicationsPage() {
   const language = agencyContext?.language || "zh";
   const t = messages[language] || messages.zh;
 
-  const [applications, setApplications] = useState([]);
+const [applications, setApplications] = useState([]);
 const [currentIntakes, setCurrentIntakes] = useState([]);
 const [agencyUnits, setAgencyUnits] = useState([]);
 const [loading, setLoading] = useState(true);
 const [loadError, setLoadError] = useState("");
+const [filtersReady, setFiltersReady] = useState(false);
 const [applicationDialogOpen, setApplicationDialogOpen] = useState(false);
 const [selectedApplicationType, setSelectedApplicationType] = useState("undergraduate");
 const [activeTab, setActiveTab] = useState("draft");
 const [searchKeyword, setSearchKeyword] = useState("");
 const [statusFilter, setStatusFilter] = useState("all");
+const [page, setPage] = useState(1);
+const [pageSize, setPageSize] = useState(20);
+const [totalCount, setTotalCount] = useState(0);
+const [draftTotalCount, setDraftTotalCount] = useState(0);
+const [submittedTotalCount, setSubmittedTotalCount] = useState(0);
+const [jumpPage, setJumpPage] = useState("");
 
 const isPrimarySession = agencySession?.is_primary === true;
 const agencyUnitColumnLabel =
@@ -642,22 +649,12 @@ const getAgencyUnitName = (item) => {
     try {
       setLoading(true);
       setLoadError("");
+      setFiltersReady(false);
 
       const nowIso = new Date().toISOString();
 
-      const applicationQuery = supabase
-        .from("applications")
-        .select("*")
-        .eq("agency_id", agencySession.agency_id)
-        .order("updated_at", { ascending: false });
-
-      if (agencySession?.is_primary !== true) {
-        applicationQuery.eq("agency_unit_id", agencySession?.agency_unit_id || "");
-      }
-
       const [
         { data: intakeData, error: intakeError },
-        { data: applicationsData, error: applicationsError },
         { data: agencyUnitsData, error: agencyUnitsError },
       ] = await Promise.all([
         supabase
@@ -667,7 +664,6 @@ const getAgencyUnitName = (item) => {
           .lte("open_at", nowIso)
           .gte("close_at", nowIso)
           .order("open_at", { ascending: true }),
-        applicationQuery,
         agencySession?.is_primary === true
           ? supabase
               .from("agency_units")
@@ -680,16 +676,14 @@ const getAgencyUnitName = (item) => {
       ]);
 
       if (intakeError) throw intakeError;
-      if (applicationsError) throw applicationsError;
       if (agencyUnitsError) throw agencyUnitsError;
 
       setCurrentIntakes(intakeData || []);
-      setApplications(applicationsData || []);
       setAgencyUnits(agencyUnitsData || []);
+      setFiltersReady(true);
     } catch (error) {
       console.error("AgencyApplicationsPage loadData error:", error);
       setLoadError(error.message || t.loadError);
-    } finally {
       setLoading(false);
     }
   }
@@ -758,61 +752,192 @@ const { error: applicationDeleteError } = await deleteQuery;
       if (applicationDeleteError) throw applicationDeleteError;
 
       setApplications((prev) => prev.filter((item) => item.id !== applicationId));
+setTotalCount((prev) => Math.max(0, prev - 1));
 
-      alert(t.deleteSuccess);
+if (activeTab === "draft") {
+  setDraftTotalCount((prev) => Math.max(0, prev - 1));
+} else {
+  setSubmittedTotalCount((prev) => Math.max(0, prev - 1));
+}
+
+alert(t.deleteSuccess);
+
     } catch (error) {
       console.error("handleDeleteApplication error:", error);
       alert(`${t.deleteFailed}${error.message}`);
     }
   };
 
-    const currentIntakeIds = useMemo(() => {
-    return new Set(
-      currentIntakes
-        .map((item) => (item?.id ? String(item.id) : ""))
-        .filter(Boolean)
+    const currentIntakeIdList = useMemo(() => {
+  return currentIntakes
+    .map((item) => (item?.id ? String(item.id) : ""))
+    .filter(Boolean);
+}, [currentIntakes]);
+
+const buildApplicationsQuery = ({ includeCount = false, mode = activeTab, withSearch = true } = {}) => {
+  const keyword = withSearch ? searchKeyword.trim().replaceAll(",", " ") : "";
+
+  let query = supabase
+    .from("applications")
+    .select("*", includeCount ? { count: "exact" } : undefined)
+    .eq("agency_id", agencySession.agency_id)
+    .order("updated_at", { ascending: false });
+
+  if (agencySession?.is_primary !== true) {
+    query = query.eq("agency_unit_id", agencySession?.agency_unit_id || "");
+  }
+
+  if (mode === "draft") {
+    query = query.eq("status", "draft");
+  } else {
+    query = query.neq("status", "draft");
+
+    if (currentIntakeIdList.length > 0) {
+      query = query.in("intake_id", currentIntakeIdList);
+    } else {
+      query = query.eq("intake_id", "__no_open_intake__");
+    }
+
+    if (statusFilter !== "all") {
+      query = query.eq("status", statusFilter);
+    }
+  }
+
+  if (keyword) {
+    query = query.or(
+      `english_name.ilike.%${keyword}%,full_name_passport.ilike.%${keyword}%,name.ilike.%${keyword}%,major.ilike.%${keyword}%,department.ilike.%${keyword}%`
     );
-  }, [currentIntakes]);
+  }
 
-  const currentBatchApplications = useMemo(() => {
-    if (currentIntakeIds.size === 0) return [];
+  return query;
+};
 
-    return applications.filter((item) => {
-      const intakeId = item?.intake_id ? String(item.intake_id) : "";
-      return !!intakeId && currentIntakeIds.has(intakeId);
-    });
-  }, [applications, currentIntakeIds]);
+async function loadTabCounts() {
+  if (!agencySession?.agency_id || !filtersReady) return;
 
-  const draftApplications = useMemo(() => {
-    return applications.filter((item) => getStatus(item) === "draft");
-  }, [applications]);
+  try {
+    const draftQuery = buildApplicationsQuery({
+      includeCount: true,
+      mode: "draft",
+      withSearch: false,
+    }).range(0, 0);
 
-  const submittedApplications = useMemo(() => {
-    return currentBatchApplications.filter((item) => getStatus(item) !== "draft");
-  }, [currentBatchApplications]);
+    const submittedQuery = buildApplicationsQuery({
+      includeCount: true,
+      mode: "submitted",
+      withSearch: false,
+    }).range(0, 0);
 
-  const currentBaseList = useMemo(() => {
-    return activeTab === "draft" ? draftApplications : submittedApplications;
-  }, [activeTab, draftApplications, submittedApplications]);
+    const [draftResult, submittedResult] = await Promise.all([draftQuery, submittedQuery]);
 
-  const filteredApplications = useMemo(() => {
-    return currentBaseList.filter((item) => {
-      const studentName = getStudentName(item).toLowerCase();
-      const major = getMajor(item).toLowerCase();
-      const status = getStatus(item).toLowerCase();
-      const keyword = searchKeyword.trim().toLowerCase();
+    if (draftResult.error) throw draftResult.error;
+    if (submittedResult.error) throw submittedResult.error;
 
-      const matchesKeyword =
-        !keyword || studentName.includes(keyword) || major.includes(keyword);
+    setDraftTotalCount(draftResult.count || 0);
+    setSubmittedTotalCount(submittedResult.count || 0);
+  } catch (error) {
+    console.error("AgencyApplicationsPage loadTabCounts error:", error);
+  }
+}
 
-      const matchesStatus =
-        activeTab === "draft"
-          ? true
-          : statusFilter === "all" || status === statusFilter;
+async function loadApplications() {
+  if (!agencySession?.agency_id || !filtersReady) return;
 
-      return matchesKeyword && matchesStatus;
-    });
-  }, [currentBaseList, searchKeyword, statusFilter, activeTab]);
+  try {
+    setLoading(true);
+    setLoadError("");
+
+    if (activeTab === "submitted" && currentIntakeIdList.length === 0) {
+      setApplications([]);
+      setTotalCount(0);
+      return;
+    }
+
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error, count } = await buildApplicationsQuery({ includeCount: true }).range(from, to);
+
+    if (error) throw error;
+
+    setApplications(data || []);
+    setTotalCount(count || 0);
+  } catch (error) {
+    console.error("AgencyApplicationsPage loadApplications error:", error);
+    setLoadError(error.message || t.loadError);
+  } finally {
+    setLoading(false);
+  }
+}
+
+useEffect(() => {
+  setPage(1);
+}, [activeTab, searchKeyword, statusFilter, pageSize]);
+
+useEffect(() => {
+  setSearchKeyword("");
+  setStatusFilter("all");
+  setPage(1);
+}, [activeTab]);
+
+useEffect(() => {
+  loadTabCounts();
+}, [
+  agencySession?.agency_id,
+  agencySession?.agency_unit_id,
+  agencySession?.is_primary,
+  filtersReady,
+  currentIntakeIdList,
+]);
+
+useEffect(() => {
+  loadApplications();
+}, [
+  agencySession?.agency_id,
+  agencySession?.agency_unit_id,
+  agencySession?.is_primary,
+  filtersReady,
+  activeTab,
+  page,
+  pageSize,
+  searchKeyword,
+  statusFilter,
+  currentIntakeIdList,
+]);
+
+const filteredApplications = applications;
+const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+useEffect(() => {
+  if (page > totalPages) {
+    setPage(totalPages);
+  }
+}, [page, totalPages]);
+
+const goToPage = (targetPage) => {
+  const nextPage = Math.min(totalPages, Math.max(1, Number(targetPage) || 1));
+  setPage(nextPage);
+  setJumpPage("");
+};
+
+const pageNumbers = (() => {
+  const pages = [];
+  const addPage = (value) => {
+    if (value >= 1 && value <= totalPages && !pages.includes(value)) {
+      pages.push(value);
+    }
+  };
+
+  addPage(1);
+
+  for (let nextPage = page - 2; nextPage <= page + 2; nextPage += 1) {
+    addPage(nextPage);
+  }
+
+  addPage(totalPages);
+
+  return pages.sort((a, b) => a - b);
+})();
 
   useEffect(() => {
     setSearchKeyword("");
@@ -825,20 +950,20 @@ const { error: applicationDeleteError } = await deleteQuery;
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap gap-3">
             <TabButton
-              active={activeTab === "draft"}
-              onClick={() => setActiveTab("draft")}
-              count={draftApplications.length}
-            >
-              {t.tabs.draft}
-            </TabButton>
+  active={activeTab === "draft"}
+  onClick={() => setActiveTab("draft")}
+  count={draftTotalCount}
+>
+  {t.tabs.draft}
+</TabButton>
 
-            <TabButton
-              active={activeTab === "submitted"}
-              onClick={() => setActiveTab("submitted")}
-              count={submittedApplications.length}
-            >
-              {t.tabs.submitted}
-            </TabButton>
+<TabButton
+  active={activeTab === "submitted"}
+  onClick={() => setActiveTab("submitted")}
+  count={submittedTotalCount}
+>
+  {t.tabs.submitted}
+</TabButton>
           </div>
           <button
             type="button"
@@ -984,8 +1109,8 @@ const { error: applicationDeleteError } = await deleteQuery;
                       className="border-t border-slate-100 hover:bg-slate-50"
                     >
                       <td className="px-6 py-4 font-medium text-slate-500">
-                        {index + 1}
-                      </td>
+  {(page - 1) * pageSize + index + 1}
+</td>
                       <td className="px-6 py-4 font-medium text-slate-800">
   <EllipsisText text={getStudentName(student)} widthClass="max-w-[140px]" />
 </td>
@@ -1039,6 +1164,91 @@ const { error: applicationDeleteError } = await deleteQuery;
                 })}
               </tbody>
             </table>
+            <div className="flex flex-col gap-3 border-t border-slate-100 px-6 py-4 text-sm text-slate-600 xl:flex-row xl:items-center xl:justify-between">
+  <div className="font-medium">
+    {language === "en"
+      ? `Total ${totalCount} records`
+      : language === "ko"
+      ? `총 ${totalCount}건`
+      : `共 ${totalCount} 条`}
+  </div>
+
+  <div className="flex flex-wrap items-center gap-2">
+    <label className="flex items-center gap-2">
+      <span>{language === "en" ? "Per page" : language === "ko" ? "페이지당" : "每页"}</span>
+      <select
+        value={pageSize}
+        onChange={(e) => {
+          setPageSize(Number(e.target.value));
+          setPage(1);
+        }}
+        className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+      >
+        <option value={20}>20</option>
+        <option value={40}>40</option>
+      </select>
+    </label>
+
+    <button type="button" onClick={() => setPage(1)} disabled={page <= 1} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+      {language === "en" ? "First" : language === "ko" ? "처음" : "首页"}
+    </button>
+
+    <button type="button" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page <= 1} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+      {language === "en" ? "Previous" : language === "ko" ? "이전" : "上一页"}
+    </button>
+
+    <div className="flex items-center gap-1">
+      {pageNumbers.map((pageNumber, index) => {
+        const showGap = index > 0 && pageNumber - pageNumbers[index - 1] > 1;
+
+        return (
+          <span key={pageNumber} className="inline-flex items-center gap-1">
+            {showGap ? <span className="px-1 text-slate-400">...</span> : null}
+            <button
+              type="button"
+              onClick={() => setPage(pageNumber)}
+              className={`min-w-9 rounded-lg px-3 py-1.5 font-semibold ${
+                page === pageNumber
+                  ? "bg-emerald-600 text-white"
+                  : "border border-slate-200 text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {pageNumber}
+            </button>
+          </span>
+        );
+      })}
+    </div>
+
+    <button type="button" onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))} disabled={page >= totalPages} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+      {language === "en" ? "Next" : language === "ko" ? "다음" : "下一页"}
+    </button>
+
+    <button type="button" onClick={() => setPage(totalPages)} disabled={page >= totalPages} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+      {language === "en" ? "Last" : language === "ko" ? "마지막" : "末页"}
+    </button>
+
+    <div className="ml-1 flex items-center gap-2">
+      <span className="font-semibold text-slate-800">
+        {page} / {totalPages}
+      </span>
+      <input
+        value={jumpPage}
+        onChange={(e) => setJumpPage(e.target.value.replace(/\D/g, ""))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            goToPage(jumpPage);
+          }
+        }}
+        placeholder={language === "en" ? "Page" : language === "ko" ? "페이지" : "页码"}
+        className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+      />
+      <button type="button" onClick={() => goToPage(jumpPage)} disabled={!jumpPage} className="rounded-lg bg-emerald-600 px-3 py-1.5 font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
+        {language === "en" ? "Go" : language === "ko" ? "이동" : "跳转"}
+      </button>
+    </div>
+  </div>
+</div>
           </div>
         )}      </div>
 
