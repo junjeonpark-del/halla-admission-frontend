@@ -392,10 +392,14 @@ function IntakesPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-    const [yearFilter, setYearFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [monthFilter, setMonthFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [yearFilter, setYearFilter] = useState("all");
+const [typeFilter, setTypeFilter] = useState("all");
+const [monthFilter, setMonthFilter] = useState("all");
+const [statusFilter, setStatusFilter] = useState("all");
+const [page, setPage] = useState(1);
+const [pageSize, setPageSize] = useState(10);
+const [jumpPage, setJumpPage] = useState("");
+
   const [selectedNode, setSelectedNode] = useState({ type: "all" });
   const [expandedYears, setExpandedYears] = useState({});
   const [expandedTypes, setExpandedTypes] = useState({});
@@ -849,35 +853,78 @@ function formatUtcToKstDateTimeLocal(value) {
   };
 
   const filteredIntakes = useMemo(() => {
-    return intakes.filter((item) => {
-      const status = getIntakeStatus(item);
-      const applicationType = item.application_type || "undergraduate";
+  return intakes.filter((item) => {
+    const status = getIntakeStatus(item);
+    const applicationType = item.application_type || "undergraduate";
 
-      const matchTree = matchesSelectedTreeNode(item);
+    const matchTree = matchesSelectedTreeNode(item);
 
-      const matchYear =
-        yearFilter === "all" || String(item.year || "") === yearFilter;
+    const matchYear =
+      yearFilter === "all" || String(item.year || "") === yearFilter;
 
-      const matchType = typeFilter === "all" || applicationType === typeFilter;
+    const matchType = typeFilter === "all" || applicationType === typeFilter;
 
-      const matchMonth =
-        monthFilter === "all" ||
-        String(item.intake_month || "") === monthFilter;
+    const matchMonth =
+      monthFilter === "all" ||
+      String(item.intake_month || "") === monthFilter;
 
-      const matchStatus =
-        statusFilter === "all" || status.label === statusFilter;
+    const matchStatus =
+      statusFilter === "all" || status.label === statusFilter;
 
-      return matchTree && matchYear && matchType && matchMonth && matchStatus;
-    });
-  }, [
-    intakes,
-    selectedNode,
-    yearFilter,
-    typeFilter,
-    monthFilter,
-    statusFilter,
-    language,
-  ]);
+    return matchTree && matchYear && matchType && matchMonth && matchStatus;
+  });
+}, [
+  intakes,
+  selectedNode,
+  yearFilter,
+  typeFilter,
+  monthFilter,
+  statusFilter,
+  language,
+]);
+
+useEffect(() => {
+  setPage(1);
+}, [selectedNode, yearFilter, typeFilter, monthFilter, statusFilter, pageSize]);
+
+const totalCount = filteredIntakes.length;
+const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+useEffect(() => {
+  if (page > totalPages) {
+    setPage(totalPages);
+  }
+}, [page, totalPages]);
+
+const goToPage = (targetPage) => {
+  const nextPage = Math.min(totalPages, Math.max(1, Number(targetPage) || 1));
+  setPage(nextPage);
+  setJumpPage("");
+};
+
+const pageNumbers = (() => {
+  const pages = [];
+  const addPage = (value) => {
+    if (value >= 1 && value <= totalPages && !pages.includes(value)) {
+      pages.push(value);
+    }
+  };
+
+  addPage(1);
+
+  for (let nextPage = page - 2; nextPage <= page + 2; nextPage += 1) {
+    addPage(nextPage);
+  }
+
+  addPage(totalPages);
+
+  return pages.sort((a, b) => a - b);
+})();
+
+const pagedIntakes = filteredIntakes.slice(
+  (page - 1) * pageSize,
+  page * pageSize
+);
 
   const handleChange = (field, value) => {
     setForm((prev) => {
@@ -1498,7 +1545,7 @@ function formatUtcToKstDateTimeLocal(value) {
                 </tr>
               </thead>
               <tbody>
-                {filteredIntakes.map((item, index) => {
+                {pagedIntakes.map((item, index) => {
                   const status = getIntakeStatus(item);
                   const isActionLoading = actionLoadingId === item.id;
 
@@ -1508,7 +1555,7 @@ function formatUtcToKstDateTimeLocal(value) {
                       className="border-t border-slate-100 hover:bg-slate-50"
                     >
                       <td className="px-6 py-4 font-medium text-slate-500">
-                        {index + 1}
+                        {(page - 1) * pageSize + index + 1}
                       </td>
                       <td className="px-6 py-4 font-medium text-slate-800">
                         {getIntakeTitle(item)}
@@ -1639,6 +1686,116 @@ function formatUtcToKstDateTimeLocal(value) {
                 })}
               </tbody>
             </table>
+            <div className="flex flex-col gap-3 border-t border-slate-100 px-6 py-4 text-sm text-slate-600 xl:flex-row xl:items-center xl:justify-between">
+  <div className="font-medium">
+    {language === "en"
+      ? `Total ${totalCount} records`
+      : language === "ko"
+      ? `총 ${totalCount}건`
+      : `共 ${totalCount} 条`}
+  </div>
+
+  <div className="flex flex-wrap items-center gap-2">
+    <label className="flex items-center gap-2">
+      <span>{language === "en" ? "Per page" : language === "ko" ? "페이지당" : "每页"}</span>
+      <select
+        value={pageSize}
+        onChange={(e) => {
+          setPageSize(Number(e.target.value));
+          setPage(1);
+        }}
+        className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+      >
+        <option value={10}>10</option>
+        <option value={20}>20</option>
+      </select>
+    </label>
+
+    <button
+      type="button"
+      onClick={() => setPage(1)}
+      disabled={page <= 1}
+      className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {language === "en" ? "First" : language === "ko" ? "처음" : "首页"}
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+      disabled={page <= 1}
+      className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {language === "en" ? "Previous" : language === "ko" ? "이전" : "上一页"}
+    </button>
+
+    <div className="flex items-center gap-1">
+      {pageNumbers.map((pageNumber, index) => {
+        const showGap = index > 0 && pageNumber - pageNumbers[index - 1] > 1;
+
+        return (
+          <span key={pageNumber} className="inline-flex items-center gap-1">
+            {showGap ? <span className="px-1 text-slate-400">...</span> : null}
+            <button
+              type="button"
+              onClick={() => setPage(pageNumber)}
+              className={`min-w-9 rounded-lg px-3 py-1.5 font-semibold ${
+                page === pageNumber
+                  ? "bg-blue-600 text-white"
+                  : "border border-slate-200 text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {pageNumber}
+            </button>
+          </span>
+        );
+      })}
+    </div>
+
+    <button
+      type="button"
+      onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+      disabled={page >= totalPages}
+      className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {language === "en" ? "Next" : language === "ko" ? "다음" : "下一页"}
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setPage(totalPages)}
+      disabled={page >= totalPages}
+      className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {language === "en" ? "Last" : language === "ko" ? "마지막" : "末页"}
+    </button>
+
+    <div className="ml-1 flex items-center gap-2">
+      <span className="font-semibold text-slate-800">
+        {page} / {totalPages}
+      </span>
+      <input
+        value={jumpPage}
+        onChange={(e) => setJumpPage(e.target.value.replace(/\D/g, ""))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            goToPage(jumpPage);
+          }
+        }}
+        placeholder={language === "en" ? "Page" : language === "ko" ? "페이지" : "页码"}
+        className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+      />
+      <button
+        type="button"
+        onClick={() => goToPage(jumpPage)}
+        disabled={!jumpPage}
+        className="rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {language === "en" ? "Go" : language === "ko" ? "이동" : "跳转"}
+      </button>
+    </div>
+  </div>
+</div>
           </div>
                 )}
         </div>
