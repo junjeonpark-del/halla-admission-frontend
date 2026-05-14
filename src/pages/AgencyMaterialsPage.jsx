@@ -252,16 +252,21 @@ function AgencyMaterialsPage() {
 
   const navigate = useNavigate();
 
-  const [applications, setApplications] = useState([]);
+const [applications, setApplications] = useState([]);
 const [applicationFiles, setApplicationFiles] = useState([]);
 const [currentIntakes, setCurrentIntakes] = useState([]);
 const [agencyUnits, setAgencyUnits] = useState([]);
 const [loading, setLoading] = useState(true);
 const [loadError, setLoadError] = useState("");
+const [filtersReady, setFiltersReady] = useState(false);
 
 const [searchKeyword, setSearchKeyword] = useState("");
 const [applicationTypeFilter, setApplicationTypeFilter] = useState("all");
 const [overallFilter, setOverallFilter] = useState("all");
+const [page, setPage] = useState(1);
+const [pageSize, setPageSize] = useState(20);
+const [totalCount, setTotalCount] = useState(0);
+const [jumpPage, setJumpPage] = useState("");
 
 const isPrimarySession = agencySession?.is_primary === true;
 const agencyUnitColumnLabel =
@@ -581,75 +586,41 @@ const getAgencyUnitName = (item) => {
     try {
       setLoading(true);
       setLoadError("");
+      setFiltersReady(false);
 
       const nowIso = new Date().toISOString();
 
-      const applicationsQuery = supabase
-        .from("applications")
-        .select("*")
-        .eq("agency_id", agencySession.agency_id)
-        .order("updated_at", { ascending: false });
-
-      if (agencySession?.is_primary !== true) {
-        applicationsQuery.eq("agency_unit_id", agencySession?.agency_unit_id || "");
-      }
-
       const [
-  { data: intakeData, error: intakeError },
-  { data: applicationsData, error: applicationsError },
-  { data: agencyUnitsData, error: agencyUnitsError },
-] = await Promise.all([
-  supabase
-    .from("intakes")
-    .select("*")
-    .eq("is_active", true)
-    .lte("open_at", nowIso)
-    .gte("close_at", nowIso)
-    .order("open_at", { ascending: true }),
-  applicationsQuery,
-  agencySession?.is_primary === true
-    ? supabase
-        .from("agency_units")
-        .select("id, name")
-        .eq("agency_id", agencySession.agency_id)
-        .eq("is_active", true)
-        .order("is_default", { ascending: false })
-        .order("created_at", { ascending: true })
-    : Promise.resolve({ data: [], error: null }),
-]);
-
-if (intakeError) throw intakeError;
-if (applicationsError) throw applicationsError;
-if (agencyUnitsError) throw agencyUnitsError;
-
-const visibleApplications = applicationsData || [];
-
-      const visiblePublicIds = visibleApplications
-        .map((item) => item.public_id)
-        .filter(Boolean);
-
-      let filesData = [];
-
-      if (visiblePublicIds.length > 0) {
-        const { data, error } = await supabase
-          .from("application_files")
+        { data: intakeData, error: intakeError },
+        { data: agencyUnitsData, error: agencyUnitsError },
+      ] = await Promise.all([
+        supabase
+          .from("intakes")
           .select("*")
-          .in("public_id", visiblePublicIds)
-          .order("created_at", { ascending: false });
+          .eq("is_active", true)
+          .lte("open_at", nowIso)
+          .gte("close_at", nowIso)
+          .order("open_at", { ascending: true }),
+        agencySession?.is_primary === true
+          ? supabase
+              .from("agency_units")
+              .select("id, name")
+              .eq("agency_id", agencySession.agency_id)
+              .eq("is_active", true)
+              .order("is_default", { ascending: false })
+              .order("created_at", { ascending: true })
+          : Promise.resolve({ data: [], error: null }),
+      ]);
 
-        if (error) throw error;
-        filesData = data || [];
-      }
+      if (intakeError) throw intakeError;
+      if (agencyUnitsError) throw agencyUnitsError;
 
       setCurrentIntakes(intakeData || []);
-setApplications(visibleApplications);
-setApplicationFiles(filesData);
-setAgencyUnits(agencyUnitsData || []);
-
+      setAgencyUnits(agencyUnitsData || []);
+      setFiltersReady(true);
     } catch (error) {
       console.error("AgencyMaterialsPage loadData error:", error);
       setLoadError(error.message || t.loadError);
-    } finally {
       setLoading(false);
     }
   }
@@ -726,8 +697,10 @@ const { error: applicationDeleteError } = await applicationDeleteQuery;
 
       if (applicationDeleteError) throw applicationDeleteError;
 
-      alert(t.delete.success);
-      window.location.reload();
+      setApplications((prev) => prev.filter((item) => item.id !== applicationId));
+setApplicationFiles((prev) => prev.filter((file) => file.public_id !== publicId));
+setTotalCount((prev) => Math.max(0, prev - 1));
+alert(t.delete.success);
     } catch (error) {
       console.error("handleDeleteApplication error:", error);
       alert(`${t.delete.failed}${error.message}`);
@@ -755,136 +728,276 @@ const { error: applicationDeleteError } = await applicationDeleteQuery;
     return getCurrentIntakeByType("graduate");
   }, [currentIntakes]);
 
-      const currentBatchApplications = useMemo(() => {
-    const activeIntakeIds = [
-      undergraduateCurrentIntake?.id,
-      languageCurrentIntake?.id,
-      graduateCurrentIntake?.id,
-    ]
-      .map((id) => (id ? String(id) : ""))
-      .filter(Boolean);
+    const currentIntakeIdList = useMemo(() => {
+  return [
+    undergraduateCurrentIntake?.id,
+    languageCurrentIntake?.id,
+    graduateCurrentIntake?.id,
+  ]
+    .map((id) => (id ? String(id) : ""))
+    .filter(Boolean);
+}, [undergraduateCurrentIntake, languageCurrentIntake, graduateCurrentIntake]);
 
-    if (activeIntakeIds.length === 0) return [];
+const buildApplicationsQuery = ({ includeCount = false } = {}) => {
+  const keyword = searchKeyword.trim().replaceAll(",", " ");
 
-    return applications.filter((item) => {
-      const status = String(item.status || "").toLowerCase();
+  let query = supabase
+    .from("applications")
+    .select("*", includeCount ? { count: "exact" } : undefined)
+    .eq("agency_id", agencySession.agency_id)
+    .neq("status", "draft")
+    .order("updated_at", { ascending: false });
 
-      if (
-                status !== "submitted" &&
-        status !== "under_review" &&
-        status !== "missing_documents" &&
-        status !== "approved" &&
-        status !== "rejected"
-      ) {
-        return false;
-      }
+  if (agencySession?.is_primary !== true) {
+    query = query.eq("agency_unit_id", agencySession?.agency_unit_id || "");
+  }
 
-      const intakeId = item?.intake_id ? String(item.intake_id) : "";
-      return !!intakeId && activeIntakeIds.includes(intakeId);
-    });
-  }, [
-    applications,
-    undergraduateCurrentIntake,
-    languageCurrentIntake,
-    graduateCurrentIntake,
-  ]);
+  if (currentIntakeIdList.length > 0) {
+    query = query.in("intake_id", currentIntakeIdList);
+  } else {
+    query = query.eq("intake_id", "__no_open_intake__");
+  }
 
-  const fileMap = useMemo(() => getFileTypeMap(applicationFiles), [applicationFiles]);
+  if (applicationTypeFilter !== "all") {
+    query = query.eq("application_type", applicationTypeFilter);
+  }
 
-  const rows = useMemo(() => {
-    return currentBatchApplications.map((student) => {
-      const publicId = student.public_id;
-      const files = fileMap[publicId] || {};
+  if (keyword) {
+    query = query.or(
+      `english_name.ilike.%${keyword}%,full_name_passport.ilike.%${keyword}%,major.ilike.%${keyword}%,department.ilike.%${keyword}%`
+    );
+  }
 
-      const passportFile = files.passport?.[0] || null;
-      const finalTranscriptFile = files.finalTranscript?.[0] || null;
-      const finalDiplomaFile = files.finalDiploma?.[0] || null;
-      const languageCertificateFile = files.languageCertificate?.[0] || null;
-      const arcFile = files.arc?.[0] || null;
-      const bankStatementFile = files.bankStatement?.[0] || null;
-      const guarantorEmploymentIncomeFile =
-        files.guarantorEmploymentIncome?.[0] || null;
+  return query;
+};
 
-      const bilingualTrack = student.program_track === "Bilingual Program (Chinese)";
-      const inKorea = student.residence_status === "korea";
-      const financialGuaranteeRequired =
-        student.bank_certificate_holder_type === "guarantor";
+const fetchFilesForApplications = async (items) => {
+  const publicIds = (items || [])
+    .map((item) => item.public_id)
+    .filter(Boolean);
 
-      const applicationForm = getMaterialStatus(null, true, true, false);
-      const passport = getMaterialStatus(passportFile, true, false, false);
-      const finalTranscript = getMaterialStatus(finalTranscriptFile, true, false, false);
-      const finalDiploma = getMaterialStatus(finalDiplomaFile, true, false, false);
-      const languageCertificate = getMaterialStatus(
-        languageCertificateFile,
-        !bilingualTrack,
-        false,
-        bilingualTrack
-      );
-      const arc = getMaterialStatus(arcFile, inKorea, false, !inKorea);
-      const bankStatement = getMaterialStatus(bankStatementFile, true, false, false);
-      const guarantorEmploymentIncome = getMaterialStatus(
-        guarantorEmploymentIncomeFile,
-        financialGuaranteeRequired,
-        false,
-        !financialGuaranteeRequired
-      );
+  if (publicIds.length === 0) return [];
 
-      const overall = getOverallStatus([
-  { ...passport, required: true },
-  { ...finalTranscript, required: true },
-  { ...finalDiploma, required: true },
-  { ...languageCertificate, required: !bilingualTrack, exempt: bilingualTrack },
-  { ...arc, required: inKorea, exempt: !inKorea },
-  { ...bankStatement, required: true },
-  {
-    ...guarantorEmploymentIncome,
-    required: financialGuaranteeRequired,
-    exempt: !financialGuaranteeRequired,
-  },
-], student);
+  const { data, error } = await supabase
+    .from("application_files")
+    .select("*")
+    .in("public_id", publicIds)
+    .order("created_at", { ascending: false });
 
-            return {
-        student,
-        publicId,
-        application_type: student.application_type || "undergraduate",
-intake_id: student.intake_id || "",
-        studentName: getStudentName(student),
-agencyUnitName: getAgencyUnitName(student),
-applicationType: getApplicationTypeLabel(student),
-        intake: getIntakeLabel(student),
-        applicationReviewNote: student.review_note || "",
-        applicationForm,
-        passport,
-        finalTranscript,
-        finalDiploma,
-        languageCertificate,
-        arc,
-        bankStatement,
-        guarantorEmploymentIncome,
-        overall,
-      };
-    });
-  }, [currentBatchApplications, fileMap, language]);
+  if (error) throw error;
 
-    const filteredRows = useMemo(() => {
-    const keyword = searchKeyword.trim().toLowerCase();
+  return data || [];
+};
 
-    return rows.filter((row) => {
-      const matchesKeyword =
-        !keyword ||
-        row.studentName.toLowerCase().includes(keyword) ||
-        (row.student.major || "").toLowerCase().includes(keyword);
+const buildRows = (applicationItems, fileItems) => {
+  const map = getFileTypeMap(fileItems);
 
-      const matchesApplicationType =
-        applicationTypeFilter === "all" ||
-        getApplicationType(row.student) === applicationTypeFilter;
+  return (applicationItems || []).map((student) => {
+    const publicId = student.public_id;
+    const files = map[publicId] || {};
 
-      const matchesOverall =
-        overallFilter === "all" || row.overall.label === overallFilter;
+    const passportFile = files.passport?.[0] || null;
+    const finalTranscriptFile = files.finalTranscript?.[0] || null;
+    const finalDiplomaFile = files.finalDiploma?.[0] || null;
+    const languageCertificateFile = files.languageCertificate?.[0] || null;
+    const arcFile = files.arc?.[0] || null;
+    const bankStatementFile = files.bankStatement?.[0] || null;
+    const guarantorEmploymentIncomeFile =
+      files.guarantorEmploymentIncome?.[0] || null;
 
-      return matchesKeyword && matchesApplicationType && matchesOverall;
-    });
-  }, [rows, searchKeyword, applicationTypeFilter, overallFilter, language]);
+    const bilingualTrack = student.program_track === "Bilingual Program (Chinese)";
+    const inKorea = student.residence_status === "korea";
+    const financialGuaranteeRequired =
+      student.bank_certificate_holder_type === "guarantor";
+
+    const applicationForm = getMaterialStatus(null, true, true, false);
+    const passport = getMaterialStatus(passportFile, true, false, false);
+    const finalTranscript = getMaterialStatus(finalTranscriptFile, true, false, false);
+    const finalDiploma = getMaterialStatus(finalDiplomaFile, true, false, false);
+    const languageCertificate = getMaterialStatus(
+      languageCertificateFile,
+      !bilingualTrack,
+      false,
+      bilingualTrack
+    );
+    const arc = getMaterialStatus(arcFile, inKorea, false, !inKorea);
+    const bankStatement = getMaterialStatus(bankStatementFile, true, false, false);
+    const guarantorEmploymentIncome = getMaterialStatus(
+      guarantorEmploymentIncomeFile,
+      financialGuaranteeRequired,
+      false,
+      !financialGuaranteeRequired
+    );
+
+    const overall = getOverallStatus([
+      { ...passport, required: true },
+      { ...finalTranscript, required: true },
+      { ...finalDiploma, required: true },
+      { ...languageCertificate, required: !bilingualTrack, exempt: bilingualTrack },
+      { ...arc, required: inKorea, exempt: !inKorea },
+      { ...bankStatement, required: true },
+      {
+        ...guarantorEmploymentIncome,
+        required: financialGuaranteeRequired,
+        exempt: !financialGuaranteeRequired,
+      },
+    ], student);
+
+    return {
+      student,
+      publicId,
+      application_type: student.application_type || "undergraduate",
+      intake_id: student.intake_id || "",
+      studentName: getStudentName(student),
+      agencyUnitName: getAgencyUnitName(student),
+      applicationType: getApplicationTypeLabel(student),
+      intake: getIntakeLabel(student),
+      applicationReviewNote: student.review_note || "",
+      applicationForm,
+      passport,
+      finalTranscript,
+      finalDiploma,
+      languageCertificate,
+      arc,
+      bankStatement,
+      guarantorEmploymentIncome,
+      overall,
+    };
+  });
+};
+
+async function loadRowsWithOverallFilter() {
+  const allApplications = [];
+  let from = 0;
+  const batchSize = 1000;
+
+  while (true) {
+    const { data, error } = await buildApplicationsQuery({ includeCount: false }).range(
+      from,
+      from + batchSize - 1
+    );
+
+    if (error) throw error;
+
+    const rows = data || [];
+    allApplications.push(...rows);
+
+    if (rows.length < batchSize) break;
+
+    from += batchSize;
+  }
+
+  const allFiles = await fetchFilesForApplications(allApplications);
+  const allRows = buildRows(allApplications, allFiles);
+  const matchedRows = allRows.filter((row) => row.overall.label === overallFilter);
+  const slicedRows = matchedRows.slice((page - 1) * pageSize, page * pageSize);
+  const slicedApplications = slicedRows.map((row) => row.student);
+  const slicedFiles = allFiles.filter((file) =>
+    slicedApplications.some((item) => item.public_id === file.public_id)
+  );
+
+  setApplications(slicedApplications);
+  setApplicationFiles(slicedFiles);
+  setTotalCount(matchedRows.length);
+}
+
+async function loadApplications() {
+  if (!agencySession?.agency_id || !filtersReady) return;
+
+  try {
+    setLoading(true);
+    setLoadError("");
+
+    if (currentIntakeIdList.length === 0) {
+      setApplications([]);
+      setApplicationFiles([]);
+      setTotalCount(0);
+      return;
+    }
+
+    if (overallFilter !== "all") {
+      await loadRowsWithOverallFilter();
+      return;
+    }
+
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error, count } = await buildApplicationsQuery({ includeCount: true }).range(from, to);
+
+    if (error) throw error;
+
+    const pageApplications = data || [];
+    const pageFiles = await fetchFilesForApplications(pageApplications);
+
+    setApplications(pageApplications);
+    setApplicationFiles(pageFiles);
+    setTotalCount(count || 0);
+  } catch (error) {
+    console.error("AgencyMaterialsPage loadApplications error:", error);
+    setLoadError(error.message || t.loadError);
+  } finally {
+    setLoading(false);
+  }
+}
+
+useEffect(() => {
+  setPage(1);
+}, [searchKeyword, applicationTypeFilter, overallFilter, pageSize]);
+
+useEffect(() => {
+  loadApplications();
+}, [
+  agencySession?.agency_id,
+  agencySession?.agency_unit_id,
+  agencySession?.is_primary,
+  filtersReady,
+  page,
+  pageSize,
+  searchKeyword,
+  applicationTypeFilter,
+  overallFilter,
+  currentIntakeIdList,
+]);
+
+const rows = useMemo(() => {
+  return buildRows(applications, applicationFiles);
+}, [applications, applicationFiles, agencyUnitMap, language]);
+
+const filteredRows = rows;
+
+const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+useEffect(() => {
+  if (page > totalPages) {
+    setPage(totalPages);
+  }
+}, [page, totalPages]);
+
+const goToPage = (targetPage) => {
+  const nextPage = Math.min(totalPages, Math.max(1, Number(targetPage) || 1));
+  setPage(nextPage);
+  setJumpPage("");
+};
+
+const pageNumbers = (() => {
+  const pages = [];
+  const addPage = (value) => {
+    if (value >= 1 && value <= totalPages && !pages.includes(value)) {
+      pages.push(value);
+    }
+  };
+
+  addPage(1);
+
+  for (let nextPage = page - 2; nextPage <= page + 2; nextPage += 1) {
+    addPage(nextPage);
+  }
+
+  addPage(totalPages);
+
+  return pages.sort((a, b) => a - b);
+})();
 
   return (
     <div className="space-y-6">
@@ -1009,8 +1122,8 @@ applicationType: getApplicationTypeLabel(student),
                     className="border-t border-slate-100 hover:bg-slate-50"
                   >
                     <td className="px-6 py-4 font-medium text-slate-500">
-                      {index + 1}
-                    </td>
+  {(page - 1) * pageSize + index + 1}
+</td>
                     <td className="px-6 py-4 font-medium text-slate-800">
   <EllipsisText text={row.studentName} widthClass="max-w-[140px]" />
 </td>
@@ -1157,6 +1270,91 @@ applicationType: getApplicationTypeLabel(student),
                 ))}
               </tbody>
             </table>
+            <div className="flex flex-col gap-3 border-t border-slate-100 px-6 py-4 text-sm text-slate-600 xl:flex-row xl:items-center xl:justify-between">
+  <div className="font-medium">
+    {language === "en"
+      ? `Total ${totalCount} records`
+      : language === "ko"
+      ? `총 ${totalCount}건`
+      : `共 ${totalCount} 条`}
+  </div>
+
+  <div className="flex flex-wrap items-center gap-2">
+    <label className="flex items-center gap-2">
+      <span>{language === "en" ? "Per page" : language === "ko" ? "페이지당" : "每页"}</span>
+      <select
+        value={pageSize}
+        onChange={(e) => {
+          setPageSize(Number(e.target.value));
+          setPage(1);
+        }}
+        className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+      >
+        <option value={20}>20</option>
+        <option value={40}>40</option>
+      </select>
+    </label>
+
+    <button type="button" onClick={() => setPage(1)} disabled={page <= 1} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+      {language === "en" ? "First" : language === "ko" ? "처음" : "首页"}
+    </button>
+
+    <button type="button" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page <= 1} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+      {language === "en" ? "Previous" : language === "ko" ? "이전" : "上一页"}
+    </button>
+
+    <div className="flex items-center gap-1">
+      {pageNumbers.map((pageNumber, index) => {
+        const showGap = index > 0 && pageNumber - pageNumbers[index - 1] > 1;
+
+        return (
+          <span key={pageNumber} className="inline-flex items-center gap-1">
+            {showGap ? <span className="px-1 text-slate-400">...</span> : null}
+            <button
+              type="button"
+              onClick={() => setPage(pageNumber)}
+              className={`min-w-9 rounded-lg px-3 py-1.5 font-semibold ${
+                page === pageNumber
+                  ? "bg-emerald-600 text-white"
+                  : "border border-slate-200 text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {pageNumber}
+            </button>
+          </span>
+        );
+      })}
+    </div>
+
+    <button type="button" onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))} disabled={page >= totalPages} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+      {language === "en" ? "Next" : language === "ko" ? "다음" : "下一页"}
+    </button>
+
+    <button type="button" onClick={() => setPage(totalPages)} disabled={page >= totalPages} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+      {language === "en" ? "Last" : language === "ko" ? "마지막" : "末页"}
+    </button>
+
+    <div className="ml-1 flex items-center gap-2">
+      <span className="font-semibold text-slate-800">
+        {page} / {totalPages}
+      </span>
+      <input
+        value={jumpPage}
+        onChange={(e) => setJumpPage(e.target.value.replace(/\D/g, ""))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            goToPage(jumpPage);
+          }
+        }}
+        placeholder={language === "en" ? "Page" : language === "ko" ? "페이지" : "页码"}
+        className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+      />
+      <button type="button" onClick={() => goToPage(jumpPage)} disabled={!jumpPage} className="rounded-lg bg-emerald-600 px-3 py-1.5 font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
+        {language === "en" ? "Go" : language === "ko" ? "이동" : "跳转"}
+      </button>
+    </div>
+  </div>
+</div>
           </div>
         )}
       </div>
