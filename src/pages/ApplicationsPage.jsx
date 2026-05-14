@@ -7,8 +7,7 @@ import { getMajorCatalog, getLocalizedMajorLabel } from "../data/majorCatalog";
 const messages = {
   zh: {
     filtersTitle: "筛选条件",
-    filtersDesc: "按学生、机构、批次和状态快速筛选申请记录",
-    exportExcel: "导出 Excel",
+    filtersDesc: "按学生、机构、批次和状态快速筛选申请记录",    
     studentName: "学生姓名",
     studentNamePlaceholder: "输入姓名或专业搜索",
     agency: "所属机构",
@@ -23,9 +22,7 @@ const messages = {
     listDesc: "点击学生姓名或“审核材料”按钮进入对应学生材料审核页",
     loading: "正在加载申请列表...",
     loadError: "申请列表加载失败，请检查 Supabase 数据。",
-    noData: "暂无申请数据",
-    noExportData: "当前没有可导出的申请数据。",
-    exportFailed: "导出失败：",
+    noData: "暂无申请数据",        
     table: {
       index: "序号",
       studentName: "学生姓名",
@@ -72,13 +69,10 @@ const messages = {
       yes: "是",
       no: "否",
     },
-    excelSheetName: "申请列表",
-    excelFilePrefix: "管理员申请列表",
-  },
+      },
   en: {
     filtersTitle: "Filters",
-    filtersDesc: "Quickly filter application records by student, agency, intake, and status",
-    exportExcel: "Export Excel",
+    filtersDesc: "Quickly filter application records by student, agency, intake, and status",    
     studentName: "Student Name",
     studentNamePlaceholder: "Search by name or major",
     agency: "Agency",
@@ -93,9 +87,7 @@ const messages = {
     listDesc: "Click the student name or “Review Materials” to open the review page",
     loading: "Loading application list...",
     loadError: "Failed to load application list. Please check Supabase data.",
-    noData: "No application data",
-    noExportData: "There is no application data to export.",
-    exportFailed: "Export failed: ",
+    noData: "No application data",        
     table: {
       index: "No.",
       studentName: "Student Name",
@@ -142,13 +134,10 @@ const messages = {
       yes: "Yes",
       no: "No",
     },
-    excelSheetName: "Applications",
-    excelFilePrefix: "Admin_Applications",
-  },
+      },
   ko: {
     filtersTitle: "필터 조건",
-    filtersDesc: "학생, 기관, 차수 및 상태별로 지원 기록을 빠르게 필터링합니다",
-    exportExcel: "Excel 내보내기",
+    filtersDesc: "학생, 기관, 차수 및 상태별로 지원 기록을 빠르게 필터링합니다",    
     studentName: "학생 이름",
     studentNamePlaceholder: "이름 또는 전공으로 검색",
     agency: "소속 기관",
@@ -164,8 +153,7 @@ const messages = {
     loading: "지원 목록을 불러오는 중...",
     loadError: "지원 목록 로드에 실패했습니다. Supabase 데이터를 확인하세요.",
     noData: "지원 데이터가 없습니다",
-    noExportData: "내보낼 지원 데이터가 없습니다.",
-    exportFailed: "내보내기 실패: ",
+
     table: {
       index: "번호",
       studentName: "학생 이름",
@@ -212,9 +200,7 @@ const messages = {
       yes: "예",
       no: "아니오",
     },
-    excelSheetName: "지원목록",
-    excelFilePrefix: "관리자_지원목록",
-  },
+      },
 };
 
 function StatusBadge({ children, type = "default" }) {
