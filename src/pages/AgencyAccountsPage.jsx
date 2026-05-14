@@ -452,6 +452,7 @@ function AgencyAccountsPage() {
 
   const [agencyInfo, setAgencyInfo] = useState(null);
 const [accounts, setAccounts] = useState([]);
+const [primaryAccountRow, setPrimaryAccountRow] = useState(null);
 const [agencyUnits, setAgencyUnits] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -489,57 +490,121 @@ const [agencyUnits, setAgencyUnits] = useState([]);
   const [searchKeyword, setSearchKeyword] = useState("");
 const [statusFilter, setStatusFilter] = useState("all");
 const [unitFilter, setUnitFilter] = useState("all");
+const [page, setPage] = useState(1);
+const [pageSize, setPageSize] = useState(20);
+const [totalCount, setTotalCount] = useState(0);
+const [jumpPage, setJumpPage] = useState("");
 
-  async function loadData() {
-    try {
-      if (!agencySession?.agency_id) return;
-      setLoading(true);
-      setLoadError("");
+  const buildAccountsQuery = ({ includeCount = false } = {}) => {
+  const keyword = searchKeyword.trim().replaceAll(",", " ");
 
-      const [
-  { data: agencyRow, error: agencyError },
-  { data: accountRows, error: accountsError },
-  { data: unitRows, error: unitsError },
-] = await Promise.all([
-  supabase
-    .from("agencies")
-    .select("*")
-    .eq("id", agencySession.agency_id)
-    .single(),
-  supabase
+  let query = supabase
     .from("agency_accounts")
-    .select("*")
+    .select("*", includeCount ? { count: "exact" } : undefined)
     .eq("agency_id", agencySession.agency_id)
     .order("is_primary", { ascending: false })
-    .order("created_at", { ascending: true }),
-  supabase
-    .from("agency_units")
-    .select("*")
-    .eq("agency_id", agencySession.agency_id)
-    .order("is_default", { ascending: false })
-    .order("created_at", { ascending: true }),
-]);
+    .order("created_at", { ascending: true });
 
-if (agencyError) throw agencyError;
-if (accountsError) throw accountsError;
-if (unitsError) throw unitsError;
-
-setAgencyInfo(agencyRow || null);
-setAccounts(accountRows || []);
-setAgencyUnits(unitRows || []);
-
-    } catch (error) {
-      console.error("AgencyAccountsPage loadData error:", error);
-      setLoadError(error.message || t.alerts.loadError);
-    } finally {
-      setLoading(false);
-    }
+  if (keyword) {
+    query = query.or(
+      [
+        `username.ilike.%${keyword}%`,
+        `account_name.ilike.%${keyword}%`,
+        `email.ilike.%${keyword}%`,
+        `phone.ilike.%${keyword}%`,
+      ].join(",")
+    );
   }
 
-  useEffect(() => {
+  if (statusFilter === "active") {
+    query = query.eq("is_active", true);
+  } else if (statusFilter === "inactive") {
+    query = query.neq("is_active", true);
+  } else if (statusFilter === "primary") {
+    query = query.eq("is_primary", true);
+  } else if (statusFilter === "sub") {
+    query = query.neq("is_primary", true);
+  }
+
+  if (unitFilter !== "all") {
+    query = query.eq("agency_unit_id", unitFilter);
+  }
+
+  return query;
+};
+
+async function loadData() {
+  try {
     if (!agencySession?.agency_id) return;
-    loadData();
-  }, [agencySession?.agency_id]);
+    setLoading(true);
+    setLoadError("");
+
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const [
+      { data: agencyRow, error: agencyError },
+      { data: primaryRow, error: primaryError },
+      { data: unitRows, error: unitsError },
+      { data: accountRows, error: accountsError, count },
+    ] = await Promise.all([
+      supabase
+        .from("agencies")
+        .select("*")
+        .eq("id", agencySession.agency_id)
+        .single(),
+
+      supabase
+        .from("agency_accounts")
+        .select("*")
+        .eq("agency_id", agencySession.agency_id)
+        .eq("is_primary", true)
+        .maybeSingle(),
+
+      supabase
+        .from("agency_units")
+        .select("*")
+        .eq("agency_id", agencySession.agency_id)
+        .order("is_default", { ascending: false })
+        .order("created_at", { ascending: true }),
+
+      buildAccountsQuery({ includeCount: true }).range(from, to),
+    ]);
+
+    if (agencyError) throw agencyError;
+    if (primaryError) throw primaryError;
+    if (unitsError) throw unitsError;
+    if (accountsError) throw accountsError;
+
+    setAgencyInfo(agencyRow || null);
+    setPrimaryAccountRow(primaryRow || null);
+    setAgencyUnits(unitRows || []);
+    setAccounts(accountRows || []);
+    setTotalCount(count || 0);
+  } catch (error) {
+    console.error("AgencyAccountsPage loadData error:", error);
+    setLoadError(error.message || t.alerts.loadError);
+  } finally {
+    setLoading(false);
+  }
+}
+
+useEffect(() => {
+  setPage(1);
+  setJumpPage("");
+}, [searchKeyword, statusFilter, unitFilter, pageSize]);
+
+useEffect(() => {
+  if (!agencySession?.agency_id) return;
+  loadData();
+}, [
+  agencySession?.agency_id,
+  searchKeyword,
+  statusFilter,
+  unitFilter,
+  page,
+  pageSize,
+]);
 
   const agencyUnitMap = useMemo(() => {
   return agencyUnits.reduce((map, item) => {
@@ -572,42 +637,54 @@ const branchUnits = useMemo(() => {
   return agencyUnits.filter((item) => item.is_default !== true);
 }, [agencyUnits]);
 
-const filteredAccounts = useMemo(() => {
-  const keyword = searchKeyword.trim().toLowerCase();
-
-  return accounts.filter((item) => {
-    const matchesKeyword =
-      !keyword ||
-      String(item.username || "").toLowerCase().includes(keyword) ||
-      String(item.account_name || "").toLowerCase().includes(keyword) ||
-      String(item.email || "").toLowerCase().includes(keyword) ||
-      String(item.phone || "").toLowerCase().includes(keyword);
-
-    const matchesStatus =
-  statusFilter === "all" ||
-  (statusFilter === "active" && item.is_active === true) ||
-  (statusFilter === "inactive" && item.is_active !== true) ||
-  (statusFilter === "primary" && item.is_primary === true) ||
-  (statusFilter === "sub" && item.is_primary !== true);
-
-const matchesUnit =
-  unitFilter === "all" || item.agency_unit_id === unitFilter;
-
-return matchesKeyword && matchesStatus && matchesUnit;
-  });
-}, [accounts, searchKeyword, statusFilter, unitFilter]);
+const filteredAccounts = accounts;
 
   const primaryAccount = useMemo(() => {
-    return accounts.find((item) => item.is_primary === true) || null;
-  }, [accounts]);
+  return primaryAccountRow || accounts.find((item) => item.is_primary === true) || null;
+}, [primaryAccountRow, accounts]);
 
-  const isPrimarySession = useMemo(() => {
-    if (!agencySession?.agency_account_id) return false;
-    return accounts.some(
+const isPrimarySession = useMemo(() => {
+  if (agencySession?.is_primary === true) return true;
+  if (!agencySession?.agency_account_id) return false;
+
+  return (
+    primaryAccountRow?.id === agencySession.agency_account_id ||
+    accounts.some(
       (item) =>
         item.id === agencySession.agency_account_id && item.is_primary === true
-    );
-  }, [accounts, agencySession]);
+    )
+  );
+}, [accounts, primaryAccountRow, agencySession]);
+
+const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+const goToPage = (nextPage) => {
+  const numericPage = Number(nextPage);
+  if (!Number.isFinite(numericPage)) return;
+
+  const safePage = Math.min(Math.max(1, numericPage), totalPages);
+  setPage(safePage);
+  setJumpPage("");
+};
+
+const pageNumbers = useMemo(() => {
+  const pages = [];
+  const addPage = (value) => {
+    if (!pages.includes(value) && value >= 1 && value <= totalPages) {
+      pages.push(value);
+    }
+  };
+
+  addPage(1);
+
+  for (let value = page - 2; value <= page + 2; value += 1) {
+    addPage(value);
+  }
+
+  addPage(totalPages);
+
+  return pages.sort((a, b) => a - b);
+}, [page, totalPages]);
 
   const handleCreateChange = (field, value) => {
     setCreateForm((prev) => ({
@@ -1453,7 +1530,8 @@ const handleDeleteManagedUnit = async (unit) => {
         ) : filteredAccounts.length === 0 ? (
           <div className="px-6 py-8 text-sm text-slate-500">{t.table.noData}</div>
         ) : (
-          <div className="overflow-x-auto">
+  <>
+    <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-left text-slate-500">
                 <tr>
@@ -1570,8 +1648,114 @@ const handleDeleteManagedUnit = async (unit) => {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
+</div>
+
+<div className="flex flex-col gap-3 border-t border-slate-100 px-6 py-4 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
+  <div>
+    {language === "en"
+      ? `Total ${totalCount} records`
+      : language === "ko"
+      ? `총 ${totalCount}건`
+      : `共 ${totalCount} 条`}
+  </div>
+
+  <div className="flex flex-wrap items-center gap-2">
+    <span>
+      {language === "en" ? "Per page" : language === "ko" ? "페이지당" : "每页"}
+    </span>
+
+    <select
+      value={pageSize}
+      onChange={(e) => setPageSize(Number(e.target.value))}
+      className="rounded-lg border border-slate-300 bg-white px-2 py-1 outline-none focus:border-emerald-500"
+    >
+      <option value={20}>20</option>
+      <option value={40}>40</option>
+    </select>
+
+    <button
+      type="button"
+      disabled={page <= 1}
+      onClick={() => goToPage(1)}
+      className="rounded-lg border border-slate-200 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {language === "en" ? "First" : language === "ko" ? "처음" : "首页"}
+    </button>
+
+    <button
+      type="button"
+      disabled={page <= 1}
+      onClick={() => goToPage(page - 1)}
+      className="rounded-lg border border-slate-200 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {language === "en" ? "Prev" : language === "ko" ? "이전" : "上一页"}
+    </button>
+
+    {pageNumbers.map((pageNumber, index) => {
+      const previous = pageNumbers[index - 1];
+      const showEllipsis = previous && pageNumber - previous > 1;
+
+      return (
+        <span key={pageNumber} className="inline-flex items-center gap-2">
+          {showEllipsis ? <span className="text-slate-400">...</span> : null}
+          <button
+            type="button"
+            onClick={() => goToPage(pageNumber)}
+            className={
+              pageNumber === page
+                ? "rounded-lg bg-emerald-600 px-3 py-1 font-semibold text-white"
+                : "rounded-lg border border-slate-200 px-3 py-1"
+            }
+          >
+            {pageNumber}
+          </button>
+        </span>
+      );
+    })}
+
+    <button
+      type="button"
+      disabled={page >= totalPages}
+      onClick={() => goToPage(page + 1)}
+      className="rounded-lg border border-slate-200 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {language === "en" ? "Next" : language === "ko" ? "다음" : "下一页"}
+    </button>
+
+    <button
+      type="button"
+      disabled={page >= totalPages}
+      onClick={() => goToPage(totalPages)}
+      className="rounded-lg border border-slate-200 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {language === "en" ? "Last" : language === "ko" ? "마지막" : "末页"}
+    </button>
+
+    <span className="font-semibold text-slate-700">
+      {page} / {totalPages}
+    </span>
+
+    <input
+      value={jumpPage}
+      onChange={(e) => setJumpPage(e.target.value.replace(/[^\d]/g, ""))}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") goToPage(jumpPage);
+      }}
+      placeholder={language === "en" ? "Page" : language === "ko" ? "페이지" : "页码"}
+      className="w-20 rounded-lg border border-slate-300 px-3 py-1 outline-none focus:border-emerald-500"
+    />
+
+    <button
+      type="button"
+      onClick={() => goToPage(jumpPage)}
+      className="rounded-lg bg-emerald-600 px-3 py-1 font-semibold text-white hover:bg-emerald-700"
+    >
+      {language === "en" ? "Go" : language === "ko" ? "이동" : "跳转"}
+    </button>
+  </div>
+</div>
+  </>
+)}
       </div>
 
 {showUnitModal ? (
