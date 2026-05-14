@@ -16,9 +16,8 @@ const messages = {
     heroTitleAccent: "Admission System",
     heroDesc:
       "国际学生申请与材料管理平台，用于处理批次开放、机构账号、学生申请与材料审核。",
-      guideEyebrow: "Admission Guide",
-guideTitle: "招生简章",
-guideDesc: "查看韩拿大学外国留学生招生简章",
+      guideTitle: "招生简章",
+guideSubtitle: "本科 · 语学院 · 大学院",
 guideAction: "访问学校官网",
     adminTitle: "管理员登录",
     adminDesc: "学校国际处后台入口",
@@ -57,9 +56,8 @@ guideAction: "访问学校官网",
     heroTitleAccent: "Admission System",
     heroDesc:
       "International student application and materials platform for intake opening, agency accounts, student applications, and review.",
-      guideEyebrow: "Admission Guide",
-guideTitle: "Admission Guide",
-guideDesc: "View Halla University's admission guide for international students.",
+      guideTitle: "Admission Guide",
+guideSubtitle: "Undergraduate · Language · Graduate",
 guideAction: "Open website",
     adminTitle: "Admin Login",
     adminDesc: "Portal for the international office",
@@ -98,9 +96,8 @@ guideAction: "Open website",
     heroTitleAccent: "Admission System",
     heroDesc:
       "국제학생 지원 및 서류 관리 플랫폼으로 모집 차수 개방, 기관 계정, 학생 지원 및 서류 심사를 처리합니다.",
-      guideEyebrow: "Admission Guide",
-guideTitle: "모집요강",
-guideDesc: "한라대학교 외국인 유학생 모집요강을 확인하세요.",
+      guideTitle: "모집요강",
+guideSubtitle: "학부 · 어학원 · 대학원",
 guideAction: "홈페이지 보기",
     adminTitle: "관리자 로그인",
     adminDesc: "국제처 관리자 페이지 입구",
@@ -411,30 +408,33 @@ function AdmissionGuideCard({ t, url }) {
     <button
       type="button"
       onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
-      className="absolute right-[8.5%] top-[18%] z-10 hidden w-[260px] cursor-pointer rounded-[24px] border border-white/80 bg-white/82 p-5 text-left shadow-[0_18px_45px_rgba(56,90,165,0.12)] backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_22px_54px_rgba(56,90,165,0.16)] xl:block"
+      className="absolute right-[12%] top-[24%] z-10 hidden w-[230px] cursor-pointer rounded-xl border border-[#c9dcff] bg-white/78 p-4 text-left shadow-[0_10px_28px_rgba(45,108,255,0.12)] backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_14px_34px_rgba(45,108,255,0.16)] xl:block"
     >
-      <div className="flex items-start gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,#f3f8ff_0%,#eaf2ff_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.95)]">
+      <div className="flex items-start gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eef5ff]">
           <AdmissionGuideIcon />
         </div>
 
         <div className="min-w-0">
-          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#6f7f9f]">
-            {t.guideEyebrow}
-          </div>
-          <div className="mt-1 text-[1.2rem] font-black tracking-tight text-[#132046]">
+          <div className="truncate text-[0.95rem] font-black tracking-tight text-[#132046]">
             {t.guideTitle}
+          </div>
+          <div className="mt-1 truncate text-[0.72rem] font-medium text-[#6d7fa0]">
+            {t.guideSubtitle}
           </div>
         </div>
       </div>
 
-      <p className="mt-4 text-[0.92rem] leading-6 text-[#637491]">
-        {t.guideDesc}
-      </p>
-
-      <div className="mt-4 inline-flex items-center gap-2 text-[0.92rem] font-bold text-[#2568ff]">
-        <span>{t.guideAction}</span>
-        <span aria-hidden="true">→</span>
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <span className="text-[0.78rem] font-bold text-[#2d6cff]">
+          {t.guideAction}
+        </span>
+        <span
+          aria-hidden="true"
+          className="text-[1rem] leading-none text-[#2d6cff]"
+        >
+          ↗
+        </span>
       </div>
     </button>
   );
