@@ -283,7 +283,7 @@ const messages = {
       closeAt: "마감 시간",
       status: "상태",
       postDeadline: "마감 후 서류 보완",
-      description: "설명",
+      description: "비고",
       actions: "작업",
     },
     postDeadline: {
@@ -1298,7 +1298,7 @@ const pagedIntakes = filteredIntakes.slice(
         </div>
       </div>
 
-            <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
+          <div className="grid items-start gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-5 py-4">
             <h3 className="text-lg font-bold text-slate-900">
