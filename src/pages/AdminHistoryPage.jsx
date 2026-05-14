@@ -1008,8 +1008,10 @@ const buildHistoryApplicationsQuery = ({ includeCount = false } = {}) => {
     .order("updated_at", { ascending: false });
 
   if (selectedIntakeIds.length > 0) {
-    query = query.in("intake_id", selectedIntakeIds);
-  }
+  query = query.in("intake_id", selectedIntakeIds);
+} else {
+  query = query.eq("intake_id", "__no_history_intake__");
+}
 
   if (keyword) {
     const keywordLower = keyword.toLowerCase();
