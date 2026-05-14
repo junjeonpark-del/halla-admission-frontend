@@ -1169,6 +1169,46 @@ const pageNumbers = (() => {
 const filteredApplications = applications;
 const fileMap = useMemo(() => getFileTypeMap(applicationFiles), [applicationFiles]);
 
+const intakeTree = useMemo(() => {
+  const grouped = {};
+
+  historyIntakes.forEach((intake) => {
+    const year = getIntakeYear(intake);
+    const applicationType = getApplicationType(intake);
+    const month = getIntakeMonth(intake);
+
+    if (!grouped[year]) grouped[year] = {};
+    if (!grouped[year][applicationType]) grouped[year][applicationType] = {};
+    if (!grouped[year][applicationType][month]) grouped[year][applicationType][month] = [];
+
+    grouped[year][applicationType][month].push(intake);
+  });
+
+  const typeOrder = ["undergraduate", "language", "graduate"];
+  const years = Object.keys(grouped).sort((a, b) => Number(b) - Number(a));
+
+  return years.map((year) => ({
+    year,
+    types: Object.keys(grouped[year])
+      .sort((a, b) => typeOrder.indexOf(a) - typeOrder.indexOf(b))
+      .map((applicationType) => ({
+        applicationType,
+        label: getApplicationTypeLabel({ application_type: applicationType }),
+        months: Object.keys(grouped[year][applicationType])
+          .sort((a, b) => Number(a) - Number(b))
+          .map((month) => ({
+            month,
+            label: getMonthDisplay(month, applicationType),
+            intakes: grouped[year][applicationType][month].sort((a, b) => {
+              const aOpen = a.open_at ? new Date(a.open_at).getTime() : 0;
+              const bOpen = b.open_at ? new Date(b.open_at).getTime() : 0;
+              return bOpen - aOpen;
+            }),
+          })),
+      })),
+  }));
+}, [historyIntakes, language]);
+
   const rows = useMemo(() => {
   return filteredApplications.map((student) => {
     const publicId = student.public_id;
