@@ -1167,6 +1167,7 @@ const pageNumbers = (() => {
 })();
 
 const filteredApplications = applications;
+const fileMap = useMemo(() => getFileTypeMap(applicationFiles), [applicationFiles]);
 
   const rows = useMemo(() => {
   return filteredApplications.map((student) => {
