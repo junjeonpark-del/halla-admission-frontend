@@ -15,10 +15,7 @@ const messages = {
     heroTitlePrimary: "Halla",
     heroTitleAccent: "Admission System",
     heroDesc:
-      "国际学生申请与材料管理平台，用于处理批次开放、机构账号、学生申请与材料审核。",
-      guideTitle: "招生简章",
-guideSubtitle: "本科 · 语学院 · 大学院",
-guideAction: "访问学校官网",
+      "国际学生申请与材料管理平台，用于处理批次开放、机构账号、学生申请与材料审核。",      
     adminTitle: "管理员登录",
     adminDesc: "学校国际处后台入口",
     agencyTitle: "机构登录",
@@ -55,10 +52,7 @@ guideAction: "访问学校官网",
     heroTitlePrimary: "Halla",
     heroTitleAccent: "Admission System",
     heroDesc:
-      "International student application and materials platform for intake opening, agency accounts, student applications, and review.",
-      guideTitle: "Admission Guide",
-guideSubtitle: "Undergraduate · Language · Graduate",
-guideAction: "Open website",
+      "International student application and materials platform for intake opening, agency accounts, student applications, and review.",      
     adminTitle: "Admin Login",
     adminDesc: "Portal for the international office",
     agencyTitle: "Agency Login",
@@ -95,10 +89,7 @@ guideAction: "Open website",
     heroTitlePrimary: "Halla",
     heroTitleAccent: "Admission System",
     heroDesc:
-      "국제학생 지원 및 서류 관리 플랫폼으로 모집 차수 개방, 기관 계정, 학생 지원 및 서류 심사를 처리합니다.",
-      guideTitle: "모집요강",
-guideSubtitle: "학부 · 어학원 · 대학원",
-guideAction: "홈페이지 보기",
+      "국제학생 지원 및 서류 관리 플랫폼으로 모집 차수 개방, 기관 계정, 학생 지원 및 서류 심사를 처리합니다.",      
     adminTitle: "관리자 로그인",
     adminDesc: "국제처 관리자 페이지 입구",
     agencyTitle: "기관 로그인",
@@ -386,60 +377,6 @@ function FeatureItem({ icon, title, desc, bordered = false }) {
   );
 }
 
-function AdmissionGuideIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-6 w-6 text-[#2d6cff]"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-    >
-      <path d="M7 3.8h7l4 4V20H7z" />
-      <path d="M14 3.8v4h4" />
-      <path d="M9.5 12.2h5" />
-      <path d="M9.5 15.8h4.2" />
-    </svg>
-  );
-}
-
-function AdmissionGuideCard({ t, url }) {
-  return (
-    <button
-      type="button"
-      onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
-      className="absolute right-[12%] top-[24%] z-10 hidden w-[230px] cursor-pointer rounded-xl border border-[#c9dcff] bg-white/78 p-4 text-left shadow-[0_10px_28px_rgba(45,108,255,0.12)] backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_14px_34px_rgba(45,108,255,0.16)] xl:block"
-    >
-      <div className="flex items-start gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eef5ff]">
-          <AdmissionGuideIcon />
-        </div>
-
-        <div className="min-w-0">
-          <div className="truncate text-[0.95rem] font-black tracking-tight text-[#132046]">
-            {t.guideTitle}
-          </div>
-          <div className="mt-1 truncate text-[0.72rem] font-medium text-[#6d7fa0]">
-            {t.guideSubtitle}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <span className="text-[0.78rem] font-bold text-[#2d6cff]">
-          {t.guideAction}
-        </span>
-        <span
-          aria-hidden="true"
-          className="text-[1rem] leading-none text-[#2d6cff]"
-        >
-          ↗
-        </span>
-      </div>
-    </button>
-  );
-}
-
 function WatermarkMark() {
   return (
     <div className="pointer-events-none absolute right-[8%] top-[38%] hidden opacity-[0.16] lg:block">
@@ -457,13 +394,6 @@ function LoginPage() {
   const [language, setLanguage] = useState(() => readLanguage());
 
   const t = messages[language] || messages.zh;
-const admissionGuideUrls = {
-  zh: "https://ipsi.halla.ac.kr/abroad/abroad03.php?sub=3",
-  en: "https://ipsi.halla.ac.kr/abroad/abroad02.php?sub=2",
-  ko: "https://ipsi.halla.ac.kr/abroad/abroad01.php?sub=1",
-};
-
-const admissionGuideUrl = admissionGuideUrls[language] || admissionGuideUrls.zh;
 
   useEffect(() => {
     saveLanguage(language);
@@ -615,7 +545,6 @@ const admissionGuideUrl = admissionGuideUrls[language] || admissionGuideUrls.zh;
         </div>
 
         <WatermarkMark />
-<AdmissionGuideCard t={t} url={admissionGuideUrl} />
 
         <div className="relative mx-auto max-w-[1480px] px-6 pb-14 pt-12 lg:px-10 lg:pt-14">
           <div className="mx-auto max-w-[1160px] text-center">
