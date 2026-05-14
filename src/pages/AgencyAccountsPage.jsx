@@ -1746,12 +1746,13 @@ const handleDeleteManagedUnit = async (unit) => {
     />
 
     <button
-      type="button"
-      onClick={() => goToPage(jumpPage)}
-      className="rounded-lg bg-emerald-600 px-3 py-1 font-semibold text-white hover:bg-emerald-700"
-    >
-      {language === "en" ? "Go" : language === "ko" ? "이동" : "跳转"}
-    </button>
+  type="button"
+  disabled={totalPages <= 1 || !jumpPage}
+  onClick={() => goToPage(jumpPage)}
+  className="rounded-lg bg-emerald-600 px-3 py-1 font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+>
+  {language === "en" ? "Go" : language === "ko" ? "이동" : "跳转"}
+</button>
   </div>
 </div>
   </>
