@@ -630,9 +630,13 @@ function AgenciesPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-    const [keyword, setKeyword] = useState("");
-  const [countryKeyword, setCountryKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+ const [keyword, setKeyword] = useState("");
+const [countryKeyword, setCountryKeyword] = useState("");
+const [statusFilter, setStatusFilter] = useState("all");
+
+const [page, setPage] = useState(1);
+const [pageSize, setPageSize] = useState(20);
+const [totalCount, setTotalCount] = useState(0);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -661,69 +665,94 @@ function AgenciesPage() {
     return { label: t.status.pending, type: "warning" };
   };
 
-  useEffect(() => {
-    if (!adminSession?.admin_id) return;
-    loadAgencies();
-  }, [adminSession?.admin_id]);
+  const getStatusFilterValue = () => {
+  if (statusFilter === "all") return "all";
 
-  async function loadAgencies() {
-    if (!adminSession?.admin_id) return;
+  const statusMap = [
+    ["pending", t.status.pending],
+    ["approved", t.status.approved],
+    ["rejected", t.status.rejected],
+    ["disabled", t.status.disabled],
+  ];
 
-    try {
-      setLoading(true);
-      setLoadError("");
+  return statusMap.find(([, label]) => label === statusFilter)?.[0] || "all";
+};
 
-      const { data, error } = await supabase
-        .from("agencies")
-        .select(`
-          *,
-          agency_accounts (
-            id,
-            username,
-            account_name,
-            phone,
-            email,
-            is_primary,
-            is_active,
-            created_at
-          )
-        `)
-        .order("created_at", { ascending: false });
+const buildAgencyQuery = ({ includeCount = false } = {}) => {
+  const keywordText = keyword.trim();
+  const countryText = countryKeyword.trim();
+  const statusValue = getStatusFilterValue();
 
-      if (error) throw error;
+  let query = supabase
+    .from("agencies")
+    .select(
+      `
+        *,
+        agency_accounts (
+          id,
+          username,
+          account_name,
+          phone,
+          email,
+          is_primary,
+          is_active,
+          created_at
+        )
+      `,
+      includeCount ? { count: "exact" } : undefined
+    )
+    .order("created_at", { ascending: false });
 
-      setAgencies(data || []);
-    } catch (error) {
-      console.error("AgenciesPage loadAgencies error:", error);
-      setLoadError(t.alerts.loadFailed(error.message));
-    } finally {
-      setLoading(false);
-    }
+  if (keywordText) {
+    query = query.ilike("agency_name", `%${keywordText}%`);
   }
 
-    const filteredAgencies = useMemo(() => {
-    const keywordText = keyword.trim().toLowerCase();
-    const countryText = countryKeyword.trim().toLowerCase();
+  if (countryText) {
+    query = query.ilike("country", `%${countryText}%`);
+  }
 
-    return agencies.filter((agency) => {
-      const statusMeta = getAgencyStatusMeta(agency.status);
-      const primaryAccount = getPrimaryAccount(agency.agency_accounts || []);
+  if (statusValue !== "all") {
+    query = query.eq("status", statusValue);
+  }
 
-      const matchKeyword =
-        !keywordText ||
-        String(agency.agency_name || "").toLowerCase().includes(keywordText) ||
-        String(primaryAccount?.username || "").toLowerCase().includes(keywordText);
+  return query;
+};
 
-      const matchCountry =
-        !countryText ||
-        String(agency.country || "").toLowerCase().includes(countryText);
+useEffect(() => {
+  if (!adminSession?.admin_id) return;
+  loadAgencies();
+}, [adminSession?.admin_id, page, pageSize, keyword, countryKeyword, statusFilter, language]);
 
-      const matchStatus =
-        statusFilter === "all" || statusMeta.label === statusFilter;
+useEffect(() => {
+  setPage(1);
+}, [keyword, countryKeyword, statusFilter, pageSize]);
 
-      return matchKeyword && matchCountry && matchStatus;
-    });
-  }, [agencies, keyword, countryKeyword, statusFilter]);
+async function loadAgencies() {
+  if (!adminSession?.admin_id) return;
+
+  try {
+    setLoading(true);
+    setLoadError("");
+
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error, count } = await buildAgencyQuery({ includeCount: true }).range(from, to);
+
+    if (error) throw error;
+
+    setAgencies(data || []);
+    setTotalCount(count || 0);
+  } catch (error) {
+    console.error("AgenciesPage loadAgencies error:", error);
+    setLoadError(t.alerts.loadFailed(error.message));
+  } finally {
+    setLoading(false);
+  }
+}
+
+const filteredAgencies = agencies;
+const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   const handleCreateChange = (field, value) => {
     setCreateForm((prev) => ({
@@ -1170,7 +1199,27 @@ const handleGenerateCommissionClaim = async () => {
 
 const handleExportAgenciesExcel = async () => {
   try {
-    const exportAgencies = filteredAgencies;
+    const allExportAgencies = [];
+let exportFrom = 0;
+const exportPageSize = 1000;
+
+while (true) {
+  const { data, error } = await buildAgencyQuery({ includeCount: false }).range(
+    exportFrom,
+    exportFrom + exportPageSize - 1
+  );
+
+  if (error) throw error;
+
+  const rows = data || [];
+  allExportAgencies.push(...rows);
+
+  if (rows.length < exportPageSize) break;
+
+  exportFrom += exportPageSize;
+}
+
+const exportAgencies = allExportAgencies;
 
     if (!exportAgencies.length) {
       alert(
@@ -1550,7 +1599,7 @@ const handleExportAgenciesExcel = async () => {
                       className="border-t border-slate-100 hover:bg-slate-50"
                     >
                       <td className="px-6 py-4 font-medium text-slate-500">
-                        {index + 1}
+                        {(page - 1) * pageSize + index + 1}
                       </td>
                                             <td className="px-6 py-4 font-medium text-slate-800">
                         <EllipsisText text={agency.agency_name || "-"} widthClass="max-w-[180px]" />
@@ -1603,7 +1652,62 @@ const handleExportAgenciesExcel = async () => {
                   );
                 })}
               </tbody>
-            </table>
+                        </table>
+
+            <div className="flex flex-col gap-3 border-t border-slate-100 px-6 py-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                {language === "en"
+                  ? `Total ${totalCount} records`
+                  : language === "ko"
+                  ? `총 ${totalCount}건`
+                  : `共 ${totalCount} 条`}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2">
+                  <span>
+                    {language === "en"
+                      ? "Per page"
+                      : language === "ko"
+                      ? "페이지당"
+                      : "每页"}
+                  </span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  >
+                    <option value={20}>20</option>
+                    <option value={40}>40</option>
+                  </select>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  disabled={page <= 1}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {language === "en" ? "Previous" : language === "ko" ? "이전" : "上一页"}
+                </button>
+
+                <span className="font-semibold text-slate-800">
+                  {page} / {totalPages}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={page >= totalPages}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {language === "en" ? "Next" : language === "ko" ? "다음" : "下一页"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
