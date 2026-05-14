@@ -16,6 +16,10 @@ const messages = {
     heroTitleAccent: "Admission System",
     heroDesc:
       "国际学生申请与材料管理平台，用于处理批次开放、机构账号、学生申请与材料审核。",
+      guideEyebrow: "Admission Guide",
+guideTitle: "招生简章",
+guideDesc: "查看韩拿大学外国留学生招生简章",
+guideAction: "访问学校官网",
     adminTitle: "管理员登录",
     adminDesc: "学校国际处后台入口",
     agencyTitle: "机构登录",
@@ -53,6 +57,10 @@ const messages = {
     heroTitleAccent: "Admission System",
     heroDesc:
       "International student application and materials platform for intake opening, agency accounts, student applications, and review.",
+      guideEyebrow: "Admission Guide",
+guideTitle: "Admission Guide",
+guideDesc: "View Halla University's admission guide for international students.",
+guideAction: "Open website",
     adminTitle: "Admin Login",
     adminDesc: "Portal for the international office",
     agencyTitle: "Agency Login",
@@ -90,6 +98,10 @@ const messages = {
     heroTitleAccent: "Admission System",
     heroDesc:
       "국제학생 지원 및 서류 관리 플랫폼으로 모집 차수 개방, 기관 계정, 학생 지원 및 서류 심사를 처리합니다.",
+      guideEyebrow: "Admission Guide",
+guideTitle: "모집요강",
+guideDesc: "한라대학교 외국인 유학생 모집요강을 확인하세요.",
+guideAction: "홈페이지 보기",
     adminTitle: "관리자 로그인",
     adminDesc: "국제처 관리자 페이지 입구",
     agencyTitle: "기관 로그인",
@@ -377,6 +389,57 @@ function FeatureItem({ icon, title, desc, bordered = false }) {
   );
 }
 
+function AdmissionGuideIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-6 w-6 text-[#2d6cff]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+    >
+      <path d="M7 3.8h7l4 4V20H7z" />
+      <path d="M14 3.8v4h4" />
+      <path d="M9.5 12.2h5" />
+      <path d="M9.5 15.8h4.2" />
+    </svg>
+  );
+}
+
+function AdmissionGuideCard({ t, url }) {
+  return (
+    <button
+      type="button"
+      onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+      className="absolute right-[8.5%] top-[18%] z-10 hidden w-[260px] cursor-pointer rounded-[24px] border border-white/80 bg-white/82 p-5 text-left shadow-[0_18px_45px_rgba(56,90,165,0.12)] backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_22px_54px_rgba(56,90,165,0.16)] xl:block"
+    >
+      <div className="flex items-start gap-4">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,#f3f8ff_0%,#eaf2ff_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.95)]">
+          <AdmissionGuideIcon />
+        </div>
+
+        <div className="min-w-0">
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#6f7f9f]">
+            {t.guideEyebrow}
+          </div>
+          <div className="mt-1 text-[1.2rem] font-black tracking-tight text-[#132046]">
+            {t.guideTitle}
+          </div>
+        </div>
+      </div>
+
+      <p className="mt-4 text-[0.92rem] leading-6 text-[#637491]">
+        {t.guideDesc}
+      </p>
+
+      <div className="mt-4 inline-flex items-center gap-2 text-[0.92rem] font-bold text-[#2568ff]">
+        <span>{t.guideAction}</span>
+        <span aria-hidden="true">→</span>
+      </div>
+    </button>
+  );
+}
+
 function WatermarkMark() {
   return (
     <div className="pointer-events-none absolute right-[8%] top-[38%] hidden opacity-[0.16] lg:block">
@@ -394,6 +457,13 @@ function LoginPage() {
   const [language, setLanguage] = useState(() => readLanguage());
 
   const t = messages[language] || messages.zh;
+const admissionGuideUrls = {
+  zh: "https://ipsi.halla.ac.kr/abroad/abroad03.php?sub=3",
+  en: "https://ipsi.halla.ac.kr/abroad/abroad02.php?sub=2",
+  ko: "https://ipsi.halla.ac.kr/abroad/abroad01.php?sub=1",
+};
+
+const admissionGuideUrl = admissionGuideUrls[language] || admissionGuideUrls.zh;
 
   useEffect(() => {
     saveLanguage(language);
@@ -545,6 +615,7 @@ function LoginPage() {
         </div>
 
         <WatermarkMark />
+<AdmissionGuideCard t={t} url={admissionGuideUrl} />
 
         <div className="relative mx-auto max-w-[1480px] px-6 pb-14 pt-12 lg:px-10 lg:pt-14">
           <div className="mx-auto max-w-[1160px] text-center">
