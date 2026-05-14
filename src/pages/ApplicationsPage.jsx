@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "../lib/supabase";
-import { fetchApplications } from "../data/applicationsApi";
 import { useAdminSession } from "../contexts/AdminSessionContext";
 import { getMajorCatalog, getLocalizedMajorLabel } from "../data/majorCatalog";
 
@@ -331,10 +330,15 @@ function ApplicationsPage() {
   const [loadError, setLoadError] = useState("");
 
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [agencyFilter, setAgencyFilter] = useState("all");
-  const [intakeFilter, setIntakeFilter] = useState("all");
-  const [applicationTypeFilter, setApplicationTypeFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+const [agencyFilter, setAgencyFilter] = useState("all");
+const [intakeFilter, setIntakeFilter] = useState("all");
+const [applicationTypeFilter, setApplicationTypeFilter] = useState("all");
+const [statusFilter, setStatusFilter] = useState("all");
+const [page, setPage] = useState(1);
+const [pageSize, setPageSize] = useState(20);
+const [totalCount, setTotalCount] = useState(0);
+const [jumpPage, setJumpPage] = useState("");
+const [filtersReady, setFiltersReady] = useState(false);
 
   const getStudentName = (student) => {
     return (
@@ -605,97 +609,208 @@ function ApplicationsPage() {
   }, [agencies]);
 
   useEffect(() => {
-    async function loadData() {
-      if (!adminSession?.admin_id) return;
+  async function loadFilterData() {
+    if (!adminSession?.admin_id) return;
 
-      try {
-        setLoading(true);
-        setLoadError("");
+    try {
+      setLoading(true);
+      setLoadError("");
+      setFiltersReady(false);
 
-        const [applicationsData, agenciesResult, intakesResult] = await Promise.all([
-          fetchApplications(),
-          supabase.from("agencies").select("id, agency_name"),
-                    supabase
-            .from("intakes")
-            .select(
-              "id, title, application_type, year, intake_month, round_number, is_active, open_at, close_at"
-            ),
-        ]);
+      const [agenciesResult, intakesResult] = await Promise.all([
+        supabase.from("agencies").select("id, agency_name").order("agency_name", { ascending: true }),
+        supabase
+          .from("intakes")
+          .select("id, title, application_type, year, intake_month, round_number, is_active, open_at, close_at")
+          .order("year", { ascending: false })
+          .order("intake_month", { ascending: false })
+          .order("round_number", { ascending: true }),
+      ]);
 
-        if (agenciesResult.error) throw agenciesResult.error;
-        if (intakesResult.error) throw intakesResult.error;
+      if (agenciesResult.error) throw agenciesResult.error;
+      if (intakesResult.error) throw intakesResult.error;
 
-        setApplications(applicationsData || []);
-        setAgencies(agenciesResult.data || []);
-        setIntakes(intakesResult.data || []);
-      } catch (error) {
-        console.error("ApplicationsPage loadData error:", error);
-        setLoadError(t.loadError);
-      } finally {
-        setLoading(false);
-      }
+      setAgencies(agenciesResult.data || []);
+      setIntakes(intakesResult.data || []);
+      setFiltersReady(true);
+    } catch (error) {
+      console.error("ApplicationsPage loadFilterData error:", error);
+      setLoadError(t.loadError);
+      setLoading(false);
+    }
+  }
+
+  loadFilterData();
+}, [adminSession?.admin_id, t.loadError]);
+
+const currentIntakes = useMemo(() => {
+  return (intakes || []).filter((intake) => {
+    if (intake.is_active === true) {
+      return !isIntakeClosed(intake);
     }
 
-    loadData();
-  }, [adminSession?.admin_id, t.loadError]);
-
-    const visibleApplications = applications.filter((item) =>
-    shouldShowInCurrentApplications(item)
-  );
-
-  const agencyOptions = Array.from(
-    new Set(
-      visibleApplications
-        .map((item) => getAgency(item, agencyMap))
-        .filter((value) => value && value !== "-")
-    )
-  ).sort((a, b) => String(a).localeCompare(String(b), language === "ko" ? "ko-KR" : language === "en" ? "en-US" : "zh-CN"));
-
-  const intakeOptions = Array.from(
-    new Map(
-      visibleApplications
-        .map((item) => ({
-          value: getIntakeFilterValue(item),
-          label: getIntakeFilterLabel(item),
-        }))
-        .filter((item) => item.value && item.label && item.label !== "-")
-        .map((item) => [item.value, item])
-    ).values()
-  ).sort((a, b) => String(a.label).localeCompare(String(b.label), language === "ko" ? "ko-KR" : language === "en" ? "en-US" : "zh-CN"));
-
-  const applicationTypeOptions = ["undergraduate", "language", "graduate"].map((value) => ({
-    value,
-    label: t.applicationTypeLabels[value],
-  }));
-
-  const statusOptions = Array.from(
-    new Set(
-      visibleApplications
-        .map((item) => getStatus(item))
-        .filter((value) => value && value !== "-")
-    )
-  );
-
-  const filteredApplications = visibleApplications.filter((student) => {
-    const keyword = searchKeyword.trim().toLowerCase();
-    const studentName = String(getStudentName(student)).toLowerCase();
-    const agency = String(getAgency(student, agencyMap));
-    const intake = String(getIntakeFilterValue(student));
-    const status = String(getStatus(student));
-    const applicationType = getApplicationType(student);
-
-    const matchesKeyword =
-      !keyword ||
-      studentName.includes(keyword) ||
-      String(getMajor(student)).toLowerCase().includes(keyword);
-
-    const matchesAgency = agencyFilter === "all" || agency === agencyFilter;
-    const matchesIntake = intakeFilter === "all" || intake === intakeFilter;
-    const matchesApplicationType = applicationTypeFilter === "all" || applicationType === applicationTypeFilter;
-    const matchesStatus = statusFilter === "all" || status === statusFilter;
-
-    return matchesKeyword && matchesAgency && matchesIntake && matchesApplicationType && matchesStatus;
+    return true;
   });
+}, [intakes]);
+
+const agencyOptions = (agencies || [])
+  .map((agency) => ({
+    value: agency.id,
+    label: agency.agency_name || agency.id,
+  }))
+  .sort((a, b) =>
+    String(a.label).localeCompare(
+      String(b.label),
+      language === "ko" ? "ko-KR" : language === "en" ? "en-US" : "zh-CN"
+    )
+  );
+
+const intakeOptions = currentIntakes
+  .map((intake) => ({
+    value: String(intake.id),
+    label: `${t.applicationTypeLabels[intake.application_type || "undergraduate"] || t.applicationTypeLabels.undergraduate} / ${
+      intake.title || intake.id
+    }`,
+  }))
+  .sort((a, b) =>
+    String(a.label).localeCompare(
+      String(b.label),
+      language === "ko" ? "ko-KR" : language === "en" ? "en-US" : "zh-CN"
+    )
+  );
+
+const applicationTypeOptions = ["undergraduate", "language", "graduate"].map((value) => ({
+  value,
+  label: t.applicationTypeLabels[value],
+}));
+
+const statusOptions = ["submitted", "under_review", "missing_documents", "approved", "rejected"].map((value) => ({
+  value,
+  label: t.statusLabels[value],
+}));
+
+const buildApplicationsQuery = ({ includeCount = false } = {}) => {
+  const keyword = searchKeyword.trim().replaceAll(",", " ");
+  const currentIntakeIds = currentIntakes.map((intake) => intake.id).filter(Boolean);
+
+  let query = supabase
+    .from("applications")
+    .select("*", includeCount ? { count: "exact" } : undefined)
+    .neq("status", "draft")
+    .order("created_at", { ascending: false });
+
+  if (currentIntakeIds.length > 0) {
+    query = query.in("intake_id", currentIntakeIds);
+  }
+
+  if (agencyFilter !== "all") {
+    query = query.eq("agency_id", agencyFilter);
+  }
+
+  if (intakeFilter !== "all") {
+    query = query.eq("intake_id", intakeFilter);
+  }
+
+  if (applicationTypeFilter !== "all") {
+    query = query.eq("application_type", applicationTypeFilter);
+  }
+
+  if (statusFilter !== "all") {
+    query = query.eq("status", statusFilter);
+  }
+
+  if (keyword) {
+    query = query.or(
+      `english_name.ilike.%${keyword}%,full_name_passport.ilike.%${keyword}%,name.ilike.%${keyword}%,major.ilike.%${keyword}%,department.ilike.%${keyword}%`
+    );
+  }
+
+  return query;
+};
+
+async function loadApplications() {
+  if (!adminSession?.admin_id || !filtersReady) return;
+
+  try {
+    setLoading(true);
+    setLoadError("");
+
+    if (currentIntakes.length === 0) {
+      setApplications([]);
+      setTotalCount(0);
+      return;
+    }
+
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error, count } = await buildApplicationsQuery({ includeCount: true }).range(from, to);
+
+    if (error) throw error;
+
+    setApplications(data || []);
+    setTotalCount(count || 0);
+  } catch (error) {
+    console.error("ApplicationsPage loadApplications error:", error);
+    setLoadError(t.loadError);
+  } finally {
+    setLoading(false);
+  }
+}
+
+useEffect(() => {
+  setPage(1);
+}, [searchKeyword, agencyFilter, intakeFilter, applicationTypeFilter, statusFilter, pageSize]);
+
+useEffect(() => {
+  loadApplications();
+}, [
+  adminSession?.admin_id,
+  filtersReady,
+  page,
+  pageSize,
+  searchKeyword,
+  agencyFilter,
+  intakeFilter,
+  applicationTypeFilter,
+  statusFilter,
+  currentIntakes,
+]);
+
+const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+useEffect(() => {
+  if (page > totalPages) {
+    setPage(totalPages);
+  }
+}, [page, totalPages]);
+
+const goToPage = (targetPage) => {
+  const nextPage = Math.min(totalPages, Math.max(1, Number(targetPage) || 1));
+  setPage(nextPage);
+  setJumpPage("");
+};
+
+const pageNumbers = (() => {
+  const pages = [];
+  const addPage = (value) => {
+    if (value >= 1 && value <= totalPages && !pages.includes(value)) {
+      pages.push(value);
+    }
+  };
+
+  addPage(1);
+
+  for (let nextPage = page - 2; nextPage <= page + 2; nextPage += 1) {
+    addPage(nextPage);
+  }
+
+  addPage(totalPages);
+
+  return pages.sort((a, b) => a - b);
+})();
+
+const filteredApplications = applications;
 
   const handleExportExcel = async () => {
     try {
@@ -877,10 +992,10 @@ function ApplicationsPage() {
             >
               <option value="all">{t.allAgencies}</option>
               {agencyOptions.map((agency) => (
-                <option key={agency} value={agency}>
-                  {agency}
-                </option>
-              ))}
+  <option key={agency.value} value={agency.value}>
+    {agency.label}
+  </option>
+))}
             </select>
           </div>
 
@@ -931,10 +1046,10 @@ function ApplicationsPage() {
             >
               <option value="all">{t.allStatus}</option>
               {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
+  <option key={status.value} value={status.value}>
+    {status.label}
+  </option>
+))}
             </select>
           </div>
         </div>
@@ -950,7 +1065,7 @@ function ApplicationsPage() {
           <div className="px-6 py-8 text-sm text-slate-500">{t.loading}</div>
         ) : loadError ? (
           <div className="px-6 py-8 text-sm text-red-600">{loadError}</div>
-        ) : filteredApplications.length === 0 ? (
+        ) : applications.length === 0 ? (
           <div className="px-6 py-8 text-sm text-slate-500">{t.noData}</div>
         ) : (
           <div className="overflow-x-auto">
@@ -969,7 +1084,7 @@ function ApplicationsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredApplications.map((student, index) => {
+                {applications.map((student, index) => {
                   const publicId = student.public_id;
 
                   return (
@@ -978,7 +1093,7 @@ function ApplicationsPage() {
                       className="border-t border-slate-100 hover:bg-slate-50"
                     >
                       <td className="px-6 py-4 font-medium text-slate-500">
-                        {index + 1}
+                        {(page - 1) * pageSize + index + 1}
                       </td>
                       <td className="px-6 py-4 font-medium text-slate-800">
                         {publicId ? (
@@ -1031,6 +1146,91 @@ function ApplicationsPage() {
                 })}
               </tbody>
             </table>
+            <div className="flex flex-col gap-3 border-t border-slate-100 px-6 py-4 text-sm text-slate-600 xl:flex-row xl:items-center xl:justify-between">
+  <div className="font-medium">
+    {language === "en"
+      ? `Total ${totalCount} records`
+      : language === "ko"
+      ? `총 ${totalCount}건`
+      : `共 ${totalCount} 条`}
+  </div>
+
+  <div className="flex flex-wrap items-center gap-2">
+    <label className="flex items-center gap-2">
+      <span>{language === "en" ? "Per page" : language === "ko" ? "페이지당" : "每页"}</span>
+      <select
+        value={pageSize}
+        onChange={(e) => {
+          setPageSize(Number(e.target.value));
+          setPage(1);
+        }}
+        className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+      >
+        <option value={20}>20</option>
+        <option value={40}>40</option>
+      </select>
+    </label>
+
+    <button type="button" onClick={() => setPage(1)} disabled={page <= 1} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+      {language === "en" ? "First" : language === "ko" ? "처음" : "首页"}
+    </button>
+
+    <button type="button" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page <= 1} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+      {language === "en" ? "Previous" : language === "ko" ? "이전" : "上一页"}
+    </button>
+
+    <div className="flex items-center gap-1">
+      {pageNumbers.map((pageNumber, index) => {
+        const showGap = index > 0 && pageNumber - pageNumbers[index - 1] > 1;
+
+        return (
+          <span key={pageNumber} className="inline-flex items-center gap-1">
+            {showGap ? <span className="px-1 text-slate-400">...</span> : null}
+            <button
+              type="button"
+              onClick={() => setPage(pageNumber)}
+              className={`min-w-9 rounded-lg px-3 py-1.5 font-semibold ${
+                page === pageNumber
+                  ? "bg-blue-600 text-white"
+                  : "border border-slate-200 text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {pageNumber}
+            </button>
+          </span>
+        );
+      })}
+    </div>
+
+    <button type="button" onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))} disabled={page >= totalPages} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+      {language === "en" ? "Next" : language === "ko" ? "다음" : "下一页"}
+    </button>
+
+    <button type="button" onClick={() => setPage(totalPages)} disabled={page >= totalPages} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+      {language === "en" ? "Last" : language === "ko" ? "마지막" : "末页"}
+    </button>
+
+    <div className="ml-1 flex items-center gap-2">
+      <span className="font-semibold text-slate-800">
+        {page} / {totalPages}
+      </span>
+      <input
+        value={jumpPage}
+        onChange={(e) => setJumpPage(e.target.value.replace(/\D/g, ""))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            goToPage(jumpPage);
+          }
+        }}
+        placeholder={language === "en" ? "Page" : language === "ko" ? "페이지" : "页码"}
+        className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+      />
+      <button type="button" onClick={() => goToPage(jumpPage)} disabled={!jumpPage} className="rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
+        {language === "en" ? "Go" : language === "ko" ? "이동" : "跳转"}
+      </button>
+    </div>
+  </div>
+</div>
           </div>
         )}
       </div>
