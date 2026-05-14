@@ -16,6 +16,7 @@ const messages = {
     heroTitleAccent: "Admission System",
     heroDesc:
       "国际学生申请与材料管理平台，用于处理批次开放、机构账号、学生申请与材料审核。",      
+      guideDownload: "招生简章下载",
     adminTitle: "管理员登录",
     adminDesc: "学校国际处后台入口",
     agencyTitle: "机构登录",
@@ -52,7 +53,8 @@ const messages = {
     heroTitlePrimary: "Halla",
     heroTitleAccent: "Admission System",
     heroDesc:
-      "International student application and materials platform for intake opening, agency accounts, student applications, and review.",      
+      "International student application and materials platform for intake opening, agency accounts, student applications, and review.",  
+      guideDownload: "Admission Guide", 
     adminTitle: "Admin Login",
     adminDesc: "Portal for the international office",
     agencyTitle: "Agency Login",
@@ -90,6 +92,7 @@ const messages = {
     heroTitleAccent: "Admission System",
     heroDesc:
       "국제학생 지원 및 서류 관리 플랫폼으로 모집 차수 개방, 기관 계정, 학생 지원 및 서류 심사를 처리합니다.",      
+      guideDownload: "모집요강 다운로드",
     adminTitle: "관리자 로그인",
     adminDesc: "국제처 관리자 페이지 입구",
     agencyTitle: "기관 로그인",
@@ -394,6 +397,17 @@ function LoginPage() {
   const [language, setLanguage] = useState(() => readLanguage());
 
   const t = messages[language] || messages.zh;
+const admissionGuideUrls = {
+  zh: "https://ipsi.halla.ac.kr/abroad/abroad03.php?sub=3",
+  en: "https://ipsi.halla.ac.kr/abroad/abroad02.php?sub=2",
+  ko: "https://ipsi.halla.ac.kr/abroad/abroad01.php?sub=1",
+};
+
+const admissionGuideUrl = admissionGuideUrls[language] || admissionGuideUrls.zh;
+
+const openAdmissionGuide = () => {
+  window.open(admissionGuideUrl, "_blank", "noopener,noreferrer");
+};
 
   useEffect(() => {
     saveLanguage(language);
@@ -530,9 +544,24 @@ function LoginPage() {
       <div className="relative border-b border-[#e8eef7] bg-white/90 shadow-[0_8px_30px_rgba(61,100,177,0.06)] backdrop-blur-sm">
         <div className="absolute right-[17%] top-0 hidden h-full w-24 skew-x-[38deg] bg-white lg:block" />
         <div className="relative mx-auto flex max-w-[1480px] items-center justify-between px-8 py-7 lg:px-12">
-          <BrandBlock t={t} />
-          <LanguageSwitcher language={language} onChange={setLanguage} />
-        </div>
+  <BrandBlock t={t} />
+
+  <div className="flex items-center gap-5">
+    <LanguageSwitcher language={language} onChange={setLanguage} />
+
+    <button
+      type="button"
+      onClick={openAdmissionGuide}
+      className="cursor-pointer text-sm font-bold text-[#2d6cff] transition hover:text-[#174fe3]"
+    >
+      {t.guideDownload}
+      <span className="ml-1" aria-hidden="true">
+        ↗
+      </span>
+    </button>
+  </div>
+</div>
+
       </div>
 
       <div className="relative">
