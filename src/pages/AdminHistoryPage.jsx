@@ -553,18 +553,23 @@ function AdminHistoryPage() {
   const t = messages[language] || messages.zh;
 
   const [applications, setApplications] = useState([]);
-  const [historyIntakes, setHistoryIntakes] = useState([]);
-  const [applicationFiles, setApplicationFiles] = useState([]);
-  const [agencies, setAgencies] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
+const [historyIntakes, setHistoryIntakes] = useState([]);
+const [applicationFiles, setApplicationFiles] = useState([]);
+const [agencies, setAgencies] = useState([]);
+const [historyApplicationCountRows, setHistoryApplicationCountRows] = useState([]);
+const [loading, setLoading] = useState(true);
+const [loadError, setLoadError] = useState("");
+const [filtersReady, setFiltersReady] = useState(false);
 
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [expandedYears, setExpandedYears] = useState({});
+const [searchKeyword, setSearchKeyword] = useState("");
+const [expandedYears, setExpandedYears] = useState({});
 const [expandedTypes, setExpandedTypes] = useState({});
 const [expandedMonths, setExpandedMonths] = useState({});
 const [selectedNode, setSelectedNode] = useState({ type: "all" });
-
+const [page, setPage] = useState(1);
+const [pageSize, setPageSize] = useState(20);
+const [totalCount, setTotalCount] = useState(0);
+const [jumpPage, setJumpPage] = useState("");
 
   function getStudentName(student) {
     return (
@@ -830,82 +835,65 @@ function getMonthDisplay(itemOrMonth, applicationType) {
   }
 
   useEffect(() => {
-    async function loadData() {
-      if (!adminSession?.admin_id) return;
+  async function loadData() {
+    if (!adminSession?.admin_id) return;
 
-      try {
-        setLoading(true);
-        setLoadError("");
+    try {
+      setLoading(true);
+      setLoadError("");
+      setFiltersReady(false);
 
-        const nowIso = new Date().toISOString();
+      const nowIso = new Date().toISOString();
 
-        const [
-          { data: intakesData, error: intakesError },
-          { data: applicationsData, error: applicationsError },
-          filesResponse,
-          agenciesResponse,
-        ] = await Promise.all([
-                    supabase
-            .from("intakes")
-            .select("*")
-            .lte("open_at", nowIso)
-            .order("open_at", { ascending: false }),
-          supabase
-            .from("applications")
-            .select("*")
-            .order("updated_at", { ascending: false }),
-          supabase
-            .from("application_files")
-            .select("*")
-            .order("created_at", { ascending: false }),
-          supabase
-            .from("agencies")
-            .select("id, agency_name")
-            .order("agency_name", { ascending: true }),
-        ]);
+      const [
+        { data: intakesData, error: intakesError },
+        agenciesResponse,
+      ] = await Promise.all([
+        supabase
+          .from("intakes")
+          .select("*")
+          .lte("open_at", nowIso)
+          .order("open_at", { ascending: false }),
+        supabase
+          .from("agencies")
+          .select("id, agency_name")
+          .order("agency_name", { ascending: true }),
+      ]);
 
-        if (intakesError) throw intakesError;
-        if (applicationsError) throw applicationsError;
-        if (filesResponse.error) throw filesResponse.error;
-        if (agenciesResponse.error) throw agenciesResponse.error;
+      if (intakesError) throw intakesError;
+      if (agenciesResponse.error) throw agenciesResponse.error;
 
-        const availableIntakes = intakesData || [];
+      const availableIntakes = intakesData || [];
 
-        setHistoryIntakes(availableIntakes);
-        setApplications(applicationsData || []);
-        setApplicationFiles(filesResponse.data || []);
-        setAgencies(agenciesResponse.data || []);
+      setHistoryIntakes(availableIntakes);
+      setAgencies(agenciesResponse.data || []);
 
-        const initialExpandedYears = {};
-const initialExpandedTypes = {};
-const initialExpandedMonths = {};
+      const initialExpandedYears = {};
+      const initialExpandedTypes = {};
+      const initialExpandedMonths = {};
 
-availableIntakes.forEach((item) => {
-  const year = getIntakeYear(item);
-  const applicationType = getApplicationType(item);
-  const month = getIntakeMonth(item);
-  initialExpandedYears[year] = true;
-  initialExpandedTypes[`${year}-${applicationType}`] = true;
-  initialExpandedMonths[`${year}-${applicationType}-${month}`] = true;
-});
+      availableIntakes.forEach((item) => {
+        const year = getIntakeYear(item);
+        const applicationType = getApplicationType(item);
+        const month = getIntakeMonth(item);
+        initialExpandedYears[year] = true;
+        initialExpandedTypes[`${year}-${applicationType}`] = true;
+        initialExpandedMonths[`${year}-${applicationType}-${month}`] = true;
+      });
 
-setExpandedYears(initialExpandedYears);
-setExpandedTypes(initialExpandedTypes);
-setExpandedMonths(initialExpandedMonths);
-
-
-        setExpandedYears(initialExpandedYears);
-        setExpandedMonths(initialExpandedMonths);
-      } catch (error) {
-        console.error("AdminHistoryPage loadData error:", error);
-        setLoadError(error.message || t.loadErrorDefault);
-      } finally {
-        setLoading(false);
-      }
+      setExpandedYears(initialExpandedYears);
+      setExpandedTypes(initialExpandedTypes);
+      setExpandedMonths(initialExpandedMonths);
+      setFiltersReady(true);
+    } catch (error) {
+      console.error("AdminHistoryPage loadData error:", error);
+      setLoadError(error.message || t.loadErrorDefault);
+      setLoading(false);
     }
+  }
 
-    loadData();
-  }, [adminSession?.admin_id, language]);
+  loadData();
+}, [adminSession?.admin_id, language]);
 
   const agencyMap = useMemo(() => {
     return (agencies || []).reduce((acc, agency) => {
@@ -930,139 +918,255 @@ const intakeMap = useMemo(() => {
 }, [historyIntakes]);
 
 const historicalApplications = useMemo(() => {
-  return applications.filter((item) => {
+  return historyApplicationCountRows.filter((item) => {
     const status = String(item.status || "").toLowerCase();
     return status !== "draft";
   });
-}, [applications]);
+}, [historyApplicationCountRows]);
+
+const getApplicationNodeSource = (item) => {
+  return item?.intake_id ? intakeMap[item.intake_id] || item : item;
+};
 
 function countHistoricalApplicationsForNode(node) {
   return historicalApplications.filter((item) => {
+    const source = getApplicationNodeSource(item);
+
     if (node.type === "all") return true;
 
     if (node.type === "year") {
-      return getIntakeYear(item) === node.year;
+      return getIntakeYear(source) === node.year;
     }
 
     if (node.type === "applicationType") {
       return (
-        getIntakeYear(item) === node.year &&
-        getApplicationType(item) === node.applicationType
+        getIntakeYear(source) === node.year &&
+        getApplicationType(source) === node.applicationType
       );
     }
 
     if (node.type === "month") {
       return (
-        getIntakeYear(item) === node.year &&
-        getApplicationType(item) === node.applicationType &&
-        getIntakeMonth(item) === node.month
+        getIntakeYear(source) === node.year &&
+        getApplicationType(source) === node.applicationType &&
+        getIntakeMonth(source) === node.month
       );
     }
 
     if (node.type === "intake") {
-      if (node.intakeId && item.intake_id) {
-        return item.intake_id === node.intakeId;
-      }
-
-      return (
-        getIntakeYear(item) === node.year &&
-        getApplicationType(item) === node.applicationType &&
-        getIntakeMonth(item) === node.month &&
-        getIntakeLabel(item) === node.intakeLabel
-      );
+      return node.intakeId && item.intake_id === node.intakeId;
     }
 
     return false;
   }).length;
 }
 
-  const fileMap = useMemo(() => getFileTypeMap(applicationFiles), [applicationFiles]);
+const getSelectedIntakeIds = (node = selectedNode) => {
+  if (!historyIntakes || historyIntakes.length === 0) return [];
 
-  const intakeTree = useMemo(() => {
-  const grouped = {};
+  return historyIntakes
+    .filter((intake) => {
+      if (node.type === "all") return true;
 
-  historyIntakes.forEach((intake) => {
-    const year = getIntakeYear(intake);
-    const applicationType = getApplicationType(intake);
-    const month = getIntakeMonth(intake);
+      if (node.type === "year") {
+        return getIntakeYear(intake) === node.year;
+      }
 
-    if (!grouped[year]) grouped[year] = {};
-    if (!grouped[year][applicationType]) grouped[year][applicationType] = {};
-    if (!grouped[year][applicationType][month]) grouped[year][applicationType][month] = [];
+      if (node.type === "applicationType") {
+        return (
+          getIntakeYear(intake) === node.year &&
+          getApplicationType(intake) === node.applicationType
+        );
+      }
 
-    grouped[year][applicationType][month].push(intake);
-  });
+      if (node.type === "month") {
+        return (
+          getIntakeYear(intake) === node.year &&
+          getApplicationType(intake) === node.applicationType &&
+          getIntakeMonth(intake) === node.month
+        );
+      }
 
-  const typeOrder = ["undergraduate", "language", "graduate"];
-  const years = Object.keys(grouped).sort((a, b) => Number(b) - Number(a));
+      if (node.type === "intake") {
+        return intake.id === node.intakeId;
+      }
 
-  return years.map((year) => ({
-    year,
-    types: Object.keys(grouped[year])
-      .sort((a, b) => typeOrder.indexOf(a) - typeOrder.indexOf(b))
-      .map((applicationType) => ({
-        applicationType,
-        label: getApplicationTypeLabel({ application_type: applicationType }),
-        months: Object.keys(grouped[year][applicationType])
-          .sort((a, b) => Number(a) - Number(b))
-          .map((month) => ({
-            month,
-            label: getMonthDisplay(month, applicationType),
-            intakes: grouped[year][applicationType][month].sort((a, b) => {
-              const aOpen = a.open_at ? new Date(a.open_at).getTime() : 0;
-              const bOpen = b.open_at ? new Date(b.open_at).getTime() : 0;
-              return bOpen - aOpen;
-            }),
-          })),
-      })),
-  }));
-}, [historyIntakes, language]);
+      return true;
+    })
+    .map((intake) => intake.id)
+    .filter(Boolean);
+};
 
+const buildHistoryApplicationsQuery = ({ includeCount = false } = {}) => {
+  const keyword = searchKeyword.trim().replaceAll(",", " ");
+  const selectedIntakeIds = getSelectedIntakeIds();
 
-  const filteredApplications = useMemo(() => {
-    const keyword = searchKeyword.trim().toLowerCase();
+  let query = supabase
+    .from("applications")
+    .select("*", includeCount ? { count: "exact" } : undefined)
+    .neq("status", "draft")
+    .order("updated_at", { ascending: false });
 
-    return historicalApplications.filter((item) => {
-      const studentName = getStudentName(item).toLowerCase();
-      const agencyName = String(
-        item.agency_name || agencyMap[item.agency_id] || item.agency_id || ""
-      ).toLowerCase();
-      const major = String(item.major || "").toLowerCase();
+  if (selectedIntakeIds.length > 0) {
+    query = query.in("intake_id", selectedIntakeIds);
+  }
 
-      const matchesKeyword =
-        !keyword ||
-        studentName.includes(keyword) ||
-        agencyName.includes(keyword) ||
-        major.includes(keyword);
+  if (keyword) {
+    const keywordLower = keyword.toLowerCase();
+    const matchedAgencyIds = agencies
+      .filter((agency) =>
+        String(agency.agency_name || "").toLowerCase().includes(keywordLower)
+      )
+      .map((agency) => agency.id)
+      .filter(Boolean);
 
-      let matchesTree = true;
+    const orParts = [
+      `english_name.ilike.%${keyword}%`,
+      `full_name_passport.ilike.%${keyword}%`,
+      `major.ilike.%${keyword}%`,
+      `department.ilike.%${keyword}%`,
+    ];
 
-if (selectedNode.type === "year") {
-  matchesTree = getIntakeYear(item) === selectedNode.year;
-} else if (selectedNode.type === "applicationType") {
-  matchesTree =
-    getIntakeYear(item) === selectedNode.year &&
-    getApplicationType(item) === selectedNode.applicationType;
-} else if (selectedNode.type === "month") {
-  matchesTree =
-    getIntakeYear(item) === selectedNode.year &&
-    getApplicationType(item) === selectedNode.applicationType &&
-    getIntakeMonth(item) === selectedNode.month;
-} else if (selectedNode.type === "intake") {
-  if (selectedNode.intakeId && item.intake_id) {
-    matchesTree = item.intake_id === selectedNode.intakeId;
-  } else {
-    matchesTree =
-      getIntakeYear(item) === selectedNode.year &&
-      getApplicationType(item) === selectedNode.applicationType &&
-      getIntakeMonth(item) === selectedNode.month &&
-      getIntakeLabel(item) === selectedNode.intakeLabel;
+    if (matchedAgencyIds.length > 0) {
+      orParts.push(`agency_id.in.(${matchedAgencyIds.join(",")})`);
+    }
+
+    query = query.or(orParts.join(","));
+  }
+
+  return query;
+};
+
+useEffect(() => {
+  async function loadCountRows() {
+    if (!adminSession?.admin_id || !filtersReady) return;
+
+    const intakeIds = historyIntakes.map((item) => item.id).filter(Boolean);
+
+    if (intakeIds.length === 0) {
+      setHistoryApplicationCountRows([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("applications")
+      .select("id, intake_id, status")
+      .neq("status", "draft")
+      .in("intake_id", intakeIds);
+
+    if (error) {
+      console.error("AdminHistoryPage loadCountRows error:", error);
+      return;
+    }
+
+    setHistoryApplicationCountRows(data || []);
+  }
+
+  loadCountRows();
+}, [adminSession?.admin_id, filtersReady, historyIntakes]);
+
+async function loadApplications() {
+  if (!adminSession?.admin_id || !filtersReady) return;
+
+  try {
+    setLoading(true);
+    setLoadError("");
+
+    const selectedIntakeIds = getSelectedIntakeIds();
+
+    if (selectedIntakeIds.length === 0) {
+      setApplications([]);
+      setApplicationFiles([]);
+      setTotalCount(0);
+      return;
+    }
+
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error, count } = await buildHistoryApplicationsQuery({ includeCount: true }).range(from, to);
+
+    if (error) throw error;
+
+    const pageApplications = data || [];
+    const publicIds = pageApplications.map((item) => item.public_id).filter(Boolean);
+
+    let pageFiles = [];
+
+    if (publicIds.length > 0) {
+      const filesResponse = await supabase
+        .from("application_files")
+        .select("*")
+        .in("public_id", publicIds)
+        .order("created_at", { ascending: false });
+
+      if (filesResponse.error) throw filesResponse.error;
+
+      pageFiles = filesResponse.data || [];
+    }
+
+    setApplications(pageApplications);
+    setApplicationFiles(pageFiles);
+    setTotalCount(count || 0);
+  } catch (error) {
+    console.error("AdminHistoryPage loadApplications error:", error);
+    setLoadError(error.message || t.loadErrorDefault);
+  } finally {
+    setLoading(false);
   }
 }
 
-      return matchesKeyword && matchesTree;
-    });
-  }, [historicalApplications, searchKeyword, selectedNode, agencyMap, language]);
+useEffect(() => {
+  setPage(1);
+}, [searchKeyword, selectedNode, pageSize]);
+
+useEffect(() => {
+  loadApplications();
+}, [
+  adminSession?.admin_id,
+  filtersReady,
+  page,
+  pageSize,
+  searchKeyword,
+  selectedNode,
+  historyIntakes,
+  agencies,
+]);
+
+const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+useEffect(() => {
+  if (page > totalPages) {
+    setPage(totalPages);
+  }
+}, [page, totalPages]);
+
+const goToPage = (targetPage) => {
+  const nextPage = Math.min(totalPages, Math.max(1, Number(targetPage) || 1));
+  setPage(nextPage);
+  setJumpPage("");
+};
+
+const pageNumbers = (() => {
+  const pages = [];
+  const addPage = (value) => {
+    if (value >= 1 && value <= totalPages && !pages.includes(value)) {
+      pages.push(value);
+    }
+  };
+
+  addPage(1);
+
+  for (let nextPage = page - 2; nextPage <= page + 2; nextPage += 1) {
+    addPage(nextPage);
+  }
+
+  addPage(totalPages);
+
+  return pages.sort((a, b) => a - b);
+})();
+
+const filteredApplications = applications;
 
   const rows = useMemo(() => {
   return filteredApplications.map((student) => {
@@ -1157,11 +1261,11 @@ if (selectedNode.type === "year") {
 
   const headerDesc = useMemo(() => {
   const recordText =
-    language === "en"
-      ? `${filteredApplications.length} applications`
-      : language === "ko"
-      ? `총 ${filteredApplications.length}건`
-      : `共 ${filteredApplications.length} 条申请`;
+  language === "en"
+    ? `${totalCount} applications`
+    : language === "ko"
+    ? `총 ${totalCount}건`
+    : `共 ${totalCount} 条申请`;
 
   if (selectedNode.type === "intake") {
     return `${selectedNode.applicationTypeLabel} / ${selectedNode.monthLabel} / ${recordText}`;
@@ -1176,7 +1280,7 @@ if (selectedNode.type === "year") {
     return t.header.yearDesc(selectedNode.year);
   }
   return t.header.allDesc;
-}, [selectedNode, t, language, filteredApplications.length]);
+}, [selectedNode, t, language, totalCount]);
 
   const toggleYear = (year) => {
     setExpandedYears((prev) => ({
@@ -1216,16 +1320,42 @@ const formatMajorForExport = (student, applicationType) => {
   return matchedMajor ? getLocalizedMajorLabel(matchedMajor, language) : rawMajor;
 };
 
+const fetchAllFilteredApplicationsForExport = async () => {
+  const exportRows = [];
+  let from = 0;
+  const batchSize = 1000;
+
+  while (true) {
+    const { data, error } = await buildHistoryApplicationsQuery({ includeCount: false }).range(
+      from,
+      from + batchSize - 1
+    );
+
+    if (error) throw error;
+
+    const rows = data || [];
+    exportRows.push(...rows);
+
+    if (rows.length < batchSize) break;
+
+    from += batchSize;
+  }
+
+  return exportRows;
+};
+
   const handleExportExcel = async () => {
     try {
-      if (!filteredApplications || filteredApplications.length === 0) {
-        alert(t.search.noExportData);
-        return;
-      }
+  const exportApplications = await fetchAllFilteredApplicationsForExport();
 
-      const publicIds = filteredApplications
-        .map((student) => student.public_id)
-        .filter(Boolean);
+  if (!exportApplications || exportApplications.length === 0) {
+    alert(t.search.noExportData);
+    return;
+  }
+
+  const publicIds = exportApplications
+    .map((student) => student.public_id)
+    .filter(Boolean);
 
       let fileRows = [];
 
@@ -1272,7 +1402,7 @@ const formatMajorForExport = (student, applicationType) => {
         };
       };
 
-            const exportRows = filteredApplications.map((student, index) => {
+         const exportRows = exportApplications.map((student, index) => {
         const linkedIntake = student.intake_id ? intakeMap[student.intake_id] : null;
         const nodeSource = linkedIntake || student;
         const applicationType = getApplicationType(nodeSource);
@@ -1537,13 +1667,15 @@ const formatMajorForExport = (student, applicationType) => {
   };
 
     const handleExportRefundExcel = async () => {
-    try {
-      if (!filteredApplications || filteredApplications.length === 0) {
-        alert(t.search.noExportData);
-        return;
-      }
+  try {
+    const exportApplications = await fetchAllFilteredApplicationsForExport();
 
-      const exportRows = filteredApplications.map((student, index) => {
+    if (!exportApplications || exportApplications.length === 0) {
+      alert(t.search.noExportData);
+      return;
+    }
+
+    const exportRows = exportApplications.map((student, index) => {
         const linkedIntake = student.intake_id ? intakeMap[student.intake_id] : null;
         const nodeSource = linkedIntake || student;
         const applicationType = getApplicationType(nodeSource);
@@ -1672,7 +1804,7 @@ const formatMajorForExport = (student, applicationType) => {
   };
 
   return (
-        <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
+     <div className="grid items-start gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
   <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
     <div className="border-b border-slate-100 px-5 py-4">
       <h3 className="text-lg font-bold text-slate-900">{t.sidebar.title}</h3>
@@ -2049,8 +2181,8 @@ const formatMajorForExport = (student, applicationType) => {
                         className="border-t border-slate-100 align-middle hover:bg-slate-50"
                       >
                         <td className="px-6 py-4 font-medium text-slate-500">
-                          {index + 1}
-                        </td>
+  {(page - 1) * pageSize + index + 1}
+</td>
                         <td className="px-6 py-4 font-medium text-slate-800">
                           <div className="mx-auto">
                             <EllipsisText text={row.studentName} widthClass="max-w-[110px]" />
@@ -2198,6 +2330,91 @@ const formatMajorForExport = (student, applicationType) => {
                   })}
                                 </tbody>
               </table>
+              <div className="flex flex-col gap-3 border-t border-slate-100 px-6 py-4 text-sm text-slate-600 xl:flex-row xl:items-center xl:justify-between">
+  <div className="font-medium">
+    {language === "en"
+      ? `Total ${totalCount} records`
+      : language === "ko"
+      ? `총 ${totalCount}건`
+      : `共 ${totalCount} 条`}
+  </div>
+
+  <div className="flex flex-wrap items-center gap-2">
+    <label className="flex items-center gap-2">
+      <span>{language === "en" ? "Per page" : language === "ko" ? "페이지당" : "每页"}</span>
+      <select
+        value={pageSize}
+        onChange={(e) => {
+          setPageSize(Number(e.target.value));
+          setPage(1);
+        }}
+        className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+      >
+        <option value={20}>20</option>
+        <option value={40}>40</option>
+      </select>
+    </label>
+
+    <button type="button" onClick={() => setPage(1)} disabled={page <= 1} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+      {language === "en" ? "First" : language === "ko" ? "처음" : "首页"}
+    </button>
+
+    <button type="button" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page <= 1} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+      {language === "en" ? "Previous" : language === "ko" ? "이전" : "上一页"}
+    </button>
+
+    <div className="flex items-center gap-1">
+      {pageNumbers.map((pageNumber, index) => {
+        const showGap = index > 0 && pageNumber - pageNumbers[index - 1] > 1;
+
+        return (
+          <span key={pageNumber} className="inline-flex items-center gap-1">
+            {showGap ? <span className="px-1 text-slate-400">...</span> : null}
+            <button
+              type="button"
+              onClick={() => setPage(pageNumber)}
+              className={`min-w-9 rounded-lg px-3 py-1.5 font-semibold ${
+                page === pageNumber
+                  ? "bg-blue-600 text-white"
+                  : "border border-slate-200 text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {pageNumber}
+            </button>
+          </span>
+        );
+      })}
+    </div>
+
+    <button type="button" onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))} disabled={page >= totalPages} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+      {language === "en" ? "Next" : language === "ko" ? "다음" : "下一页"}
+    </button>
+
+    <button type="button" onClick={() => setPage(totalPages)} disabled={page >= totalPages} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+      {language === "en" ? "Last" : language === "ko" ? "마지막" : "末页"}
+    </button>
+
+    <div className="ml-1 flex items-center gap-2">
+      <span className="font-semibold text-slate-800">
+        {page} / {totalPages}
+      </span>
+      <input
+        value={jumpPage}
+        onChange={(e) => setJumpPage(e.target.value.replace(/\D/g, ""))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            goToPage(jumpPage);
+          }
+        }}
+        placeholder={language === "en" ? "Page" : language === "ko" ? "페이지" : "页码"}
+        className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+      />
+      <button type="button" onClick={() => goToPage(jumpPage)} disabled={!jumpPage} className="rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
+        {language === "en" ? "Go" : language === "ko" ? "이동" : "跳转"}
+      </button>
+    </div>
+  </div>
+</div>
             </div>
             </>
           )}
