@@ -2299,25 +2299,44 @@ if (!lockResult.ok) {
 };
 
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (!student?.id || !adminSession?.admin_id) return;
+  const lockedApplicationId = student?.id || "";
+  const lockedAdminId = adminSession?.admin_id || "";
 
-      const payload = JSON.stringify({
-        id: student.id,
-        admin_account_id: adminSession.admin_id,
+  const handleBeforeUnload = () => {
+    if (!lockedApplicationId || !lockedAdminId) return;
+
+    const payload = JSON.stringify({
+      id: lockedApplicationId,
+      admin_account_id: lockedAdminId,
+      language,
+    });
+
+    navigator.sendBeacon?.("/api/admin-application-release-lock", payload);
+  };
+
+  window.addEventListener("beforeunload", handleBeforeUnload);
+
+  return () => {
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+
+    if (!lockedApplicationId || !lockedAdminId) return;
+
+    fetch("/api/admin-application-release-lock", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        id: lockedApplicationId,
+        admin_account_id: lockedAdminId,
         language,
-      });
-
-      navigator.sendBeacon?.("/api/admin-application-release-lock", payload);
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-      releaseAdminLock();
-    };
-  }, [student, adminSession]);
+      }),
+    }).catch((error) => {
+      console.error("releaseAdminLock cleanup error:", error);
+    });
+  };
+}, [student?.id, adminSession?.admin_id, language]);
 
   const handleDownloadSelectedZip = async () => {
     try {
