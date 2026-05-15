@@ -1966,6 +1966,74 @@ function ApplicationReviewPage() {
     });
   }, [applicationForm.program_track, applicationType, isLanguageApplication]);
 
+  const reacquireAdminReviewLockIfAvailable = async () => {
+  if (!student?.id || !adminSession?.admin_id) {
+    return { ok: false, reason: "missing_context" };
+  }
+
+  const { data: currentRow, error: currentError } = await supabase
+    .from("applications")
+    .select(
+      "id, admin_editing_by_account_id, admin_editing_by_account_name, admin_editing_started_at"
+    )
+    .eq("id", student.id)
+    .maybeSingle();
+
+  if (currentError) throw currentError;
+
+  if (!currentRow) {
+    return { ok: false, reason: "missing_row" };
+  }
+
+  const lockedByOtherAdmin =
+    currentRow.admin_editing_by_account_id &&
+    currentRow.admin_editing_by_account_id !== adminSession.admin_id &&
+    !isLockExpired(
+      currentRow.admin_editing_started_at,
+      ADMIN_LOCK_TIMEOUT_MINUTES
+    );
+
+  if (lockedByOtherAdmin) {
+    return {
+      ok: false,
+      reason: "locked_by_other",
+      name: currentRow.admin_editing_by_account_name || "",
+    };
+  }
+
+  const { data: lockedRow, error: lockError } = await supabase
+    .from("applications")
+    .update({
+      admin_editing_by_account_id: adminSession.admin_id,
+      admin_editing_by_account_name:
+        adminSession?.name || adminSession?.username || "Admin",
+      admin_editing_started_at: new Date().toISOString(),
+    })
+    .eq("id", student.id)
+    .select(
+      "id, updated_at, admin_editing_by_account_id, admin_editing_by_account_name, admin_editing_started_at"
+    )
+    .maybeSingle();
+
+  if (lockError) throw lockError;
+
+  if (!lockedRow) {
+    return { ok: false, reason: "lock_failed" };
+  }
+
+  setLoadedUpdatedAt(lockedRow.updated_at || "");
+  setStudent((prev) =>
+    prev
+      ? {
+          ...prev,
+          ...lockedRow,
+        }
+      : prev
+  );
+
+  return { ok: true, data: lockedRow };
+};
+
   const handleSaveApplicationForm = async () => {
     try {
       if (!student?.id) {
@@ -2049,7 +2117,19 @@ function ApplicationReviewPage() {
 
       setSavingApplicationStatus(true);
 
-      const payload = {
+const lockResult = await reacquireAdminReviewLockIfAvailable();
+
+if (!lockResult.ok) {
+  if (lockResult.reason === "locked_by_other") {
+    alert(t.alerts.lockedByOtherAdmin(lockResult.name));
+  } else {
+    alert(t.alerts.saveStatusConflict);
+  }
+  return;
+}
+
+const payload = {
+
         status: applicationStatus,
       };
 
@@ -2069,7 +2149,6 @@ function ApplicationReviewPage() {
   .from("applications")
   .update(updatePayload)
   .eq("id", student.id)
-  .eq("admin_editing_by_account_id", adminSession?.admin_id || "")
   .select("*")
   .maybeSingle();
 
@@ -2149,39 +2228,16 @@ function ApplicationReviewPage() {
 
     setSavingReview(true);
 
-    const lockPayload = {
-      admin_editing_by_account_id: adminSession?.admin_id || null,
-      admin_editing_by_account_name:
-        adminSession?.name || adminSession?.username || "Admin",
-      admin_editing_started_at: new Date().toISOString(),
-    };
+    const lockResult = await reacquireAdminReviewLockIfAvailable();
 
-    const { data: lockedApplication, error: lockError } = await supabase
-  .from("applications")
-  .update(lockPayload)
-  .eq("id", student.id)
-  .eq("admin_editing_by_account_id", adminSession?.admin_id || "")
-  .select(
-    "id, updated_at, admin_editing_by_account_id, admin_editing_by_account_name, admin_editing_started_at"
-  )
-  .maybeSingle();
-
-    if (lockError) throw lockError;
-
-    if (!lockedApplication) {
-      alert(t.alerts.saveStatusConflict);
-      return;
-    }
-
-    setLoadedUpdatedAt(lockedApplication.updated_at || "");
-    setStudent((prev) =>
-      prev
-        ? {
-            ...prev,
-            ...lockedApplication,
-          }
-        : prev
-    );
+if (!lockResult.ok) {
+  if (lockResult.reason === "locked_by_other") {
+    alert(t.alerts.lockedByOtherAdmin(lockResult.name));
+  } else {
+    alert(t.alerts.saveStatusConflict);
+  }
+  return;
+}
 
     const payload = {
       review_note: reviewNote || null,
