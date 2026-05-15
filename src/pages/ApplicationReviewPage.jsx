@@ -2066,12 +2066,12 @@ function ApplicationReviewPage() {
       };
 
       const { data, error } = await supabase
-        .from("applications")
-        .update(updatePayload)
-        .eq("id", student.id)
-        .eq("updated_at", loadedUpdatedAt)
-        .select("*")
-        .maybeSingle();
+  .from("applications")
+  .update(updatePayload)
+  .eq("id", student.id)
+  .eq("admin_editing_by_account_id", adminSession?.admin_id || "")
+  .select("*")
+  .maybeSingle();
 
       if (error) throw error;
 
@@ -2157,14 +2157,14 @@ function ApplicationReviewPage() {
     };
 
     const { data: lockedApplication, error: lockError } = await supabase
-      .from("applications")
-      .update(lockPayload)
-      .eq("id", student.id)
-      .eq("updated_at", loadedUpdatedAt)
-      .select(
-        "id, updated_at, admin_editing_by_account_id, admin_editing_by_account_name, admin_editing_started_at"
-      )
-      .maybeSingle();
+  .from("applications")
+  .update(lockPayload)
+  .eq("id", student.id)
+  .eq("admin_editing_by_account_id", adminSession?.admin_id || "")
+  .select(
+    "id, updated_at, admin_editing_by_account_id, admin_editing_by_account_name, admin_editing_started_at"
+  )
+  .maybeSingle();
 
     if (lockError) throw lockError;
 
