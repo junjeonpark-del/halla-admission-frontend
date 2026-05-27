@@ -574,7 +574,6 @@ export function buildCooperationSearchConditions(keyword) {
     `english_name.ilike.%${safeKeyword}%`,
     `full_name_passport.ilike.%${safeKeyword}%`,
     `major.ilike.%${safeKeyword}%`,
-    `department.ilike.%${safeKeyword}%`,
     `cooperation_major_snapshot->>partner_major_zh.ilike.%${safeKeyword}%`,
     `cooperation_major_snapshot->>partner_major_en.ilike.%${safeKeyword}%`,
     `cooperation_major_snapshot->>partner_major_ko.ilike.%${safeKeyword}%`,
