@@ -1253,29 +1253,6 @@ function NewCooperationApplicationPage() {
 
   return (
   <div className="space-y-6">
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-bold text-slate-900">{t.sections.pageTitle}</h2>
-      <p className="mt-2 text-sm leading-6 text-slate-500">{t.sections.pageDesc}</p>
-
-      <div className="mt-6 flex flex-wrap gap-3">
-        {steps.map((step, index) => (
-          <button
-            key={step}
-            type="button"
-            onClick={() => setCurrentStep(index)}
-            className={[
-              "rounded-full px-4 py-2 text-sm font-semibold transition whitespace-nowrap",
-              currentStep === index
-                ? "bg-emerald-600 text-white"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200",
-            ].join(" ")}
-          >
-            {index + 1}. {step}
-          </button>
-        ))}
-      </div>
-    </div>
-
     {studentFillToken ? (
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1355,6 +1332,29 @@ function NewCooperationApplicationPage() {
         </div>
       </div>
     ) : null}
+
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 className="text-lg font-bold text-slate-900">{t.sections.pageTitle}</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-500">{t.sections.pageDesc}</p>
+
+      <div className="mt-6 flex flex-wrap gap-3">
+        {steps.map((step, index) => (
+          <button
+            key={step}
+            type="button"
+            onClick={() => setCurrentStep(index)}
+            className={[
+              "rounded-full px-4 py-2 text-sm font-semibold transition whitespace-nowrap",
+              currentStep === index
+                ? "bg-emerald-600 text-white"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+            ].join(" ")}
+          >
+            {index + 1}. {step}
+          </button>
+        ))}
+      </div>
+    </div>
 
       {currentStep === 0 ? (
         <SectionCard title={t.sections.step1Title}>
