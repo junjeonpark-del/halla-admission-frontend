@@ -119,12 +119,18 @@ function setParagraphPlainText(paragraph, value) {
   paragraph.appendChild(run);
 }
 
-function appendDrawingToParagraph(paragraph, drawingXml) {
+function appendDrawingToParagraph(paragraph, drawingXml, replaceContent = false) {
   if (!paragraph || !drawingXml) return;
+  const paragraphPr = directChildren(paragraph, "pPr")[0]?.cloneNode(true);
   const documentNode = paragraph.ownerDocument;
   const fragment = new DOMParser().parseFromString(`<root>${drawingXml}</root>`, "application/xml");
   const drawingNode = fragment.documentElement.firstChild;
   if (!drawingNode) return;
+
+  if (replaceContent) {
+    while (paragraph.firstChild) paragraph.removeChild(paragraph.firstChild);
+    if (paragraphPr) paragraph.appendChild(paragraphPr);
+  }
 
   const run = documentNode.createElementNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "w:r");
   run.appendChild(documentNode.importNode(drawingNode, true));
@@ -167,6 +173,30 @@ function replaceTextInParagraph(paragraph, replacements) {
     });
     node.textContent = nextText;
   });
+}
+
+function replaceWingdingsCheckboxesByOrder(xmlText, gender) {
+  let index = 0;
+  const checkedIndexes = new Set([0, 1, 4, 5]);
+  if (gender === "female") {
+    checkedIndexes.add(3);
+  } else {
+    checkedIndexes.add(2);
+  }
+
+  return xmlText.replace(/<w:sym\b[^>]*w:font="Wingdings"[^>]*w:char="F0A8"[^>]*\/>/g, () => {
+    const checked = checkedIndexes.has(index);
+    index += 1;
+    return `<w:t>${checked ? "☑" : "□"}</w:t>`;
+  });
+}
+
+function replaceTextCheckboxes(xmlText) {
+  return xmlText
+    .replace(/□(\s*)확인했습니다/g, "☑$1확인했습니다")
+    .replace(/□(\s*)I acknowledge/g, "☑$1I acknowledge")
+    .replace(/□(\s*)동의함/g, "☑$1동의함")
+    .replace(/□(\s*)I agree/g, "☑$1I agree");
 }
 
 function formatDate(value) {
@@ -397,11 +427,8 @@ export async function generateCooperationApplicationDocumentBlob({
 
   setCellText(cell(0, 1), resolvedUniversity);
   setCellText(cell(0, 3), finalMajor);
-  setCheckboxSymbols(cell(1, 1), [0]);
-  setCheckboxSymbols(cell(1, 3), [0]);
   setCellText(cell(2, 1), admissionYear ? `${admissionYear}년 9월학기 / ${admissionYear} September Semester` : "");
   setCellText(cell(4, 1), applicantName);
-  setCheckboxSymbols(cell(5, 1), normalizeGender(student.gender || student.sex) === "female" ? [1] : [0]);
   setCellText(cell(5, 3), student.nationality || "China");
   setCellText(cell(6, 1), formatDate(student.date_of_birth || student.birth_date));
   setCellText(cell(6, 3), student.email || "");
@@ -419,20 +446,13 @@ export async function generateCooperationApplicationDocumentBlob({
     setCellPlainText(cell(rowIndex, 2), item.location || "");
   });
 
-  const consentTable = tables[1];
-  const consentRows = consentTable ? getRows(consentTable) : [];
-  const consentCells = getCells(consentRows[0]);
-  setCheckboxSymbols(consentCells[1], [0]);
-  setCheckboxSymbols(consentCells[2], []);
-  replaceCheckboxTextInNode(consentCells[1], ["동의함", "agree"]);
-
   const paragraphs = getParagraphs(documentNode);
   const photoParagraph = [...paragraphs]
     .reverse()
     .find((paragraph) => getParagraphText(paragraph).includes("photo"));
 
   if (photoRelId && photoParagraph) {
-    appendDrawingToParagraph(photoParagraph, buildImageDrawingXml(photoRelId));
+    appendDrawingToParagraph(photoParagraph, buildImageDrawingXml(photoRelId), true);
   }
 
   paragraphs.forEach((paragraph) => {
@@ -450,7 +470,9 @@ export async function generateCooperationApplicationDocumentBlob({
     }
   });
 
-  const nextXml = new XMLSerializer().serializeToString(documentNode);
+  let nextXml = new XMLSerializer().serializeToString(documentNode);
+  nextXml = replaceWingdingsCheckboxesByOrder(nextXml, normalizeGender(student.gender || student.sex));
+  nextXml = replaceTextCheckboxes(nextXml);
   zip.file(WORD_DOCUMENT_XML_PATH, nextXml);
 
   return zip.generateAsync({
