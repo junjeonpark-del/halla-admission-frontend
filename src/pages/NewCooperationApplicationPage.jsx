@@ -735,10 +735,23 @@ function NewCooperationApplicationPage() {
   );
 
   const studentFillLink = studentFillToken
-    ? `${window.location.origin}/student/cooperation-application/${studentFillToken}`
-    : "";
+  ? `${window.location.origin}/student/cooperation-application/${studentFillToken}`
+  : "";
 
-  const buildPublicId = () => {
+useEffect(() => {
+  const previousBodyOverflow = document.body.style.overflow;
+  const previousHtmlOverflow = document.documentElement.style.overflow;
+
+  document.body.style.overflow = "hidden";
+  document.documentElement.style.overflow = "hidden";
+
+  return () => {
+    document.body.style.overflow = previousBodyOverflow;
+    document.documentElement.style.overflow = previousHtmlOverflow;
+  };
+}, []);
+
+const buildPublicId = () => {
     const base = slugify(form.fullName) || `coop-${Date.now()}`;
     return `${base}-${Date.now().toString().slice(-6)}`;
   };
