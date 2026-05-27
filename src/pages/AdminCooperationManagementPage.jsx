@@ -448,6 +448,14 @@ export function formatCooperationDate(value) {
   ).padStart(2, "0")}`;
 }
 
+function formatCooperationExportTimestamp(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return formatCooperationDate(value);
+  return `${formatCooperationDate(date)}_${String(date.getHours()).padStart(2, "0")}${String(
+    date.getMinutes()
+  ).padStart(2, "0")}${String(date.getSeconds()).padStart(2, "0")}`;
+}
+
 export function sanitizeCooperationDownloadSegment(value, fallback = "file") {
   const cleaned = String(value || "")
     .replace(/[\\/:*?"<>|]+/g, "-")
@@ -649,6 +657,36 @@ function getCooperationExportEducationLabels(language) {
 export function exportCooperationRowsToExcel(rows, t, language, filePrefix = "cooperation-applications", options = {}) {
   const majorType = options.majorType || "halla";
   const educationLabels = getCooperationExportEducationLabels(language);
+  const educationHeaders = [1, 2, 3].flatMap((number) => {
+    const prefix = `${t.detail.fields.education}${number}`;
+    return [
+      `${prefix}${educationLabels.start}`,
+      `${prefix}${educationLabels.end}`,
+      `${prefix}${educationLabels.institution}`,
+      `${prefix}${educationLabels.location}`,
+    ];
+  });
+  const headers = [
+    t.table.index,
+    t.table.studentName,
+    t.table.university,
+    t.table.major,
+    t.table.admissionYear,
+    t.detail.fields.semester,
+    t.detail.fields.sex,
+    t.detail.fields.nationality,
+    t.detail.fields.birth,
+    t.detail.fields.email,
+    t.detail.fields.tel,
+    t.detail.fields.idCard,
+    t.detail.fields.address,
+    t.table.academicStatus,
+    t.table.applicationStatus,
+    ...educationHeaders,
+    t.detail.fields.consent,
+    t.table.updatedAt,
+  ];
+
   const exportRows = rows.map((row, index) => {
     const student = row.student;
     const educationRows = parseCooperationEducationRows(student);
@@ -683,10 +721,10 @@ export function exportCooperationRowsToExcel(rows, t, language, filePrefix = "co
     return exportRow;
   });
 
-  const worksheet = XLSX.utils.json_to_sheet(exportRows);
+  const worksheet = XLSX.utils.json_to_sheet(exportRows, { header: headers });
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Cooperation");
-  XLSX.writeFile(workbook, `${filePrefix}_${formatCooperationDate(new Date())}.xlsx`);
+  XLSX.writeFile(workbook, `${filePrefix}_${formatCooperationExportTimestamp(new Date())}.xlsx`);
 }
 
 function AdminCooperationManagementPage() {
