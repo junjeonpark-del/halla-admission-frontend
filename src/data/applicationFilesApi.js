@@ -67,6 +67,12 @@ export async function downloadApplicationFilesAsZip(files, zipName = "materials.
   const zip = new JSZip();
 
   for (const file of files) {
+    if (file?.blob) {
+      const safeName = file.downloadName || file.file_name || "file";
+      zip.file(safeName, file.blob);
+      continue;
+    }
+
     if (!file?.file_path) continue;
 
     const { data, error } = await supabase.storage

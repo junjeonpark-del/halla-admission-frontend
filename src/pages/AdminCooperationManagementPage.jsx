@@ -7,6 +7,11 @@ import {
   downloadApplicationFilesAsZip,
   getApplicationFileSignedUrl,
 } from "../data/applicationFilesApi";
+import {
+  buildCooperationApplicationFileName,
+  downloadCooperationApplicationDocument,
+  generateCooperationApplicationDocumentBlob,
+} from "../utils/generateCooperationApplicationDocument";
 
 export const COOPERATION_FILE_TYPES = [
   "cooperation_photo",
@@ -443,13 +448,68 @@ export function formatCooperationDate(value) {
   ).padStart(2, "0")}`;
 }
 
+export function sanitizeCooperationDownloadSegment(value, fallback = "file") {
+  const cleaned = String(value || "")
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^[-_.]+|[-_.]+$/g, "");
+
+  return cleaned || fallback;
+}
+
+export function getCooperationDownloadApplicationTypeLabel(language) {
+  if (language === "en") return "CooperationProgram";
+  if (language === "ko") return "중외합작프로그램";
+  return "中外合作办学";
+}
+
+export function getCooperationDownloadSemesterLabel(student, language) {
+  const year = student?.cooperation_admission_year || new Date().getFullYear();
+  if (language === "en") return `${year}-SeptemberSemester`;
+  if (language === "ko") return `${year}-9월학기`;
+  return `${year}-9月学期`;
+}
+
+export function getCooperationDownloadScopeLabel(language, mode = "all") {
+  if (language === "en") return mode === "selected" ? "Selected" : "All";
+  if (language === "ko") return mode === "selected" ? "선택" : "전체";
+  return mode === "selected" ? "已选" : "全部";
+}
+
+export function buildCooperationMaterialDownloadName(student, file, fileType, t, language) {
+  const studentName = sanitizeCooperationDownloadSegment(getCooperationStudentName(student), "student");
+  const materialName = sanitizeCooperationDownloadSegment(t.materialLabels[fileType] || fileType || "file", "file");
+  const applicationType = sanitizeCooperationDownloadSegment(getCooperationDownloadApplicationTypeLabel(language), "type");
+  const semesterLabel = sanitizeCooperationDownloadSegment(getCooperationDownloadSemesterLabel(student, language), "semester");
+  const extMatch = file?.file_name?.match(/(\.[^.]+)$/);
+  const ext = extMatch ? extMatch[1] : "";
+
+  return `${studentName}_${materialName}_${applicationType}_${semesterLabel}${ext}`;
+}
+
+export function buildCooperationMaterialsZipName(student, language, mode = "all") {
+  const studentName = sanitizeCooperationDownloadSegment(getCooperationStudentName(student), "student");
+  const scopeLabel = sanitizeCooperationDownloadSegment(getCooperationDownloadScopeLabel(language, mode), "All");
+  const applicationType = sanitizeCooperationDownloadSegment(getCooperationDownloadApplicationTypeLabel(language), "type");
+  const semesterLabel = sanitizeCooperationDownloadSegment(getCooperationDownloadSemesterLabel(student, language), "semester");
+
+  return `${studentName}_${scopeLabel}_${applicationType}_${semesterLabel}.zip`;
+}
+
 export function parseCooperationEducationRows(student) {
   const rows = [student.education1, student.education2, student.education3]
     .map((item) => {
       if (!item) return null;
       if (typeof item === "object") return item;
+      const text = String(item);
+      if (text.includes("|")) {
+        const [datePart = "", institution = "", location = ""] = text.split("|").map((part) => part.trim());
+        const [startDate = "", endDate = ""] = datePart.split("~").map((part) => part.trim());
+        return { startDate, endDate, institution, location };
+      }
       try {
-        return JSON.parse(item);
+        return JSON.parse(text);
       } catch {
         return null;
       }
@@ -840,6 +900,44 @@ function AdminCooperationManagementPage() {
   const detailFiles = detailStudent?.public_id ? fileMap[detailStudent.public_id] || {} : {};
   const uploadedDetailFiles = COOPERATION_FILE_TYPES.map((type) => detailFiles[type]?.[0]).filter(Boolean);
   const detailEducationRows = detailStudent ? parseCooperationEducationRows(detailStudent) : [];
+  const detailDocumentOptions = detailStudent
+    ? {
+        student: detailStudent,
+        language,
+        agencyName: detailStudent.agency_name || agencyMap[detailStudent.agency_id] || "",
+        universityName: getCooperationUniversity(detailStudent, language),
+        partnerMajorName: getMajor(detailStudent, language),
+        hallaMajorName: getCooperationHallaMajor(detailStudent, language),
+      }
+    : null;
+
+  const downloadDetailApplicationDocument = () => {
+    if (!detailDocumentOptions) return;
+    downloadCooperationApplicationDocument(detailDocumentOptions);
+  };
+
+  const downloadDetailFile = (file, fileType) => {
+    if (!detailStudent || !file) return;
+    downloadApplicationFile(file.file_path, buildCooperationMaterialDownloadName(detailStudent, file, fileType, t, language));
+  };
+
+  const downloadAllDetailFiles = async () => {
+    if (!detailStudent) return;
+    const documentBlob = detailDocumentOptions
+      ? await generateCooperationApplicationDocumentBlob(detailDocumentOptions)
+      : null;
+    const zipFiles = uploadedDetailFiles.map((file) => ({
+      ...file,
+      downloadName: buildCooperationMaterialDownloadName(detailStudent, file, file.file_type, t, language),
+    }));
+    if (documentBlob) {
+      zipFiles.unshift({
+        blob: documentBlob,
+        downloadName: buildCooperationApplicationFileName(detailStudent, language),
+      });
+    }
+    downloadApplicationFilesAsZip(zipFiles, buildCooperationMaterialsZipName(detailStudent, language, "all"));
+  };
 
   return (
     <div className="grid items-start gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
@@ -1096,10 +1194,10 @@ function AdminCooperationManagementPage() {
               </span>
             </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="mt-6 space-y-4">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <h4 className="text-base font-bold text-slate-900">{t.detail.basicInfo}</h4>
-                <div className="mt-4 grid gap-2 text-sm text-slate-700 md:grid-cols-2">
+                <div className="mt-4 grid gap-x-6 gap-y-2 text-sm text-slate-700 md:grid-cols-2 xl:grid-cols-3">
                   <div>{t.detail.fields.agency}: {detailStudent.agency_name || agencyMap[detailStudent.agency_id] || "-"}</div>
                   <div>{t.detail.fields.university}: {getCooperationUniversity(detailStudent, language)}</div>
                   <div>{t.detail.fields.partnerMajor}: {getMajor(detailStudent, language)}</div>
@@ -1133,12 +1231,12 @@ function AdminCooperationManagementPage() {
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                   <h4 className="text-base font-bold text-slate-900">{t.detail.photo}</h4>
-                  <div className="mt-4 flex min-h-[180px] items-center justify-center rounded-xl bg-white p-4 shadow-sm">
+                  <div className="mt-4 flex h-[180px] items-center justify-center rounded-xl bg-white p-3 shadow-sm">
                     {photoUrl ? (
-                      <img src={photoUrl} alt="cooperation student" className="max-h-56 rounded-lg object-contain" />
+                      <img src={photoUrl} alt="cooperation student" className="max-h-full max-w-full rounded-lg object-contain" />
                     ) : (
                       <div className="text-sm text-slate-500">{t.detail.noPhoto}</div>
                     )}
@@ -1147,7 +1245,7 @@ function AdminCooperationManagementPage() {
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                   <h4 className="text-base font-bold text-slate-900">{t.detail.materials}</h4>
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
                     {COOPERATION_FILE_TYPES.map((type) => {
                       const file = detailFiles[type]?.[0];
                       return (
@@ -1155,7 +1253,7 @@ function AdminCooperationManagementPage() {
                           <div className="flex items-center justify-between gap-3">
                             <div>
                               <div className="text-sm font-semibold text-slate-800">{t.materialLabels[type]}</div>
-                              <div className="mt-1 text-xs text-slate-500">{file?.file_name || t.detail.noFile}</div>
+                              <div className="mt-1 text-xs text-slate-500">{file ? t.common.uploaded : t.detail.noFile}</div>
                             </div>
                             <CooperationStatusBadge type={file ? "success" : "danger"}>{file ? t.common.uploaded : t.common.missing}</CooperationStatusBadge>
                           </div>
@@ -1170,7 +1268,7 @@ function AdminCooperationManagementPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => file && downloadApplicationFile(file.file_path, file.file_name)}
+                              onClick={() => downloadDetailFile(file, type)}
                               disabled={!file}
                               className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 disabled:cursor-not-allowed disabled:text-slate-400"
                             >
@@ -1191,15 +1289,15 @@ function AdminCooperationManagementPage() {
                 <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
-                    onClick={() => exportCooperationRowsToExcel([{ student: detailStudent, agencyName: detailStudent.agency_name || agencyMap[detailStudent.agency_id] || "-" }], t, language, "cooperation-application")}
+                    onClick={downloadDetailApplicationDocument}
                     className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
                   >
                     {t.detail.exportOne}
                   </button>
                   <button
                     type="button"
-                    onClick={() => downloadApplicationFilesAsZip(uploadedDetailFiles, `${getCooperationStudentName(detailStudent)}_materials.zip`)}
-                    disabled={uploadedDetailFiles.length === 0}
+                    onClick={downloadAllDetailFiles}
+                    disabled={!detailStudent}
                     className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {t.detail.downloadAll}
