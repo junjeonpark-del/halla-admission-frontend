@@ -621,20 +621,44 @@ export function getCooperationPageNumbers(page, totalPages) {
   return Array.from(set).sort((a, b) => a - b);
 }
 
-export function exportCooperationRowsToExcel(rows, t, language, filePrefix = "cooperation-applications") {
+function getCooperationExportEducationLabels(language) {
+  if (language === "en") {
+    return {
+      start: "Start Date",
+      end: "End Date",
+      institution: "Institution",
+      location: "Country/City",
+    };
+  }
+  if (language === "ko") {
+    return {
+      start: "시작일",
+      end: "종료일",
+      institution: "학교명",
+      location: "국가/도시",
+    };
+  }
+  return {
+    start: "开始时间",
+    end: "结束时间",
+    institution: "学校名称",
+    location: "国家/城市",
+  };
+}
+
+export function exportCooperationRowsToExcel(rows, t, language, filePrefix = "cooperation-applications", options = {}) {
+  const majorType = options.majorType || "halla";
+  const educationLabels = getCooperationExportEducationLabels(language);
   const exportRows = rows.map((row, index) => {
     const student = row.student;
     const educationRows = parseCooperationEducationRows(student);
-    return {
+    const exportRow = {
       [t.table.index]: index + 1,
       [t.table.studentName]: getCooperationStudentName(student),
-      [t.table.agency]: row.agencyName,
       [t.table.university]: getCooperationUniversity(student, language),
-      [t.table.major]: getMajor(student, language),
-      [t.detail.fields.hallaMajor]: getCooperationHallaMajor(student, language),
+      [t.table.major]: majorType === "partner" ? getMajor(student, language) : getCooperationHallaMajor(student, language),
       [t.table.admissionYear]: student.cooperation_admission_year || "",
-      [t.detail.fields.semester]: student.cooperation_admission_year ? `${student.cooperation_admission_year} 9` : "",
-      [t.detail.fields.fullName]: student.full_name_passport || "",
+      [t.detail.fields.semester]: "9",
       [t.detail.fields.sex]: student.gender || student.sex || "",
       [t.detail.fields.nationality]: student.nationality || "China",
       [t.detail.fields.birth]: student.date_of_birth || "",
@@ -644,12 +668,19 @@ export function exportCooperationRowsToExcel(rows, t, language, filePrefix = "co
       [t.detail.fields.address]: buildCooperationAddress(student),
       [t.table.academicStatus]: t.academicStatus[student.cooperation_academic_status] || student.cooperation_academic_status || "",
       [t.table.applicationStatus]: t.status[student.status] || student.status || "",
-      [t.detail.fields.education]: educationRows
-        .map((item) => `${item.startDate || ""} ~ ${item.endDate || ""} ${item.institution || ""} ${item.location || ""}`)
-        .join(" / "),
       [t.detail.fields.consent]: student.agree_personal_info ? t.common.yes : t.common.no,
       [t.table.updatedAt]: student.updated_at || "",
     };
+
+    educationRows.forEach((item, educationIndex) => {
+      const prefix = `${t.detail.fields.education}${educationIndex + 1}`;
+      exportRow[`${prefix}${educationLabels.start}`] = item.startDate || "";
+      exportRow[`${prefix}${educationLabels.end}`] = item.endDate || "";
+      exportRow[`${prefix}${educationLabels.institution}`] = item.institution || "";
+      exportRow[`${prefix}${educationLabels.location}`] = item.location || "";
+    });
+
+    return exportRow;
   });
 
   const worksheet = XLSX.utils.json_to_sheet(exportRows);

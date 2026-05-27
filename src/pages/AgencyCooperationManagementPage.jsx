@@ -481,7 +481,9 @@ function AgencyCooperationManagementPage() {
                         student,
                         agencyName: agencySession?.agency_name || "-",
                       }));
-                      exportCooperationRowsToExcel(exportRows, t, language, "agency-cooperation-applications");
+                      exportCooperationRowsToExcel(exportRows, t, language, "agency-cooperation-applications", {
+                        majorType: "partner",
+                      });
                     })
                     .catch((error) => {
                       console.error("export agency cooperation applications error:", error);
