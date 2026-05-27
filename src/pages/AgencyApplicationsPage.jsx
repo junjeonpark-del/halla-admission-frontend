@@ -450,10 +450,25 @@ const getAgencyUnitName = (item) => {
   };
 
   const getMajor = (student) => {
+  const type = String(student.application_type || "undergraduate").toLowerCase();
+
+  if (type === "cooperation") {
+    const snapshot = student.cooperation_major_snapshot || {};
+    const locale = language === "en" ? "en" : language === "ko" ? "ko" : "zh";
+
+    return (
+      snapshot[`partner_major_${locale}`] ||
+      snapshot.partner_major_zh ||
+      snapshot.partner_major_en ||
+      snapshot.partner_major_ko ||
+      student.department ||
+      student.major ||
+      "-"
+    );
+  }
+
   const rawMajor = student.major || student.department || "";
   if (!rawMajor) return "-";
-
-  const type = String(student.application_type || "undergraduate").toLowerCase();
 
   if (type === "language") {
     return rawMajor;

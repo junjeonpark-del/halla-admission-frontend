@@ -443,16 +443,21 @@ function MaterialUploadCard({
 
       <div className="mt-4">
         <Label required>{t.chooseFile}</Label>
-        <input
-          type="file"
-          multiple
-          disabled={disabled}
-          accept="image/*,.pdf,application/pdf"
-          onChange={(event) => onFilesChange(item.key, event.target.files)}
-          className="block w-full rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white disabled:cursor-not-allowed disabled:opacity-60"
-        />
-        <div className="mt-2 text-xs text-slate-400">{t.uploadRule}</div>
-      </div>
+        <label className="flex cursor-pointer flex-col gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-600 transition hover:border-emerald-300 hover:bg-emerald-50">
+  <input
+    type="file"
+    multiple
+    disabled={disabled}
+    accept="image/*,.pdf,application/pdf"
+    onChange={(event) => onFilesChange(item.key, event.target.files)}
+    className="sr-only"
+  />
+  <span className="inline-flex w-fit rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">
+    {t.chooseFile}
+  </span>
+  <span className="text-xs text-slate-500">{t.uploadRule}</span>
+</label>
+              </div>
 
       {existingFiles.length > 0 ? (
         <div className="mt-4">
@@ -862,11 +867,7 @@ function StudentCooperationApplicationPage() {
               value={getSnapshotName(majorSnapshot, language, "partner_major")}
               helper={t.readonly}
             />
-            <ReadonlyField
-              label={t.fields.hallaMajor}
-              value={getSnapshotName(majorSnapshot, language, "halla_major")}
-              helper={t.readonly}
-            />
+            
             <ReadonlyField
               label={t.fields.admissionYear}
               value={application?.cooperation_admission_year}

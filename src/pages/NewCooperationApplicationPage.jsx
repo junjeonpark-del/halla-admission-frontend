@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAgencySession } from "../contexts/AgencySessionContext";
+import { QRCodeCanvas } from "qrcode.react";
 
 const MATERIALS_BUCKET = "application-files";
 
@@ -42,6 +43,13 @@ const messages = {
       fixedAdmissionType: "新入",
       fixedProgram: "中外合作办学",
       fixedSemester: "9月学期",
+      currentStatus: "当前状态",
+enabled: "已开启",
+disabled: "已关闭",
+downloadQr: "下载二维码",
+qrNotReady: "二维码还未生成",
+closeStudentFill: "关闭学生填写",
+reopenStudentFill: "重新开启填写",
       agreementText:
         "本人确认上述信息真实准确，并同意汉拿大学收集和使用个人信息用于中外合作办学学籍管理及相关业务。",
     },
@@ -157,6 +165,13 @@ const messages = {
       fixedAdmissionType: "Freshman",
       fixedProgram: "Sino-Foreign Cooperative Education Program",
       fixedSemester: "September Semester",
+      currentStatus: "Current Status",
+enabled: "Enabled",
+disabled: "Disabled",
+downloadQr: "Download QR Code",
+qrNotReady: "QR code is not ready yet",
+closeStudentFill: "Disable Student Fill",
+reopenStudentFill: "Re-enable Student Fill",
       agreementText:
         "I certify that the information above is true and accurate, and agree that Halla University may collect and use my personal information for cooperative education student record management and related work.",
     },
@@ -271,6 +286,13 @@ const messages = {
       fixedAdmissionType: "신입학",
       fixedProgram: "중외합작프로그램",
       fixedSemester: "9월 학기",
+      currentStatus: "현재 상태",
+enabled: "활성",
+disabled: "비활성",
+downloadQr: "QR 코드 다운로드",
+qrNotReady: "QR 코드가 아직 생성되지 않았습니다",
+closeStudentFill: "학생 작성 닫기",
+reopenStudentFill: "학생 작성 다시 열기",
       agreementText:
         "본인은 위 정보가 사실과 틀림없음을 확인하며, 한라대학교가 중외합작프로그램 학적 관리 및 관련 업무를 위해 개인정보를 수집 및 이용하는 데 동의합니다.",
     },
@@ -497,15 +519,20 @@ function MaterialUploadCard({
 
       <div className="mt-4">
         <Label required>{t.common.chooseFile}</Label>
-        <input
-          type="file"
-          multiple
-          accept="image/*,.pdf,application/pdf"
-          onChange={(event) => onFilesChange(item.key, event.target.files)}
-          className="block w-full rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
-        />
-        <div className="mt-2 text-xs text-slate-400">{t.common.uploadRule}</div>
-      </div>
+        <label className="flex cursor-pointer flex-col gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-600 transition hover:border-emerald-300 hover:bg-emerald-50">
+  <input
+    type="file"
+    multiple
+    accept="image/*,.pdf,application/pdf"
+    onChange={(event) => onFilesChange(item.key, event.target.files)}
+    className="sr-only"
+  />
+  <span className="inline-flex w-fit rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">
+    {t.common.chooseFile}
+  </span>
+  <span className="text-xs text-slate-500">{t.common.uploadRule}</span>
+</label>
+              </div>
 
       {existingFiles.length > 0 ? (
         <div className="mt-4">
@@ -676,6 +703,7 @@ function NewCooperationApplicationPage() {
   const [applicationId, setApplicationId] = useState("");
   const [applicationPublicId, setApplicationPublicId] = useState("");
   const [studentFillToken, setStudentFillToken] = useState("");
+  const [studentFillEnabled, setStudentFillEnabled] = useState(true);
   const [loadedApplicationStatus, setLoadedApplicationStatus] = useState("draft");
   const [uploadedMaterials, setUploadedMaterials] = useState({});
   const [existingUploadedFiles, setExistingUploadedFiles] = useState({});
@@ -693,9 +721,9 @@ function NewCooperationApplicationPage() {
   );
 
   const admissionYears = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return Array.from({ length: 7 }, (_, index) => currentYear - 1 + index);
-  }, []);
+  const currentYear = new Date().getFullYear();
+  return Array.from({ length: 7 }, (_, index) => currentYear + index);
+}, []);
 
   const materialItems = useMemo(
     () =>
@@ -891,6 +919,7 @@ function NewCooperationApplicationPage() {
     setApplicationId(data.id || "");
     setApplicationPublicId(data.public_id || "");
     setStudentFillToken(data.student_fill_token || "");
+    setStudentFillEnabled(data.student_fill_enabled !== false);
     setLoadedApplicationStatus(data.status || "draft");
     setForm((prev) => ({
       ...prev,
@@ -1100,11 +1129,6 @@ function NewCooperationApplicationPage() {
       return;
     }
 
-    if (statusValue === "submitted" && !validateRequiredFields()) {
-      alert(t.common.fillRequired);
-      return;
-    }
-
     try {
       if (!applicationId) {
         const publicId = buildPublicId();
@@ -1190,6 +1214,24 @@ function NewCooperationApplicationPage() {
     }
   };
 
+  const handleToggleStudentFill = async (enabled) => {
+  try {
+    if (!applicationId) return;
+
+    const { error } = await supabase
+      .from("applications")
+      .update({ student_fill_enabled: enabled })
+      .eq("id", applicationId)
+      .eq("agency_id", agencySession?.agency_id || "");
+
+    if (error) throw error;
+    setStudentFillEnabled(enabled);
+  } catch (error) {
+    console.error("handleToggleStudentFill error:", error);
+    alert(error.message);
+  }
+};
+
   const prevStep = () => setCurrentStep((prev) => Math.max(0, prev - 1));
   const nextStep = () => setCurrentStep((prev) => Math.min(steps.length - 1, prev + 1));
 
@@ -1233,27 +1275,84 @@ function NewCooperationApplicationPage() {
           ))}
         </div>
 
-        {studentFillLink ? (
-          <div className="mt-6 rounded-2xl bg-slate-50 p-4">
-            <div className="text-sm font-semibold text-slate-700">
-              {t.common.studentFillLink}
-            </div>
-            <div className="mt-2 flex flex-col gap-3 md:flex-row md:items-center">
-              <input
-                readOnly
-                value={studentFillLink}
-                className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600"
-              />
-              <button
-                type="button"
-                onClick={copyStudentLink}
-                className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
-              >
-                {t.common.copyLink}
-              </button>
-            </div>
-          </div>
-        ) : null}
+        {studentFillToken ? (
+  <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <div className="text-sm font-semibold text-emerald-800">
+          {t.common.studentFillLink}
+        </div>
+        <div className="mt-1 text-xs text-slate-500">
+          {t.common.currentStatus}:
+          <span
+            className={`ml-2 font-semibold ${
+              studentFillEnabled ? "text-emerald-700" : "text-red-600"
+            }`}
+          >
+            {studentFillEnabled ? t.common.enabled : t.common.disabled}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div className="mt-2 break-all rounded-xl bg-white px-4 py-3 text-sm text-slate-700">
+      {studentFillLink}
+    </div>
+
+    <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-start">
+      <div className="rounded-2xl bg-white p-4 shadow-sm">
+        <QRCodeCanvas value={studentFillLink} size={180} includeMargin={true} />
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <button
+          type="button"
+          onClick={copyStudentLink}
+          className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+        >
+          {t.common.copyLink}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            const canvas = document.querySelector("canvas");
+            if (!canvas) {
+              alert(t.common.qrNotReady);
+              return;
+            }
+            const url = canvas.toDataURL("image/png");
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "cooperation-student-qrcode.png";
+            a.click();
+          }}
+          className="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-100"
+        >
+          {t.common.downloadQr}
+        </button>
+
+        {studentFillEnabled ? (
+          <button
+            type="button"
+            onClick={() => handleToggleStudentFill(false)}
+            className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+          >
+            {t.common.closeStudentFill}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => handleToggleStudentFill(true)}
+            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+          >
+            {t.common.reopenStudentFill}
+          </button>
+        )}
+      </div>
+    </div>
+  </div>
+) : null}
       </div>
 
       {currentStep === 0 ? (
@@ -1287,13 +1386,7 @@ function NewCooperationApplicationPage() {
                 </option>
               ))}
             </Select>
-
-            <ReadonlyField
-              label={t.fields.hallaMajor}
-              value={getMajorLabel(selectedMajor, language, "halla_major")}
-              helper={t.common.readonly}
-            />
-
+            
             <Select
               label={t.fields.admissionYear}
               required
