@@ -16,7 +16,6 @@ import {
   CooperationEllipsisText,
   CooperationStatusBadge,
   CooperationTreeButton,
-  buildCooperationSearchConditions,
   buildCooperationMaterialDownloadName,
   buildCooperationMaterialsZipName,
   buildCooperationAddress,
@@ -44,6 +43,47 @@ function getMajor(student, language) {
     student.department ||
     "-"
   );
+}
+
+function getAcademicStatusSearchCodes(keyword) {
+  const value = String(keyword || "").trim().toLowerCase();
+  if (!value) return [];
+
+  const statusLabels = {
+    active: ["active", "在学", "재학"],
+    leave: ["leave", "休学", "휴학"],
+    completed: ["completed", "结业", "수료"],
+    graduated: ["graduated", "毕业", "졸업"],
+    withdrawn: ["withdrawn", "退学", "자퇴"],
+  };
+
+  return Object.entries(statusLabels)
+    .filter(([code, labels]) => code.includes(value) || labels.some((label) => label.toLowerCase().includes(value)))
+    .map(([code]) => code);
+}
+
+function buildAgencyCooperationSearchConditions(keyword) {
+  const safeKeyword = String(keyword || "").replaceAll(",", " ").trim();
+  if (!safeKeyword) return [];
+
+  const conditions = [
+    `english_name.ilike.%${safeKeyword}%`,
+    `full_name_passport.ilike.%${safeKeyword}%`,
+    `major.ilike.%${safeKeyword}%`,
+    `cooperation_major_snapshot->>partner_major_zh.ilike.%${safeKeyword}%`,
+    `cooperation_major_snapshot->>partner_major_en.ilike.%${safeKeyword}%`,
+    `cooperation_major_snapshot->>partner_major_ko.ilike.%${safeKeyword}%`,
+    `cooperation_major_snapshot->>halla_major_zh.ilike.%${safeKeyword}%`,
+    `cooperation_major_snapshot->>halla_major_en.ilike.%${safeKeyword}%`,
+    `cooperation_major_snapshot->>halla_major_ko.ilike.%${safeKeyword}%`,
+  ];
+
+  const statusCodes = getAcademicStatusSearchCodes(safeKeyword);
+  if (statusCodes.length > 0) {
+    conditions.push(`cooperation_academic_status.in.(${statusCodes.join(",")})`);
+  }
+
+  return conditions;
 }
 
 function AgencyCooperationManagementPage() {
@@ -128,7 +168,7 @@ function AgencyCooperationManagementPage() {
     }
 
     if (keyword) {
-      const conditions = buildCooperationSearchConditions(keyword);
+      const conditions = buildAgencyCooperationSearchConditions(keyword);
       if (conditions.length > 0) {
         nextQuery = nextQuery.or(conditions.join(","));
       }
