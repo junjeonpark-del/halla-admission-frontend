@@ -177,6 +177,15 @@ function replaceTextInParagraph(paragraph, replacements) {
   });
 }
 
+function checkFirstSquareInParagraph(paragraph) {
+  if (!paragraph) return;
+  const textNodes = Array.from(paragraph.getElementsByTagName("w:t"));
+  const target = textNodes.find((node) => (node.textContent || "").includes("□"));
+  if (target) {
+    target.textContent = (target.textContent || "").replace("□", "☑");
+  }
+}
+
 function replaceWingdingsCheckboxesByOrder(xmlText, gender) {
   let index = 0;
   const checkedIndexes = new Set([0, 1, 4, 5]);
@@ -199,6 +208,19 @@ function replaceTextCheckboxes(xmlText) {
     .replace(/□(\s*)I acknowledge/g, "☑$1I acknowledge")
     .replace(/□(\s*)동의함/g, "☑$1동의함")
     .replace(/□(\s*)I agree/g, "☑$1I agree");
+}
+
+function replaceSplitConsentCheckboxes(xmlText) {
+  const labels = ["I acknowledge", "\ud655\uc778\ud588\uc2b5\ub2c8\ub2e4"];
+  let nextXml = xmlText;
+
+  labels.forEach((label) => {
+    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`(<w:t[^>]*>[^<]*)□([^<]*<\\/w:t>(?:(?!<w:p[ >]).){0,2000}${escapedLabel})`, "gs");
+    nextXml = nextXml.replace(pattern, "$1☑$2");
+  });
+
+  return nextXml;
 }
 
 function formatDate(value) {
@@ -526,6 +548,7 @@ export async function generateCooperationApplicationDocumentBlob({
   nextXml = replacePhotoShapeDrawing(nextXml, photoRelId);
   nextXml = replaceWingdingsCheckboxesByOrder(nextXml, normalizeGender(student.gender || student.sex));
   nextXml = replaceTextCheckboxes(nextXml);
+  nextXml = replaceSplitConsentCheckboxes(nextXml);
   zip.file(WORD_DOCUMENT_XML_PATH, nextXml);
 
   return zip.generateAsync({
