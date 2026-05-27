@@ -16,6 +16,7 @@ import {
   CooperationEllipsisText,
   CooperationStatusBadge,
   CooperationTreeButton,
+  buildCooperationSearchConditions,
   buildCooperationMaterialDownloadName,
   buildCooperationMaterialsZipName,
   buildCooperationAddress,
@@ -127,16 +128,10 @@ function AgencyCooperationManagementPage() {
     }
 
     if (keyword) {
-      const safeKeyword = keyword.replaceAll(",", " ");
-      nextQuery = nextQuery.or(
-        [
-          `english_name.ilike.%${safeKeyword}%`,
-          `full_name_passport.ilike.%${safeKeyword}%`,
-          `name.ilike.%${safeKeyword}%`,
-          `major.ilike.%${safeKeyword}%`,
-          `department.ilike.%${safeKeyword}%`,
-        ].join(",")
-      );
+      const conditions = buildCooperationSearchConditions(keyword);
+      if (conditions.length > 0) {
+        nextQuery = nextQuery.or(conditions.join(","));
+      }
     }
 
     return nextQuery;

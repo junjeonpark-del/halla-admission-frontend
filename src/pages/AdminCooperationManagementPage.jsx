@@ -38,8 +38,8 @@ export const cooperationMessages = {
       title: "全部申请",
       desc: "显示所有中外合作办学申请",
       year: "年份",
-      keyword: "学生姓名 / 机构 / 专业",
-      placeholder: "输入姓名、机构或专业搜索",
+      keyword: "学生名 / 学籍状态 / 专业",
+      placeholder: "输入学生名、学籍状态或专业搜索",
       export: "导出申请信息",
       noExportData: "没有可导出的申请数据",
       exportFailed: "导出失败：",
@@ -160,8 +160,8 @@ export const cooperationMessages = {
       title: "All Applications",
       desc: "Showing all cooperation program applications",
       year: "Year",
-      keyword: "Student / Agency / Major",
-      placeholder: "Search by student, agency, or major",
+      keyword: "Student / Enrollment Status / Major",
+      placeholder: "Search by student, enrollment status, or major",
       export: "Export Application Info",
       noExportData: "No application data to export",
       exportFailed: "Export failed: ",
@@ -282,8 +282,8 @@ export const cooperationMessages = {
       title: "전체 지원",
       desc: "중외합작프로그램 지원서를 표시합니다",
       year: "연도",
-      keyword: "학생명 / 기관 / 전공",
-      placeholder: "학생명, 기관, 전공 검색",
+      keyword: "학생명 / 학적 상태 / 전공",
+      placeholder: "학생명, 학적 상태 또는 전공 검색",
       export: "지원 정보 내보내기",
       noExportData: "내보낼 데이터가 없습니다",
       exportFailed: "내보내기 실패: ",
@@ -549,6 +549,48 @@ export function getCooperationUniversity(student, language) {
   return getLocalizedCooperationSnapshot(snapshot, language, "name") || "-";
 }
 
+function getAcademicStatusSearchCodes(keyword) {
+  const value = String(keyword || "").trim().toLowerCase();
+  if (!value) return [];
+
+  const statusLabels = {
+    active: ["active", "在学", "재학"],
+    leave: ["leave", "休学", "휴학"],
+    completed: ["completed", "结业", "수료"],
+    graduated: ["graduated", "毕业", "졸업"],
+    withdrawn: ["withdrawn", "退学", "자퇴"],
+  };
+
+  return Object.entries(statusLabels)
+    .filter(([code, labels]) => code.includes(value) || labels.some((label) => label.toLowerCase().includes(value)))
+    .map(([code]) => code);
+}
+
+export function buildCooperationSearchConditions(keyword) {
+  const safeKeyword = String(keyword || "").replaceAll(",", " ").trim();
+  if (!safeKeyword) return [];
+
+  const conditions = [
+    `english_name.ilike.%${safeKeyword}%`,
+    `full_name_passport.ilike.%${safeKeyword}%`,
+    `major.ilike.%${safeKeyword}%`,
+    `department.ilike.%${safeKeyword}%`,
+    `cooperation_major_snapshot->>partner_major_zh.ilike.%${safeKeyword}%`,
+    `cooperation_major_snapshot->>partner_major_en.ilike.%${safeKeyword}%`,
+    `cooperation_major_snapshot->>partner_major_ko.ilike.%${safeKeyword}%`,
+    `cooperation_major_snapshot->>halla_major_zh.ilike.%${safeKeyword}%`,
+    `cooperation_major_snapshot->>halla_major_en.ilike.%${safeKeyword}%`,
+    `cooperation_major_snapshot->>halla_major_ko.ilike.%${safeKeyword}%`,
+  ];
+
+  const statusCodes = getAcademicStatusSearchCodes(safeKeyword);
+  if (statusCodes.length > 0) {
+    conditions.push(`cooperation_academic_status.in.(${statusCodes.join(",")})`);
+  }
+
+  return conditions;
+}
+
 export function getCooperationFileMap(files) {
   return (files || []).reduce((acc, file) => {
     const publicId = file.public_id || "";
@@ -681,20 +723,7 @@ function AdminCooperationManagementPage() {
         ? `${selectedNode.year}${language === "en" ? "" : t.sidebar.yearSuffix} / ${septemberSemesterLabel}`
         : t.search.title;
 
-  const resolveKeywordAgencyIds = async (keyword) => {
-    const value = keyword.trim();
-    if (!value) return [];
-
-    const { data, error } = await supabase
-      .from("agencies")
-      .select("id")
-      .ilike("agency_name", `%${value}%`);
-
-    if (error) throw error;
-    return (data || []).map((item) => item.id).filter(Boolean);
-  };
-
-  const applyFiltersToQuery = (query, keyword, agencyIds = []) => {
+  const applyFiltersToQuery = (query, keyword) => {
     let nextQuery = query.eq("application_type", "cooperation");
 
     if (selectedNode.type === "year" || selectedNode.type === "semester") {
@@ -702,20 +731,10 @@ function AdminCooperationManagementPage() {
     }
 
     if (keyword) {
-      const safeKeyword = keyword.replaceAll(",", " ");
-      const conditions = [
-        `english_name.ilike.%${safeKeyword}%`,
-        `full_name_passport.ilike.%${safeKeyword}%`,
-        `name.ilike.%${safeKeyword}%`,
-        `major.ilike.%${safeKeyword}%`,
-        `department.ilike.%${safeKeyword}%`,
-      ];
-
-      if (agencyIds.length > 0) {
-        conditions.push(`agency_id.in.(${agencyIds.join(",")})`);
+      const conditions = buildCooperationSearchConditions(keyword);
+      if (conditions.length > 0) {
+        nextQuery = nextQuery.or(conditions.join(","));
       }
-
-      nextQuery = nextQuery.or(conditions.join(","));
     }
 
     return nextQuery;
@@ -723,7 +742,6 @@ function AdminCooperationManagementPage() {
 
   const fetchAllFilteredApplicationsForExport = async () => {
     const keyword = searchKeyword.trim();
-    const agencyIds = await resolveKeywordAgencyIds(keyword);
     const exportRows = [];
     let from = 0;
     const batchSize = 1000;
@@ -734,7 +752,7 @@ function AdminCooperationManagementPage() {
         .select("*")
         .order("updated_at", { ascending: false });
 
-      query = applyFiltersToQuery(query, keyword, agencyIds);
+      query = applyFiltersToQuery(query, keyword);
 
       const { data, error } = await query.range(from, from + batchSize - 1);
       if (error) throw error;
@@ -755,7 +773,6 @@ function AdminCooperationManagementPage() {
         setLoadError("");
 
         const keyword = searchKeyword.trim();
-        const agencyIdsForSearch = await resolveKeywordAgencyIds(keyword);
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
 
@@ -764,7 +781,7 @@ function AdminCooperationManagementPage() {
           .select("*", { count: "exact" })
           .order("updated_at", { ascending: false });
 
-        applicationQuery = applyFiltersToQuery(applicationQuery, keyword, agencyIdsForSearch);
+        applicationQuery = applyFiltersToQuery(applicationQuery, keyword);
 
         const { data: applicationRows, error: applicationError, count } = await applicationQuery.range(from, to);
         if (applicationError) throw applicationError;

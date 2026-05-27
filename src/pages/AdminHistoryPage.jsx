@@ -1022,11 +1022,10 @@ const buildHistoryApplicationsQuery = ({ includeCount = false } = {}) => {
       .map((agency) => agency.id)
       .filter(Boolean);
 
-    const orParts = [
+        const orParts = [
       `english_name.ilike.%${keyword}%`,
       `full_name_passport.ilike.%${keyword}%`,
       `major.ilike.%${keyword}%`,
-      `department.ilike.%${keyword}%`,
     ];
 
     if (matchedAgencyIds.length > 0) {

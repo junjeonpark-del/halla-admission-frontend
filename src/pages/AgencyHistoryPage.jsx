@@ -795,11 +795,10 @@ const buildHistoryApplicationsQuery = ({ includeCount = false } = {}) => {
 
   if (keyword) {
     query = query.or(
-      [
+            [
         `english_name.ilike.%${keyword}%`,
         `full_name_passport.ilike.%${keyword}%`,
         `major.ilike.%${keyword}%`,
-        `department.ilike.%${keyword}%`,
       ].join(",")
     );
   }
