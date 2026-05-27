@@ -324,6 +324,7 @@ function AgencyApplicationsPage() {
 const [applications, setApplications] = useState([]);
 const [currentIntakes, setCurrentIntakes] = useState([]);
 const [agencyUnits, setAgencyUnits] = useState([]);
+const [cooperationEnabled, setCooperationEnabled] = useState(false);
 const [loading, setLoading] = useState(true);
 const [loadError, setLoadError] = useState("");
 const [filtersReady, setFiltersReady] = useState(false);
@@ -416,6 +417,14 @@ const getAgencyUnitName = (item) => {
 
   const getApplicationTypeLabel = (student) => {
     const type = String(student.application_type || "undergraduate").toLowerCase();
+
+    if (type === "cooperation") {
+    return language === "en"
+      ? "Cooperation Program"
+      : language === "ko"
+      ? "중외합작프로그램"
+      : "中外合作办学";
+  }
 
     if (type === "language") {
       return language === "en"
@@ -555,22 +564,41 @@ const getAgencyUnitName = (item) => {
   };
 
   const applicationTypeOptions = [
-    {
-      value: "undergraduate",
-      title: t.dialog.undergraduate,
-      desc: t.dialog.undergraduateDesc,
-    },
-    {
-      value: "language",
-      title: t.dialog.language,
-      desc: t.dialog.languageDesc,
-    },
-    {
-      value: "graduate",
-      title: t.dialog.graduate,
-      desc: t.dialog.graduateDesc,
-    },
-  ];
+  {
+    value: "undergraduate",
+    title: t.dialog.undergraduate,
+    desc: t.dialog.undergraduateDesc,
+  },
+  {
+    value: "language",
+    title: t.dialog.language,
+    desc: t.dialog.languageDesc,
+  },
+  {
+    value: "graduate",
+    title: t.dialog.graduate,
+    desc: t.dialog.graduateDesc,
+  },
+  ...(cooperationEnabled
+    ? [
+        {
+          value: "cooperation",
+          title:
+            language === "en"
+              ? "Cooperation Program"
+              : language === "ko"
+              ? "중외합작프로그램"
+              : "中外合作办学",
+          desc:
+            language === "en"
+              ? "For Sino-Foreign Cooperative Education student information"
+              : language === "ko"
+              ? "중외합작프로그램 학생 정보 작성"
+              : "适用于中外合作办学学生信息填写",
+        },
+      ]
+    : []),
+];
 
   const currentIntakeMap = useMemo(() => {
     return new Map(
@@ -599,14 +627,15 @@ const getAgencyUnitName = (item) => {
   };
 
   const buildApplicationPath = (applicationType) => {
-    const pathMap = {
-      undergraduate: "/agency/new-application",
-      language: "/agency/new-language-application",
-      graduate: "/agency/new-graduate-application",
-    };
-
-    return pathMap[applicationType] || pathMap.undergraduate;
+  const pathMap = {
+    undergraduate: "/agency/new-application",
+    language: "/agency/new-language-application",
+    graduate: "/agency/new-graduate-application",
+    cooperation: "/agency/new-cooperation-application",
   };
+
+  return pathMap[applicationType] || pathMap.undergraduate;
+};
 
   const buildNewApplicationUrl = (applicationType) => {
     const params = new URLSearchParams();
@@ -654,9 +683,10 @@ const getAgencyUnitName = (item) => {
       const nowIso = new Date().toISOString();
 
       const [
-        { data: intakeData, error: intakeError },
-        { data: agencyUnitsData, error: agencyUnitsError },
-      ] = await Promise.all([
+  { data: intakeData, error: intakeError },
+  { data: agencyUnitsData, error: agencyUnitsError },
+  { data: agencyConfigData, error: agencyConfigError },
+] = await Promise.all([
         supabase
           .from("intakes")
           .select("*")
@@ -664,7 +694,7 @@ const getAgencyUnitName = (item) => {
           .lte("open_at", nowIso)
           .gte("close_at", nowIso)
           .order("open_at", { ascending: true }),
-        agencySession?.is_primary === true
+                agencySession?.is_primary === true
           ? supabase
               .from("agency_units")
               .select("id, name")
@@ -673,14 +703,21 @@ const getAgencyUnitName = (item) => {
               .order("is_default", { ascending: false })
               .order("created_at", { ascending: true })
           : Promise.resolve({ data: [], error: null }),
+        supabase
+          .from("agencies")
+          .select("id, cooperation_enabled, cooperation_university_id")
+          .eq("id", agencySession.agency_id)
+          .single(),
       ]);
 
       if (intakeError) throw intakeError;
-      if (agencyUnitsError) throw agencyUnitsError;
+if (agencyUnitsError) throw agencyUnitsError;
+if (agencyConfigError) throw agencyConfigError;
 
-      setCurrentIntakes(intakeData || []);
-      setAgencyUnits(agencyUnitsData || []);
-      setFiltersReady(true);
+setCurrentIntakes(intakeData || []);
+setAgencyUnits(agencyUnitsData || []);
+setCooperationEnabled(agencyConfigData?.cooperation_enabled === true);
+setFiltersReady(true);
     } catch (error) {
       console.error("AgencyApplicationsPage loadData error:", error);
       setLoadError(error.message || t.loadError);
@@ -793,10 +830,12 @@ const buildApplicationsQuery = ({ includeCount = false, mode = activeTab, withSe
     query = query.neq("status", "draft");
 
     if (currentIntakeIdList.length > 0) {
-      query = query.in("intake_id", currentIntakeIdList);
-    } else {
-      query = query.eq("intake_id", "__no_open_intake__");
-    }
+  query = query.or(
+    `intake_id.in.(${currentIntakeIdList.join(",")}),application_type.eq.cooperation`
+  );
+} else {
+  query = query.eq("application_type", "cooperation");
+}
 
     if (statusFilter !== "all") {
       query = query.eq("status", statusFilter);
@@ -846,12 +885,6 @@ async function loadApplications() {
   try {
     setLoading(true);
     setLoadError("");
-
-    if (activeTab === "submitted" && currentIntakeIdList.length === 0) {
-      setApplications([]);
-      setTotalCount(0);
-      return;
-    }
 
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
@@ -1071,11 +1104,13 @@ const pageNumbers = (() => {
           <div className="px-6 py-8 text-sm text-slate-500">{t.loading}</div>
         ) : loadError ? (
           <div className="px-6 py-8 text-sm text-red-600">{loadError}</div>
-        ) : activeTab === "submitted" && currentIntakes.length === 0 ? (
-          <div className="px-6 py-8 text-sm text-slate-500">
-            {t.noSubmittedWithoutBatch}
-          </div>
-        ) : filteredApplications.length === 0 ? (
+        ) : activeTab === "submitted" &&
+    currentIntakes.length === 0 &&
+    filteredApplications.length === 0 ? (
+  <div className="px-6 py-8 text-sm text-slate-500">
+    {t.noSubmittedWithoutBatch}
+  </div>
+) : filteredApplications.length === 0 ? (
           <div className="px-6 py-8 text-sm text-slate-500">
             {t.noData}
           </div>

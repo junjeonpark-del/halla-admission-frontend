@@ -13,12 +13,14 @@ import AgencyApplicationsPage from "./pages/AgencyApplicationsPage";
 import NewApplicationPage from "./pages/NewApplicationPage";
 import NewLanguageApplicationPage from "./pages/NewLanguageApplicationPage";
 import NewGraduateApplicationPage from "./pages/NewGraduateApplicationPage";
+import NewCooperationApplicationPage from "./pages/NewCooperationApplicationPage";
 import AgencyMaterialsPage from "./pages/AgencyMaterialsPage";
 import AgencyHistoryPage from "./pages/AgencyHistoryPage";
 import AdminHistoryPage from "./pages/AdminHistoryPage";
 import StudentApplicationPage from "./pages/StudentApplicationPage";
 import StudentLanguageApplicationPage from "./pages/StudentLanguageApplicationPage";
 import StudentGraduateApplicationPage from "./pages/StudentGraduateApplicationPage";
+import StudentCooperationApplicationPage from "./pages/StudentCooperationApplicationPage";
 import AgencyRegisterPage from "./pages/AgencyRegisterPage";
 import AgencyAccountsPage from "./pages/AgencyAccountsPage";
 
@@ -39,6 +41,10 @@ function App() {
         path="/student/graduate-application/:token"
         element={<StudentGraduateApplicationPage />}
       />
+      <Route
+  path="/student/cooperation-application/:token"
+  element={<StudentCooperationApplicationPage />}
+/>
 
       <Route path="/" element={<AdminLayout />}>
         <Route index element={<Navigate to="/login" replace />} />
@@ -71,6 +77,10 @@ function App() {
           path="new-graduate-application"
           element={<NewGraduateApplicationPage />}
         />
+        <Route
+  path="new-cooperation-application"
+  element={<NewCooperationApplicationPage />}
+/>
         <Route path="materials" element={<AgencyMaterialsPage />} />
         <Route path="accounts" element={<AgencyAccountsPage />} />
       </Route>
