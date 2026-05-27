@@ -1252,108 +1252,109 @@ function NewCooperationApplicationPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-bold text-slate-900">{t.sections.pageTitle}</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-500">{t.sections.pageDesc}</p>
+  <div className="space-y-6">
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 className="text-lg font-bold text-slate-900">{t.sections.pageTitle}</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-500">{t.sections.pageDesc}</p>
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          {steps.map((step, index) => (
+      <div className="mt-6 flex flex-wrap gap-3">
+        {steps.map((step, index) => (
+          <button
+            key={step}
+            type="button"
+            onClick={() => setCurrentStep(index)}
+            className={[
+              "rounded-full px-4 py-2 text-sm font-semibold transition whitespace-nowrap",
+              currentStep === index
+                ? "bg-emerald-600 text-white"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+            ].join(" ")}
+          >
+            {index + 1}. {step}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    {studentFillToken ? (
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold text-emerald-800">
+              {t.common.studentFillLink}
+            </div>
+            <div className="mt-1 text-xs text-slate-500">
+              {t.common.currentStatus}:
+              <span
+                className={`ml-2 font-semibold ${
+                  studentFillEnabled ? "text-emerald-700" : "text-red-600"
+                }`}
+              >
+                {studentFillEnabled ? t.common.enabled : t.common.disabled}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-2 break-all rounded-xl bg-white px-4 py-3 text-sm text-slate-700">
+          {studentFillLink}
+        </div>
+
+        <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-start">
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <QRCodeCanvas value={studentFillLink} size={180} includeMargin={true} />
+          </div>
+
+          <div className="flex flex-col gap-3">
             <button
-              key={step}
               type="button"
-              onClick={() => setCurrentStep(index)}
-              className={[
-                "rounded-full px-4 py-2 text-sm font-semibold transition",
-                currentStep === index
-                  ? "bg-emerald-600 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200",
-              ].join(" ")}
+              onClick={copyStudentLink}
+              className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
             >
-              {index + 1}. {step}
+              {t.common.copyLink}
             </button>
-          ))}
+
+            <button
+              type="button"
+              onClick={() => {
+                const canvas = document.querySelector("canvas");
+                if (!canvas) {
+                  alert(t.common.qrNotReady);
+                  return;
+                }
+
+                const url = canvas.toDataURL("image/png");
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "cooperation-student-qrcode.png";
+                a.click();
+              }}
+              className="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-100"
+            >
+              {t.common.downloadQr}
+            </button>
+
+            {studentFillEnabled ? (
+              <button
+                type="button"
+                onClick={() => handleToggleStudentFill(false)}
+                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+              >
+                {t.common.closeStudentFill}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleToggleStudentFill(true)}
+                className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+              >
+                {t.common.reopenStudentFill}
+              </button>
+            )}
+          </div>
         </div>
-
-        {studentFillToken ? (
-  <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <div className="text-sm font-semibold text-emerald-800">
-          {t.common.studentFillLink}
-        </div>
-        <div className="mt-1 text-xs text-slate-500">
-          {t.common.currentStatus}:
-          <span
-            className={`ml-2 font-semibold ${
-              studentFillEnabled ? "text-emerald-700" : "text-red-600"
-            }`}
-          >
-            {studentFillEnabled ? t.common.enabled : t.common.disabled}
-          </span>
-        </div>
       </div>
-    </div>
-
-    <div className="mt-2 break-all rounded-xl bg-white px-4 py-3 text-sm text-slate-700">
-      {studentFillLink}
-    </div>
-
-    <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-start">
-      <div className="rounded-2xl bg-white p-4 shadow-sm">
-        <QRCodeCanvas value={studentFillLink} size={180} includeMargin={true} />
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <button
-          type="button"
-          onClick={copyStudentLink}
-          className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
-        >
-          {t.common.copyLink}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            const canvas = document.querySelector("canvas");
-            if (!canvas) {
-              alert(t.common.qrNotReady);
-              return;
-            }
-            const url = canvas.toDataURL("image/png");
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "cooperation-student-qrcode.png";
-            a.click();
-          }}
-          className="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-100"
-        >
-          {t.common.downloadQr}
-        </button>
-
-        {studentFillEnabled ? (
-          <button
-            type="button"
-            onClick={() => handleToggleStudentFill(false)}
-            className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
-          >
-            {t.common.closeStudentFill}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => handleToggleStudentFill(true)}
-            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
-          >
-            {t.common.reopenStudentFill}
-          </button>
-        )}
-      </div>
-    </div>
-  </div>
-) : null}
-      </div>
+    ) : null}
 
       {currentStep === 0 ? (
         <SectionCard title={t.sections.step1Title}>
