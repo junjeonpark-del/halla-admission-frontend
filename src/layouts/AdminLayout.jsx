@@ -24,6 +24,7 @@ const messages = {
       agencies: "机构账号管理",
       applications: "学生申请列表",
       history: "历史申请",
+      cooperationManagement: "中外合作办学管理",
     },
     pages: {
       dashboard: {
@@ -42,6 +43,10 @@ const messages = {
         title: "历史申请",
         desc: "按年份、月份、批次查看当前与历史申请，并支持导出 Excel",
       },
+      cooperationManagement: {
+  title: "中外合作办学管理",
+  desc: "查看中外合作办学学生信息、材料与学籍状态",
+},
       applicationReview: {
         title: "材料审核页",
         desc: "查看单个学生申请的材料、状态与审核备注",
@@ -67,6 +72,7 @@ const messages = {
       agencies: "Agency Accounts",
       applications: "Student Applications",
       history: "Application History",
+      cooperationManagement: "Cooperation Program Management",
     },
     pages: {
       dashboard: {
@@ -85,6 +91,10 @@ const messages = {
         title: "Application History",
         desc: "Browse current and historical applications by year, month, and intake, and export Excel files",
       },
+      cooperationManagement: {
+  title: "Cooperation Program Management",
+  desc: "View cooperation program student information, materials, and enrollment status",
+},
       applicationReview: {
         title: "Application Review",
         desc: "Review a single student's materials, status, and review notes",
@@ -110,6 +120,7 @@ const messages = {
       agencies: "기관 계정 관리",
       applications: "학생 지원 목록",
       history: "이력 지원서",
+      cooperationManagement: "중외합작프로그램 관리",
     },
     pages: {
       dashboard: {
@@ -128,6 +139,10 @@ const messages = {
         title: "이력 지원서",
         desc: "연도, 월, 차수별로 현재 및 과거 지원서를 조회하고 Excel로 내보냅니다",
       },
+      cooperationManagement: {
+  title: "중외합작프로그램 관리",
+  desc: "중외합작프로그램 학생 정보, 서류 및 학적 상태를 확인합니다",
+},
       applicationReview: {
         title: "서류 심사 페이지",
         desc: "학생 1명의 서류, 상태, 심사 메모를 확인합니다",
@@ -173,6 +188,10 @@ function buildMenuItems(t) {
     { to: "/agencies", label: t.nav.agencies },
     { to: "/applications", label: t.nav.applications },
     { to: "/history", label: t.nav.history },
+    {
+  to: "/cooperation-management",
+  label: t.nav.cooperationManagement,
+},
   ];
 }
 
@@ -180,6 +199,9 @@ function getPageMeta(pathname, t) {
   if (pathname.startsWith("/intakes")) return t.pages.intakes;
   if (pathname.startsWith("/agencies")) return t.pages.agencies;
   if (pathname.startsWith("/history")) return t.pages.history;
+  if (pathname.startsWith("/cooperation-management")) {
+  return t.pages.cooperationManagement;
+}
   if (/^\/applications\/[^/]+\/review$/.test(pathname)) {
     return t.pages.applicationReview;
   }

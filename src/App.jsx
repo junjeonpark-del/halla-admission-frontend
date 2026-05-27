@@ -18,6 +18,8 @@ import AgencyMaterialsPage from "./pages/AgencyMaterialsPage";
 import AgencyHistoryPage from "./pages/AgencyHistoryPage";
 import AdminHistoryPage from "./pages/AdminHistoryPage";
 import StudentApplicationPage from "./pages/StudentApplicationPage";
+import AdminCooperationManagementPage from "./pages/AdminCooperationManagementPage";
+import AgencyCooperationManagementPage from "./pages/AgencyCooperationManagementPage";
 import StudentLanguageApplicationPage from "./pages/StudentLanguageApplicationPage";
 import StudentGraduateApplicationPage from "./pages/StudentGraduateApplicationPage";
 import StudentCooperationApplicationPage from "./pages/StudentCooperationApplicationPage";
@@ -54,6 +56,10 @@ function App() {
         <Route path="applications" element={<ApplicationsPage />} />
         <Route path="history" element={<AdminHistoryPage />} />
         <Route
+  path="cooperation-management"
+  element={<AdminCooperationManagementPage />}
+/>
+        <Route
           path="applications/:id/review"
           element={<ApplicationReviewPage />}
         />
@@ -68,6 +74,10 @@ function App() {
         <Route path="dashboard" element={<AgencyDashboardPage />} />
         <Route path="applications" element={<AgencyApplicationsPage />} />
         <Route path="history" element={<AgencyHistoryPage />} />
+        <Route
+  path="cooperation-management"
+  element={<AgencyCooperationManagementPage />}
+/>
         <Route path="new-application" element={<NewApplicationPage />} />
         <Route
           path="new-language-application"

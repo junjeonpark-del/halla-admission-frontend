@@ -21,6 +21,7 @@ const messages = {
       newApplication: "新建申请",
       materials: "材料状态",
       history: "历史申请",
+      cooperationManagement: "中外合作办学管理",
       accounts: "账号管理",
     },
     pages: {
@@ -44,6 +45,10 @@ const messages = {
         title: "历史申请",
         desc: "查看已截止批次的历史申请记录，并按年份、批次进行查询",
       },
+      cooperationManagement: {
+  title: "中外合作办学管理",
+  desc: "查看本机构中外合作办学学生信息、材料与学籍状态",
+},
       accounts: {
         title: "账号管理",
         desc: "管理当前机构的主账号与子账号",
@@ -66,6 +71,7 @@ const messages = {
       newApplication: "New Application",
       materials: "Materials Status",
       history: "Application History",
+      cooperationManagement: "Cooperation Program Management",
       accounts: "Account Management",
     },
     pages: {
@@ -89,6 +95,10 @@ const messages = {
         title: "Application History",
         desc: "View historical applications for closed intakes and search by year and intake",
       },
+      cooperationManagement: {
+  title: "Cooperation Program Management",
+  desc: "View cooperation program students, materials, and enrollment status for your agency",
+},
       accounts: {
         title: "Account Management",
         desc: "Manage the primary account and sub-accounts for the current agency",
@@ -111,6 +121,7 @@ const messages = {
       newApplication: "새 지원서",
       materials: "서류 상태",
       history: "이력 지원서",
+      cooperationManagement: "중외합작프로그램 관리",
       accounts: "계정 관리",
     },
     pages: {
@@ -134,6 +145,10 @@ const messages = {
         title: "이력 지원서",
         desc: "마감된 차수의 지원 이력을 연도 및 차수별로 조회합니다",
       },
+      cooperationManagement: {
+  title: "중외합작프로그램 관리",
+  desc: "기관의 중외합작프로그램 학생 정보, 서류 및 학적 상태를 확인합니다",
+},
       accounts: {
         title: "계정 관리",
         desc: "현재 기관의 주계정과 하위 계정을 관리합니다",
@@ -177,6 +192,10 @@ function buildMenuItems(t, isPrimarySession) {
     { to: "/agency/applications", label: t.nav.applications },
     { to: "/agency/materials", label: t.nav.materials },
     { to: "/agency/history", label: t.nav.history },
+    {
+  to: "/agency/cooperation-management",
+  label: t.nav.cooperationManagement,
+},
   ];
 
   if (isPrimarySession) {
@@ -191,6 +210,9 @@ function getPageMeta(pathname, t) {
   if (pathname.startsWith("/agency/new-application")) return t.pages.newApplication;
   if (pathname.startsWith("/agency/materials")) return t.pages.materials;
   if (pathname.startsWith("/agency/history")) return t.pages.history;
+  if (pathname.startsWith("/agency/cooperation-management")) {
+  return t.pages.cooperationManagement;
+}
   if (pathname.startsWith("/agency/accounts")) return t.pages.accounts;
   return t.pages.dashboard;
 }
