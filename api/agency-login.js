@@ -129,6 +129,8 @@ export default async function handler(req, res) {
       username: account.username,
       account_name: account.account_name || "",
       agency_name: agency.agency_name || "",
+      cooperation_enabled: agency.cooperation_enabled === true,
+      cooperation_university_id: agency.cooperation_university_id || null,
       is_primary: account.is_primary === true,
       role: "agency",
       session_version: nextSessionVersion,

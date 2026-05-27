@@ -678,9 +678,10 @@ const buildApplicationsQuery = ({ includeCount = false } = {}) => {
   const keyword = searchKeyword.trim().replaceAll(",", " ");
   const currentIntakeIds = currentIntakes.map((intake) => intake.id).filter(Boolean);
 
-  let query = supabase
+    let query = supabase
     .from("applications")
     .select("*", includeCount ? { count: "exact" } : undefined)
+    .neq("application_type", "cooperation")
     .neq("status", "draft")
     .order("created_at", { ascending: false });
 
@@ -704,9 +705,9 @@ const buildApplicationsQuery = ({ includeCount = false } = {}) => {
     query = query.eq("status", statusFilter);
   }
 
-  if (keyword) {
+    if (keyword) {
     query = query.or(
-      `english_name.ilike.%${keyword}%,full_name_passport.ilike.%${keyword}%,name.ilike.%${keyword}%,major.ilike.%${keyword}%,department.ilike.%${keyword}%`
+      `english_name.ilike.%${keyword}%,full_name_passport.ilike.%${keyword}%,major.ilike.%${keyword}%`
     );
   }
 

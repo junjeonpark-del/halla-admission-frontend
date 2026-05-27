@@ -1001,9 +1001,10 @@ const buildHistoryApplicationsQuery = ({ includeCount = false } = {}) => {
   const keyword = searchKeyword.trim().replaceAll(",", " ");
   const selectedIntakeIds = getSelectedIntakeIds();
 
-  let query = supabase
+    let query = supabase
     .from("applications")
     .select("*", includeCount ? { count: "exact" } : undefined)
+    .neq("application_type", "cooperation")
     .neq("status", "draft")
     .order("updated_at", { ascending: false });
 
@@ -1049,9 +1050,10 @@ useEffect(() => {
       return;
     }
 
-    const { data, error } = await supabase
+        const { data, error } = await supabase
       .from("applications")
       .select("id, intake_id, status")
+      .neq("application_type", "cooperation")
       .neq("status", "draft")
       .in("intake_id", intakeIds);
 

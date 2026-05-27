@@ -1023,10 +1023,11 @@ setCreating(true);
           `)
           .eq("id", agency.id)
           .single(),
-        supabase
+                supabase
           .from("applications")
           .select("id, status, created_at, updated_at, intake_id, major")
-          .eq("agency_id", agency.id),
+          .eq("agency_id", agency.id)
+          .neq("application_type", "cooperation"),
         supabase
           .from("intakes")
           .select("id")
@@ -1190,7 +1191,8 @@ const handleGenerateCommissionClaim = async () => {
         .select(
           "id, public_id, application_type, degree_level, english_name, full_name_passport, gender, sex, date_of_birth, birth_date, created_at, intake_id"
         )
-        .eq("agency_id", detailAgency.id)
+                .eq("agency_id", detailAgency.id)
+        .neq("application_type", "cooperation")
         .eq("status", "approved")
         .in("intake_id", intakeIds);
 
@@ -1265,10 +1267,11 @@ const exportAgencies = allExportAgencies;
         .from("agency_units")
         .select("id, agency_id, is_default, is_active")
         .in("agency_id", agencyIds),
-      supabase
+            supabase
         .from("applications")
         .select("id, agency_id, status, intake_id")
-        .in("agency_id", agencyIds),
+        .in("agency_id", agencyIds)
+        .neq("application_type", "cooperation"),
       supabase
         .from("intakes")
         .select("id, year"),

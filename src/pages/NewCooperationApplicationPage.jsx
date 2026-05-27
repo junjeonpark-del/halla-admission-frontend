@@ -1167,7 +1167,7 @@ const buildPublicId = () => {
         setApplicationId(data.id);
         setApplicationPublicId(data.public_id);
         setStudentFillToken(studentFillTokenValue);
-        setLoadedApplicationStatus(statusValue);
+        setLoadedApplicationStatus(payload.status || statusValue);
 
         await uploadApplicationFiles(data.id, data.public_id);
         await loadExistingUploadedFiles(data.public_id);
@@ -1199,7 +1199,7 @@ const buildPublicId = () => {
 
       if (error) throw error;
 
-      setLoadedApplicationStatus(statusValue);
+      setLoadedApplicationStatus(payload.status || statusValue);
       await uploadApplicationFiles(applicationId, data.public_id || applicationPublicId || editingPublicId);
       await loadExistingUploadedFiles(data.public_id || applicationPublicId || editingPublicId);
       clearUploadedMaterialSelections();

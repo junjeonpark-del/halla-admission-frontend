@@ -839,18 +839,22 @@ const buildApplicationsQuery = ({ includeCount = false, mode = activeTab, withSe
     query = query.eq("agency_unit_id", agencySession?.agency_unit_id || "");
   }
 
-  if (mode === "draft") {
+    if (mode === "draft") {
     query = query.eq("status", "draft");
   } else {
     query = query.neq("status", "draft");
 
+    const currentYear = new Date().getFullYear();
+
     if (currentIntakeIdList.length > 0) {
-  query = query.or(
-    `intake_id.in.(${currentIntakeIdList.join(",")}),application_type.eq.cooperation`
-  );
-} else {
-  query = query.eq("application_type", "cooperation");
-}
+      query = query.or(
+        `intake_id.in.(${currentIntakeIdList.join(",")}),and(application_type.eq.cooperation,cooperation_admission_year.eq.${currentYear})`
+      );
+    } else {
+      query = query
+        .eq("application_type", "cooperation")
+        .eq("cooperation_admission_year", currentYear);
+    }
 
     if (statusFilter !== "all") {
       query = query.eq("status", statusFilter);

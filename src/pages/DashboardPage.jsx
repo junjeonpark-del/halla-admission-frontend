@@ -740,7 +740,11 @@ function DashboardPage() {
         if (intakesError) throw intakesError;
         if (agenciesError) throw agenciesError;
 
-        setApplications(applicationsData || []);
+                const regularApplications = (applicationsData || []).filter(
+          (item) => String(item.application_type || "undergraduate").toLowerCase() !== "cooperation"
+        );
+
+        setApplications(regularApplications);
         setIntakes(intakesData || []);
         setAgencies(agenciesData || []);
       } catch (error) {

@@ -543,7 +543,11 @@ if (applicationsError) throw applicationsError;
 if (intakesError) throw intakesError;
 if (agencyUnitsError) throw agencyUnitsError;
 
-setApplications(applicationsData || []);
+const regularApplications = (applicationsData || []).filter(
+  (item) => String(item.application_type || "undergraduate").toLowerCase() !== "cooperation"
+);
+
+setApplications(regularApplications);
 setIntakes(intakesData || []);
 setAgencyUnits(agencyUnitsData || []);
 

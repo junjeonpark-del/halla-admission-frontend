@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAgencySession } from "../contexts/AgencySessionContext";
 import { supabase } from "../lib/supabase";
 import {
@@ -15,7 +16,6 @@ import {
   COOPERATION_FILE_TYPES,
   CooperationEllipsisText,
   CooperationStatusBadge,
-  CooperationTreeButton,
   buildCooperationMaterialDownloadName,
   buildCooperationMaterialsZipName,
   buildCooperationAddress,
@@ -30,6 +30,27 @@ import {
   mapCooperationStatusType,
   parseCooperationEducationRows,
 } from "./AdminCooperationManagementPage";
+
+function AgencyCooperationTreeButton({ active, children, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition",
+        active ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-emerald-50 hover:text-emerald-700",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+}
+
+function getAgencyEditText(language) {
+  if (language === "en") return "Edit";
+  if (language === "ko") return "수정";
+  return "编辑";
+}
 
 function getMajor(student, language) {
   const snapshot = student.cooperation_major_snapshot || {};
@@ -386,12 +407,12 @@ function AgencyCooperationManagementPage() {
           <p className="mt-1 text-sm text-slate-500">{t.sidebar.desc}</p>
         </div>
         <div className="max-h-[720px] overflow-y-auto p-4">
-          <CooperationTreeButton active={selectedNode.type === "all"} onClick={() => setSelectedNode({ type: "all" })}>
+          <AgencyCooperationTreeButton active={selectedNode.type === "all"} onClick={() => setSelectedNode({ type: "all" })}>
             <span>{t.sidebar.all}</span>
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
               {yearCounts.reduce((sum, item) => sum + item.count, 0)}
             </span>
-          </CooperationTreeButton>
+          </AgencyCooperationTreeButton>
 
           <div className="mt-4 space-y-2">
             {loading ? (
@@ -414,7 +435,7 @@ function AgencyCooperationManagementPage() {
                     >
                       {expandedYears[yearItem.year] ? "▾" : "▸"}
                     </button>
-                    <CooperationTreeButton
+                    <AgencyCooperationTreeButton
                       active={selectedNode.type === "year" && selectedNode.year === yearItem.year}
                       onClick={() => setSelectedNode({ type: "year", year: yearItem.year })}
                     >
@@ -425,11 +446,11 @@ function AgencyCooperationManagementPage() {
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
                         {yearItem.count}
                       </span>
-                    </CooperationTreeButton>
+                    </AgencyCooperationTreeButton>
                   </div>
                   {expandedYears[yearItem.year] ? (
                     <div className="ml-4 space-y-1 border-l border-slate-100 pl-3">
-                      <CooperationTreeButton
+                      <AgencyCooperationTreeButton
                         active={selectedNode.type === "semester" && selectedNode.year === yearItem.year}
                         onClick={() => setSelectedNode({ type: "semester", year: yearItem.year })}
                       >
@@ -437,7 +458,7 @@ function AgencyCooperationManagementPage() {
                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
                           {yearItem.count}
                         </span>
-                      </CooperationTreeButton>
+                      </AgencyCooperationTreeButton>
                     </div>
                   ) : null}
                 </div>
@@ -746,6 +767,12 @@ function AgencyCooperationManagementPage() {
               <h4 className="text-base font-bold text-slate-900">{t.detail.operations}</h4>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap gap-3">
+                  <Link
+                    to={`/agency/new-cooperation-application?public_id=${encodeURIComponent(detailStudent.public_id || "")}`}
+                    className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+                  >
+                    {getAgencyEditText(language)}
+                  </Link>
                   <button
                     type="button"
                       onClick={downloadDetailApplicationDocument}

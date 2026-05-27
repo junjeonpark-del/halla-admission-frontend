@@ -186,17 +186,20 @@ function saveLanguage(value) {
   }
 }
 
-function buildMenuItems(t, isPrimarySession) {
+function buildMenuItems(t, isPrimarySession, cooperationEnabled) {
   const items = [
     { to: "/agency/dashboard", label: t.nav.dashboard },
     { to: "/agency/applications", label: t.nav.applications },
     { to: "/agency/materials", label: t.nav.materials },
     { to: "/agency/history", label: t.nav.history },
-    {
-  to: "/agency/cooperation-management",
-  label: t.nav.cooperationManagement,
-},
   ];
+
+  if (cooperationEnabled) {
+    items.push({
+      to: "/agency/cooperation-management",
+      label: t.nav.cooperationManagement,
+    });
+  }
 
   if (isPrimarySession) {
     items.push({ to: "/agency/accounts", label: t.nav.accounts });
@@ -246,9 +249,10 @@ function AgencyLayout() {
 
   const t = messages[language] || messages.zh;
   const isPrimarySession = session?.is_primary === true;
+  const cooperationEnabled = session?.cooperation_enabled === true;
 const menuItems = useMemo(
-  () => buildMenuItems(t, isPrimarySession),
-  [t, isPrimarySession]
+  () => buildMenuItems(t, isPrimarySession, cooperationEnabled),
+  [t, isPrimarySession, cooperationEnabled]
 );
 
   const pageMeta = useMemo(
@@ -310,6 +314,17 @@ const menuItems = useMemo(
     navigate("/agency/dashboard", { replace: true });
   }
 }, [checking, session, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (
+      !checking &&
+      session &&
+      session.cooperation_enabled !== true &&
+      location.pathname.startsWith("/agency/cooperation-management")
+    ) {
+      navigate("/agency/dashboard", { replace: true });
+    }
+  }, [checking, session, location.pathname, navigate]);
 
   const handleLogout = async () => {
     try {

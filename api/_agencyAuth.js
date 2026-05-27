@@ -156,15 +156,30 @@ export async function validateAgencySession(req) {
     return null;
   }
 
-  const { data: account, error } = await supabaseAdmin
-    .from("agency_accounts")
-    .select("id, agency_id, agency_unit_id, is_active, is_primary, session_version")
-    .eq("id", session.agency_account_id)
-    .maybeSingle();
+  const [
+    { data: account, error },
+    { data: agency, error: agencyError },
+  ] = await Promise.all([
+    supabaseAdmin
+      .from("agency_accounts")
+      .select("id, agency_id, agency_unit_id, is_active, is_primary, session_version")
+      .eq("id", session.agency_account_id)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("agencies")
+      .select("id, agency_name, cooperation_enabled, cooperation_university_id")
+      .eq("id", session.agency_id)
+      .maybeSingle(),
+  ]);
 
   if (error) throw error;
+  if (agencyError) throw agencyError;
 
   if (!account || account.is_active !== true) {
+    return null;
+  }
+
+  if (!agency) {
     return null;
   }
 
@@ -172,14 +187,21 @@ export async function validateAgencySession(req) {
     return null;
   }
 
+  if (String(agency.id) !== String(session.agency_id)) {
+    return null;
+  }
+
   if (Number(account.session_version || 0) !== Number(session.session_version || 0)) {
     return null;
   }
 
-  return {
+return {
   ...session,
+  agency_name: agency.agency_name || session.agency_name || "",
   agency_unit_id: account.agency_unit_id || null,
   is_primary: account.is_primary === true,
+  cooperation_enabled: agency.cooperation_enabled === true,
+  cooperation_university_id: agency.cooperation_university_id || null,
 };
 
 }
