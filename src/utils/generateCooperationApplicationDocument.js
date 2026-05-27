@@ -143,6 +143,19 @@ function setCheckboxSymbols(cell, checkedIndexes = []) {
   });
 }
 
+function replaceCheckboxTextInNode(node, checkedLabels = []) {
+  if (!node) return;
+  const textNodes = Array.from(node.getElementsByTagName("w:t"));
+
+  textNodes.forEach((textNode) => {
+    let nextText = textNode.textContent || "";
+    checkedLabels.forEach((label) => {
+      nextText = nextText.replace(`□ ${label}`, `☑ ${label}`).replace(`□${label}`, `☑${label}`);
+    });
+    textNode.textContent = nextText;
+  });
+}
+
 function replaceTextInParagraph(paragraph, replacements) {
   if (!paragraph) return;
   const textNodes = Array.from(paragraph.getElementsByTagName("w:t"));
@@ -411,14 +424,20 @@ export async function generateCooperationApplicationDocumentBlob({
   const consentCells = getCells(consentRows[0]);
   setCheckboxSymbols(consentCells[1], [0]);
   setCheckboxSymbols(consentCells[2], []);
+  replaceCheckboxTextInNode(consentCells[1], ["동의함", "agree"]);
 
-  let photoInserted = false;
-  getParagraphs(documentNode).forEach((paragraph) => {
+  const paragraphs = getParagraphs(documentNode);
+  const photoParagraph = [...paragraphs]
+    .reverse()
+    .find((paragraph) => getParagraphText(paragraph).includes("photo"));
+
+  if (photoRelId && photoParagraph) {
+    appendDrawingToParagraph(photoParagraph, buildImageDrawingXml(photoRelId));
+  }
+
+  paragraphs.forEach((paragraph) => {
     const text = getParagraphText(paragraph);
-    if (photoRelId && !photoInserted && text.includes("photo") && !hasDrawing(paragraph)) {
-      appendDrawingToParagraph(paragraph, buildImageDrawingXml(photoRelId));
-      photoInserted = true;
-    } else if (text.includes("년(Year)") && text.includes("월(Month)") && text.includes("일(Day)")) {
+    if (text.includes("년(Year)") && text.includes("월(Month)") && text.includes("일(Day)")) {
       setParagraphPlainText(paragraph, `${submittedParts.year}년(Year) ${submittedParts.month}월(Month) ${submittedParts.day}일(Day)`);
     } else if (text.includes("신청인(Applicant)")) {
       setParagraphPlainText(paragraph, `신청인(Applicant): ${applicantName} （인）`);
@@ -427,6 +446,7 @@ export async function generateCooperationApplicationDocumentBlob({
         ["□ 확인했습니다", "☑ 확인했습니다"],
         ["□ I acknowledge", "☑ I acknowledge"],
       ]);
+      replaceCheckboxTextInNode(paragraph, ["확인했습니다.", "확인했습니다", "I acknowledge"]);
     }
   });
 
