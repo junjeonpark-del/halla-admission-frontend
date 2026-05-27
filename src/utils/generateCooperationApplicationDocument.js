@@ -121,18 +121,39 @@ function setParagraphPlainText(paragraph, value) {
 
 function appendDrawingToParagraph(paragraph, drawingXml) {
   if (!paragraph || !drawingXml) return;
-  const paragraphPr = directChildren(paragraph, "pPr")[0]?.cloneNode(true);
   const documentNode = paragraph.ownerDocument;
   const fragment = new DOMParser().parseFromString(`<root>${drawingXml}</root>`, "application/xml");
   const drawingNode = fragment.documentElement.firstChild;
   if (!drawingNode) return;
 
-  while (paragraph.firstChild) paragraph.removeChild(paragraph.firstChild);
-  if (paragraphPr) paragraph.appendChild(paragraphPr);
-
   const run = documentNode.createElementNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "w:r");
   run.appendChild(documentNode.importNode(drawingNode, true));
   paragraph.appendChild(run);
+}
+
+function setCheckboxSymbols(cell, checkedIndexes = []) {
+  if (!cell) return;
+  const documentNode = cell.ownerDocument;
+  const symbols = Array.from(cell.getElementsByTagName("w:sym"));
+
+  symbols.forEach((symbol, index) => {
+    const text = documentNode.createElementNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "w:t");
+    text.textContent = checkedIndexes.includes(index) ? "☑" : "□";
+    symbol.parentNode?.replaceChild(text, symbol);
+  });
+}
+
+function replaceTextInParagraph(paragraph, replacements) {
+  if (!paragraph) return;
+  const textNodes = Array.from(paragraph.getElementsByTagName("w:t"));
+
+  textNodes.forEach((node) => {
+    let nextText = node.textContent || "";
+    replacements.forEach(([from, to]) => {
+      nextText = nextText.replace(from, to);
+    });
+    node.textContent = nextText;
+  });
 }
 
 function formatDate(value) {
@@ -255,6 +276,10 @@ function buildImageDrawingXml(relId, widthEmu = 1440000, heightEmu = 1800000) {
     </w:drawing>`;
 }
 
+function hasDrawing(paragraph) {
+  return paragraph?.getElementsByTagName("w:drawing")?.length > 0;
+}
+
 async function addImageToDocx(zip, image) {
   if (!image) return null;
   const mediaPath = `word/media/cooperation-photo.${image.extension}`;
@@ -359,11 +384,11 @@ export async function generateCooperationApplicationDocumentBlob({
 
   setCellText(cell(0, 1), resolvedUniversity);
   setCellText(cell(0, 3), finalMajor);
-  setCellPlainText(cell(1, 1), "☑ 신입학 (Freshman)");
-  setCellPlainText(cell(1, 3), "☑ 중외합작프로그램 (Sino-Foreign Cooperative Education Program)");
+  setCheckboxSymbols(cell(1, 1), [0]);
+  setCheckboxSymbols(cell(1, 3), [0]);
   setCellText(cell(2, 1), admissionYear ? `${admissionYear}년 9월학기 / ${admissionYear} September Semester` : "");
   setCellText(cell(4, 1), applicantName);
-  setCellPlainText(cell(5, 1), formatGender(student.gender || student.sex));
+  setCheckboxSymbols(cell(5, 1), normalizeGender(student.gender || student.sex) === "female" ? [1] : [0]);
   setCellText(cell(5, 3), student.nationality || "China");
   setCellText(cell(6, 1), formatDate(student.date_of_birth || student.birth_date));
   setCellText(cell(6, 3), student.email || "");
@@ -384,29 +409,24 @@ export async function generateCooperationApplicationDocumentBlob({
   const consentTable = tables[1];
   const consentRows = consentTable ? getRows(consentTable) : [];
   const consentCells = getCells(consentRows[0]);
-  setCellPlainText(consentCells[1], "☑ 동의함\nI agree");
-  setCellPlainText(consentCells[2], "□ 동의하지 않음\nI disagree");
-
-  const footerTable = tables[4];
-  const footerRows = footerTable ? getRows(footerTable) : [];
-  const footerCell = getCells(footerRows[0])[0];
-  setCellPlainText(
-    footerCell,
-    `위 내용 확인하셨습니까? ☑ 확인했습니다.\nDo you acknowledge the above? ☑ I acknowledge\n${submittedParts.year}년(Year) ${submittedParts.month}월(Month) ${submittedParts.day}일(Day)\n신청인(Applicant): ${applicantName} （인）`
-  );
+  setCheckboxSymbols(consentCells[1], [0]);
+  setCheckboxSymbols(consentCells[2], []);
 
   let photoInserted = false;
   getParagraphs(documentNode).forEach((paragraph) => {
     const text = getParagraphText(paragraph);
-    if (photoRelId && !photoInserted && text.includes("photo")) {
+    if (photoRelId && !photoInserted && text.includes("photo") && !hasDrawing(paragraph)) {
       appendDrawingToParagraph(paragraph, buildImageDrawingXml(photoRelId));
       photoInserted = true;
     } else if (text.includes("년(Year)") && text.includes("월(Month)") && text.includes("일(Day)")) {
       setParagraphPlainText(paragraph, `${submittedParts.year}년(Year) ${submittedParts.month}월(Month) ${submittedParts.day}일(Day)`);
     } else if (text.includes("신청인(Applicant)")) {
       setParagraphPlainText(paragraph, `신청인(Applicant): ${applicantName} （인）`);
-    } else if (text.includes("Do you acknowledge the above")) {
-      setParagraphPlainText(paragraph, "위 내용 확인하셨습니까? ☑ 확인했습니다. Do you acknowledge the above? ☑ I acknowledge");
+    } else if (text.includes("Do you acknowledge the above") || text.includes("확인했습니다")) {
+      replaceTextInParagraph(paragraph, [
+        ["□ 확인했습니다", "☑ 확인했습니다"],
+        ["□ I acknowledge", "☑ I acknowledge"],
+      ]);
     }
   });
 
