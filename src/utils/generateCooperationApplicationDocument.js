@@ -1,7 +1,9 @@
 import JSZip from "jszip";
+import { supabase } from "../lib/supabase";
 
 const TEMPLATE_URL = "/templates/cooperation-application-template.docx";
 const WORD_DOCUMENT_XML_PATH = "word/document.xml";
+const MATERIALS_BUCKET = "application-files";
 
 function escapeXmlText(value = "") {
   return String(value ?? "")
@@ -281,6 +283,16 @@ async function fetchPhotoImage(photoUrl) {
   return { arrayBuffer, contentType, extension };
 }
 
+async function fetchPhotoImageFromStorage(filePath) {
+  if (!filePath) return null;
+  const { data, error } = await supabase.storage.from(MATERIALS_BUCKET).download(filePath);
+  if (error || !data) return null;
+  const contentType = data.type || "image/jpeg";
+  const extension = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
+  const arrayBuffer = await data.arrayBuffer();
+  return { arrayBuffer, contentType, extension };
+}
+
 function buildImageDrawingXml(relId, widthEmu = 1440000, heightEmu = 1800000) {
   return `
     <w:drawing xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -389,6 +401,7 @@ export async function generateCooperationApplicationDocumentBlob({
   partnerMajorName = "",
   hallaMajorName = "",
   photoUrl = "",
+  photoFilePath = "",
 } = {}) {
   if (!student) throw new Error("Student data is required.");
 
@@ -420,7 +433,7 @@ export async function generateCooperationApplicationDocumentBlob({
   const submittedDate = student.submitted_at || student.updated_at || student.created_at || new Date();
   const submittedParts = splitDateParts(submittedDate);
   const applicantName = student.full_name_passport || student.name || student.english_name || "";
-  const photoImage = await fetchPhotoImage(photoUrl);
+  const photoImage = (await fetchPhotoImageFromStorage(photoFilePath)) || (await fetchPhotoImage(photoUrl));
   const photoRelId = await addImageToDocx(zip, photoImage);
 
   const cell = (rowIndex, cellIndex) => getCells(rows[rowIndex])[cellIndex];
@@ -462,11 +475,12 @@ export async function generateCooperationApplicationDocumentBlob({
     } else if (text.includes("신청인(Applicant)")) {
       setParagraphPlainText(paragraph, `신청인(Applicant): ${applicantName} （인）`);
     } else if (text.includes("Do you acknowledge the above") || text.includes("확인했습니다")) {
-      replaceTextInParagraph(paragraph, [
-        ["□ 확인했습니다", "☑ 확인했습니다"],
-        ["□ I acknowledge", "☑ I acknowledge"],
-      ]);
-      replaceCheckboxTextInNode(paragraph, ["확인했습니다.", "확인했습니다", "I acknowledge"]);
+      setParagraphPlainText(
+        paragraph,
+        text.includes("Do you acknowledge")
+          ? "Do you acknowledge the above?  ☑ I acknowledge"
+          : "위 내용 확인하셨습니까?  ☑ 확인했습니다."
+      );
     }
   });
 

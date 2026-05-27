@@ -290,6 +290,7 @@ function AgencyCooperationManagementPage() {
 
   const detailFiles = detailStudent?.public_id ? fileMap[detailStudent.public_id] || {} : {};
   const uploadedDetailFiles = COOPERATION_FILE_TYPES.map((type) => detailFiles[type]?.[0]).filter(Boolean);
+  const detailPhotoFile = detailFiles.cooperation_photo?.[0] || null;
   const detailEducationRows = detailStudent ? parseCooperationEducationRows(detailStudent) : [];
   const detailDocumentOptions = detailStudent
     ? {
@@ -300,6 +301,7 @@ function AgencyCooperationManagementPage() {
         partnerMajorName: getMajor(detailStudent, language),
         hallaMajorName: getCooperationHallaMajor(detailStudent, language),
         photoUrl,
+        photoFilePath: detailPhotoFile?.file_path || "",
       }
     : null;
 
