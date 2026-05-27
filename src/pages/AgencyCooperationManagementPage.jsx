@@ -299,6 +299,7 @@ function AgencyCooperationManagementPage() {
         universityName: getCooperationUniversity(detailStudent, language),
         partnerMajorName: getMajor(detailStudent, language),
         hallaMajorName: getCooperationHallaMajor(detailStudent, language),
+        photoUrl,
       }
     : null;
 
@@ -614,7 +615,7 @@ function AgencyCooperationManagementPage() {
             <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <h4 className="text-base font-bold text-slate-900">{t.detail.basicInfo}</h4>
-                <div className="mt-4 grid gap-x-6 gap-y-2 text-sm text-slate-700 md:grid-cols-2">
+                <div className="mt-4 space-y-2 text-sm text-slate-700">
                   <div>{t.detail.fields.agency}: {agencySession?.agency_name || "-"}</div>
                   <div>{t.detail.fields.university}: {getCooperationUniversity(detailStudent, language)}</div>
                   <div>{t.detail.fields.partnerMajor}: {getMajor(detailStudent, language)}</div>
@@ -653,7 +654,7 @@ function AgencyCooperationManagementPage() {
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div className="h-[220px] overflow-hidden rounded-xl bg-white shadow-sm">
                     {photoUrl ? (
-                      <img src={photoUrl} alt="cooperation student" className="h-full w-full object-cover" />
+                      <img src={photoUrl} alt="cooperation student" className="h-full w-full object-contain" />
                     ) : (
                       <div className="h-full w-full bg-white" />
                     )}
@@ -662,7 +663,7 @@ function AgencyCooperationManagementPage() {
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                   <h4 className="text-base font-bold text-slate-900">{t.detail.materials}</h4>
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="mt-4 space-y-3">
                     {COOPERATION_FILE_TYPES.map((type) => {
                       const file = detailFiles[type]?.[0];
                       return (

@@ -95,11 +95,57 @@ function setCellPlainText(cell, value) {
   cell.appendChild(paragraph);
 }
 
+function getParagraphs(documentNode) {
+  return Array.from(documentNode.getElementsByTagName("w:p"));
+}
+
+function getParagraphText(paragraph) {
+  return Array.from(paragraph.getElementsByTagName("w:t"))
+    .map((node) => node.textContent || "")
+    .join("");
+}
+
+function setParagraphPlainText(paragraph, value) {
+  if (!paragraph) return;
+  const paragraphPr = directChildren(paragraph, "pPr")[0]?.cloneNode(true);
+  const documentNode = paragraph.ownerDocument;
+  while (paragraph.firstChild) paragraph.removeChild(paragraph.firstChild);
+  if (paragraphPr) paragraph.appendChild(paragraphPr);
+
+  const run = documentNode.createElementNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "w:r");
+  const text = documentNode.createElementNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "w:t");
+  text.textContent = String(value ?? "");
+  run.appendChild(text);
+  paragraph.appendChild(run);
+}
+
+function appendDrawingToParagraph(paragraph, drawingXml) {
+  if (!paragraph || !drawingXml) return;
+  const paragraphPr = directChildren(paragraph, "pPr")[0]?.cloneNode(true);
+  const documentNode = paragraph.ownerDocument;
+  const fragment = new DOMParser().parseFromString(`<root>${drawingXml}</root>`, "application/xml");
+  const drawingNode = fragment.documentElement.firstChild;
+  if (!drawingNode) return;
+
+  while (paragraph.firstChild) paragraph.removeChild(paragraph.firstChild);
+  if (paragraphPr) paragraph.appendChild(paragraphPr);
+
+  const run = documentNode.createElementNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main", "w:r");
+  run.appendChild(documentNode.importNode(drawingNode, true));
+  paragraph.appendChild(run);
+}
+
 function formatDate(value) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function splitDateParts(value) {
+  const formatted = formatDate(value);
+  const [year = "", month = "", day = ""] = formatted.split("/");
+  return { year, month, day };
 }
 
 function normalizeGender(value = "") {
@@ -160,6 +206,91 @@ function getLocalizedSnapshot(snapshot, language, prefix) {
   );
 }
 
+async function fetchPhotoImage(photoUrl) {
+  if (!photoUrl) return null;
+  const response = await fetch(photoUrl);
+  if (!response.ok) return null;
+  const blob = await response.blob();
+  const contentType = blob.type || "image/jpeg";
+  const extension = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
+  const arrayBuffer = await blob.arrayBuffer();
+  return { arrayBuffer, contentType, extension };
+}
+
+function buildImageDrawingXml(relId, widthEmu = 1440000, heightEmu = 1800000) {
+  return `
+    <w:drawing xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+      xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+      xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+      xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"
+      xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+      <wp:inline distT="0" distB="0" distL="0" distR="0">
+        <wp:extent cx="${widthEmu}" cy="${heightEmu}"/>
+        <wp:docPr id="101" name="Cooperation Photo"/>
+        <wp:cNvGraphicFramePr>
+          <a:graphicFrameLocks noChangeAspect="1"/>
+        </wp:cNvGraphicFramePr>
+        <a:graphic>
+          <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+            <pic:pic>
+              <pic:nvPicPr>
+                <pic:cNvPr id="102" name="cooperation-photo"/>
+                <pic:cNvPicPr/>
+              </pic:nvPicPr>
+              <pic:blipFill>
+                <a:blip r:embed="${relId}"/>
+                <a:stretch><a:fillRect/></a:stretch>
+              </pic:blipFill>
+              <pic:spPr>
+                <a:xfrm>
+                  <a:off x="0" y="0"/>
+                  <a:ext cx="${widthEmu}" cy="${heightEmu}"/>
+                </a:xfrm>
+                <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+              </pic:spPr>
+            </pic:pic>
+          </a:graphicData>
+        </a:graphic>
+      </wp:inline>
+    </w:drawing>`;
+}
+
+async function addImageToDocx(zip, image) {
+  if (!image) return null;
+  const mediaPath = `word/media/cooperation-photo.${image.extension}`;
+  const relId = "rIdCooperationPhoto";
+  zip.file(mediaPath, image.arrayBuffer);
+
+  const relsPath = "word/_rels/document.xml.rels";
+  const relsEntry = zip.file(relsPath);
+  if (relsEntry) {
+    let relsXml = await relsEntry.async("string");
+    if (!relsXml.includes(`Id="${relId}"`)) {
+      relsXml = relsXml.replace(
+        "</Relationships>",
+        `<Relationship Id="${relId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/cooperation-photo.${image.extension}"/></Relationships>`
+      );
+      zip.file(relsPath, relsXml);
+    }
+  }
+
+  const contentTypesPath = "[Content_Types].xml";
+  const contentTypesEntry = zip.file(contentTypesPath);
+  if (contentTypesEntry) {
+    let contentTypesXml = await contentTypesEntry.async("string");
+    const contentType = image.extension === "png" ? "image/png" : image.extension === "webp" ? "image/webp" : "image/jpeg";
+    if (!contentTypesXml.includes(`Extension="${image.extension}"`)) {
+      contentTypesXml = contentTypesXml.replace(
+        "</Types>",
+        `<Default Extension="${image.extension}" ContentType="${contentType}"/></Types>`
+      );
+      zip.file(contentTypesPath, contentTypesXml);
+    }
+  }
+
+  return relId;
+}
+
 export function buildCooperationApplicationFileName(student, language = "zh") {
   const name = sanitizeFileNameSegment(
     student?.english_name || student?.full_name_passport || student?.name || "student",
@@ -189,6 +320,7 @@ export async function generateCooperationApplicationDocumentBlob({
   universityName = "",
   partnerMajorName = "",
   hallaMajorName = "",
+  photoUrl = "",
 } = {}) {
   if (!student) throw new Error("Student data is required.");
 
@@ -217,13 +349,20 @@ export async function generateCooperationApplicationDocumentBlob({
   const resolvedHallaMajor = hallaMajorName || getLocalizedSnapshot(snapshot, language, "halla_major_name") || student.cooperation_halla_major_name || "";
   const resolvedPartnerMajor = partnerMajorName || getLocalizedSnapshot(snapshot, language, "major_name") || student.major || "";
   const finalMajor = resolvedHallaMajor || resolvedPartnerMajor;
+  const submittedDate = student.submitted_at || student.updated_at || student.created_at || new Date();
+  const submittedParts = splitDateParts(submittedDate);
+  const applicantName = student.full_name_passport || student.name || student.english_name || "";
+  const photoImage = await fetchPhotoImage(photoUrl);
+  const photoRelId = await addImageToDocx(zip, photoImage);
 
   const cell = (rowIndex, cellIndex) => getCells(rows[rowIndex])[cellIndex];
 
   setCellText(cell(0, 1), resolvedUniversity);
   setCellText(cell(0, 3), finalMajor);
+  setCellPlainText(cell(1, 1), "☑ 신입학 (Freshman)");
+  setCellPlainText(cell(1, 3), "☑ 중외합작프로그램 (Sino-Foreign Cooperative Education Program)");
   setCellText(cell(2, 1), admissionYear ? `${admissionYear}년 9월학기 / ${admissionYear} September Semester` : "");
-  setCellText(cell(4, 1), student.full_name_passport || student.name || student.english_name || "");
+  setCellText(cell(4, 1), applicantName);
   setCellPlainText(cell(5, 1), formatGender(student.gender || student.sex));
   setCellText(cell(5, 3), student.nationality || "China");
   setCellText(cell(6, 1), formatDate(student.date_of_birth || student.birth_date));
@@ -237,19 +376,39 @@ export async function generateCooperationApplicationDocumentBlob({
 
   [13, 14, 15].forEach((rowIndex, index) => {
     const item = educationRows[index] || {};
-    setCellText(cell(rowIndex, 0), [formatDate(item.startDate), formatDate(item.endDate)].filter(Boolean).join(" ~ "));
-    setCellText(cell(rowIndex, 1), item.institution || "");
-    setCellText(cell(rowIndex, 2), item.location || "");
+    setCellPlainText(cell(rowIndex, 0), [formatDate(item.startDate), formatDate(item.endDate)].filter(Boolean).join(" ~ "));
+    setCellPlainText(cell(rowIndex, 1), item.institution || "");
+    setCellPlainText(cell(rowIndex, 2), item.location || "");
   });
+
+  const consentTable = tables[1];
+  const consentRows = consentTable ? getRows(consentTable) : [];
+  const consentCells = getCells(consentRows[0]);
+  setCellPlainText(consentCells[1], "☑ 동의함\nI agree");
+  setCellPlainText(consentCells[2], "□ 동의하지 않음\nI disagree");
 
   const footerTable = tables[4];
   const footerRows = footerTable ? getRows(footerTable) : [];
   const footerCell = getCells(footerRows[0])[0];
-  const today = new Date();
   setCellPlainText(
     footerCell,
-    `위 내용 확인하셨습니까? ☑ 확인했습니다. Do you acknowledge the above? ☑ I acknowledge\n${today.getFullYear()}년 ${String(today.getMonth() + 1).padStart(2, "0")}월 ${String(today.getDate()).padStart(2, "0")}일    신청인(Applicant): ${student.full_name_passport || student.name || student.english_name || ""}`
+    `위 내용 확인하셨습니까? ☑ 확인했습니다.\nDo you acknowledge the above? ☑ I acknowledge\n${submittedParts.year}년(Year) ${submittedParts.month}월(Month) ${submittedParts.day}일(Day)\n신청인(Applicant): ${applicantName} （인）`
   );
+
+  let photoInserted = false;
+  getParagraphs(documentNode).forEach((paragraph) => {
+    const text = getParagraphText(paragraph);
+    if (photoRelId && !photoInserted && text.includes("photo")) {
+      appendDrawingToParagraph(paragraph, buildImageDrawingXml(photoRelId));
+      photoInserted = true;
+    } else if (text.includes("년(Year)") && text.includes("월(Month)") && text.includes("일(Day)")) {
+      setParagraphPlainText(paragraph, `${submittedParts.year}년(Year) ${submittedParts.month}월(Month) ${submittedParts.day}일(Day)`);
+    } else if (text.includes("신청인(Applicant)")) {
+      setParagraphPlainText(paragraph, `신청인(Applicant): ${applicantName} （인）`);
+    } else if (text.includes("Do you acknowledge the above")) {
+      setParagraphPlainText(paragraph, "위 내용 확인하셨습니까? ☑ 확인했습니다. Do you acknowledge the above? ☑ I acknowledge");
+    }
+  });
 
   const nextXml = new XMLSerializer().serializeToString(documentNode);
   zip.file(WORD_DOCUMENT_XML_PATH, nextXml);
