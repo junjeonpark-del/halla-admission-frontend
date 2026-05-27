@@ -302,9 +302,14 @@ function AgencyCooperationManagementPage() {
       }
     : null;
 
-  const downloadDetailApplicationDocument = () => {
+  const downloadDetailApplicationDocument = async () => {
     if (!detailDocumentOptions) return;
-    downloadCooperationApplicationDocument(detailDocumentOptions);
+    try {
+      await downloadCooperationApplicationDocument(detailDocumentOptions);
+    } catch (error) {
+      console.error("download cooperation application document error:", error);
+      alert(error?.message || "下载学生申请表失败");
+    }
   };
 
   const downloadDetailFile = (file, fileType) => {
@@ -314,20 +319,25 @@ function AgencyCooperationManagementPage() {
 
   const downloadAllDetailFiles = async () => {
     if (!detailStudent) return;
-    const documentBlob = detailDocumentOptions
-      ? await generateCooperationApplicationDocumentBlob(detailDocumentOptions)
-      : null;
-    const zipFiles = uploadedDetailFiles.map((file) => ({
-      ...file,
-      downloadName: buildCooperationMaterialDownloadName(detailStudent, file, file.file_type, t, language),
-    }));
-    if (documentBlob) {
-      zipFiles.unshift({
-        blob: documentBlob,
-        downloadName: buildCooperationApplicationFileName(detailStudent, language),
-      });
+    try {
+      const documentBlob = detailDocumentOptions
+        ? await generateCooperationApplicationDocumentBlob(detailDocumentOptions)
+        : null;
+      const zipFiles = uploadedDetailFiles.map((file) => ({
+        ...file,
+        downloadName: buildCooperationMaterialDownloadName(detailStudent, file, file.file_type, t, language),
+      }));
+      if (documentBlob) {
+        zipFiles.unshift({
+          blob: documentBlob,
+          downloadName: buildCooperationApplicationFileName(detailStudent, language),
+        });
+      }
+      downloadApplicationFilesAsZip(zipFiles, buildCooperationMaterialsZipName(detailStudent, language, "all"));
+    } catch (error) {
+      console.error("download cooperation all materials error:", error);
+      alert(error?.message || "下载全部材料失败");
     }
-    downloadApplicationFilesAsZip(zipFiles, buildCooperationMaterialsZipName(detailStudent, language, "all"));
   };
 
   return (
@@ -601,10 +611,10 @@ function AgencyCooperationManagementPage() {
               </span>
             </div>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <h4 className="text-base font-bold text-slate-900">{t.detail.basicInfo}</h4>
-                <div className="mt-4 grid gap-x-6 gap-y-2 text-sm text-slate-700 md:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-4 grid gap-x-6 gap-y-2 text-sm text-slate-700 md:grid-cols-2">
                   <div>{t.detail.fields.agency}: {agencySession?.agency_name || "-"}</div>
                   <div>{t.detail.fields.university}: {getCooperationUniversity(detailStudent, language)}</div>
                   <div>{t.detail.fields.partnerMajor}: {getMajor(detailStudent, language)}</div>
@@ -639,14 +649,13 @@ function AgencyCooperationManagementPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                  <h4 className="text-base font-bold text-slate-900">{t.detail.photo}</h4>
-                  <div className="mt-4 flex h-[180px] items-center justify-center rounded-xl bg-white p-3 shadow-sm">
+              <div className="space-y-4">
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="h-[220px] overflow-hidden rounded-xl bg-white shadow-sm">
                     {photoUrl ? (
-                      <img src={photoUrl} alt="cooperation student" className="max-h-full max-w-full rounded-lg object-contain" />
+                      <img src={photoUrl} alt="cooperation student" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="text-sm text-slate-500">{t.detail.noPhoto}</div>
+                      <div className="h-full w-full bg-white" />
                     )}
                   </div>
                 </div>

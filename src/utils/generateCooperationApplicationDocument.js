@@ -32,6 +32,7 @@ function parseXml(xmlText) {
 }
 
 function directChildren(node, localName) {
+  if (!node?.childNodes) return [];
   return Array.from(node.childNodes).filter((child) => child.localName === localName);
 }
 
@@ -49,6 +50,7 @@ function getCells(row) {
 }
 
 function getTextNodes(cell) {
+  if (!cell) return [];
   return Array.from(cell.getElementsByTagName("w:t"));
 }
 
@@ -216,7 +218,7 @@ export async function generateCooperationApplicationDocumentBlob({
   const resolvedPartnerMajor = partnerMajorName || getLocalizedSnapshot(snapshot, language, "major_name") || student.major || "";
   const finalMajor = resolvedHallaMajor || resolvedPartnerMajor;
 
-  const cell = (rowIndex, cellIndex) => getCells(rows[rowIndex] || [])[cellIndex];
+  const cell = (rowIndex, cellIndex) => getCells(rows[rowIndex])[cellIndex];
 
   setCellText(cell(0, 1), resolvedUniversity);
   setCellText(cell(0, 3), finalMajor);
@@ -242,7 +244,7 @@ export async function generateCooperationApplicationDocumentBlob({
 
   const footerTable = tables[4];
   const footerRows = footerTable ? getRows(footerTable) : [];
-  const footerCell = getCells(footerRows[0] || [])[0];
+  const footerCell = getCells(footerRows[0])[0];
   const today = new Date();
   setCellPlainText(
     footerCell,

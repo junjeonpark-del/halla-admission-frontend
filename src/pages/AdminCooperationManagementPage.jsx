@@ -73,7 +73,7 @@ export const cooperationMessages = {
       view: "查看",
       download: "下载",
       downloadAll: "下载全部材料",
-      exportOne: "导出申请信息",
+      exportOne: "下载学生申请表",
       saveStatus: "保存学籍状态",
       saving: "保存中...",
       saved: "学籍状态已保存",
@@ -195,7 +195,7 @@ export const cooperationMessages = {
       view: "View",
       download: "Download",
       downloadAll: "Download All Materials",
-      exportOne: "Export Application Info",
+      exportOne: "Download Student Form",
       saveStatus: "Save Enrollment Status",
       saving: "Saving...",
       saved: "Enrollment status saved",
@@ -317,7 +317,7 @@ export const cooperationMessages = {
       view: "보기",
       download: "다운로드",
       downloadAll: "전체 서류 다운로드",
-      exportOne: "지원 정보 내보내기",
+      exportOne: "학생 신청서 다운로드",
       saveStatus: "학적상태 저장",
       saving: "저장 중...",
       saved: "학적상태가 저장되었습니다",
@@ -911,9 +911,14 @@ function AdminCooperationManagementPage() {
       }
     : null;
 
-  const downloadDetailApplicationDocument = () => {
+  const downloadDetailApplicationDocument = async () => {
     if (!detailDocumentOptions) return;
-    downloadCooperationApplicationDocument(detailDocumentOptions);
+    try {
+      await downloadCooperationApplicationDocument(detailDocumentOptions);
+    } catch (error) {
+      console.error("download cooperation application document error:", error);
+      alert(error?.message || "下载学生申请表失败");
+    }
   };
 
   const downloadDetailFile = (file, fileType) => {
@@ -923,20 +928,25 @@ function AdminCooperationManagementPage() {
 
   const downloadAllDetailFiles = async () => {
     if (!detailStudent) return;
-    const documentBlob = detailDocumentOptions
-      ? await generateCooperationApplicationDocumentBlob(detailDocumentOptions)
-      : null;
-    const zipFiles = uploadedDetailFiles.map((file) => ({
-      ...file,
-      downloadName: buildCooperationMaterialDownloadName(detailStudent, file, file.file_type, t, language),
-    }));
-    if (documentBlob) {
-      zipFiles.unshift({
-        blob: documentBlob,
-        downloadName: buildCooperationApplicationFileName(detailStudent, language),
-      });
+    try {
+      const documentBlob = detailDocumentOptions
+        ? await generateCooperationApplicationDocumentBlob(detailDocumentOptions)
+        : null;
+      const zipFiles = uploadedDetailFiles.map((file) => ({
+        ...file,
+        downloadName: buildCooperationMaterialDownloadName(detailStudent, file, file.file_type, t, language),
+      }));
+      if (documentBlob) {
+        zipFiles.unshift({
+          blob: documentBlob,
+          downloadName: buildCooperationApplicationFileName(detailStudent, language),
+        });
+      }
+      downloadApplicationFilesAsZip(zipFiles, buildCooperationMaterialsZipName(detailStudent, language, "all"));
+    } catch (error) {
+      console.error("download cooperation all materials error:", error);
+      alert(error?.message || "下载全部材料失败");
     }
-    downloadApplicationFilesAsZip(zipFiles, buildCooperationMaterialsZipName(detailStudent, language, "all"));
   };
 
   return (
@@ -1194,10 +1204,10 @@ function AdminCooperationManagementPage() {
               </span>
             </div>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <h4 className="text-base font-bold text-slate-900">{t.detail.basicInfo}</h4>
-                <div className="mt-4 grid gap-x-6 gap-y-2 text-sm text-slate-700 md:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-4 grid gap-x-6 gap-y-2 text-sm text-slate-700 md:grid-cols-2">
                   <div>{t.detail.fields.agency}: {detailStudent.agency_name || agencyMap[detailStudent.agency_id] || "-"}</div>
                   <div>{t.detail.fields.university}: {getCooperationUniversity(detailStudent, language)}</div>
                   <div>{t.detail.fields.partnerMajor}: {getMajor(detailStudent, language)}</div>
@@ -1231,14 +1241,13 @@ function AdminCooperationManagementPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                  <h4 className="text-base font-bold text-slate-900">{t.detail.photo}</h4>
-                  <div className="mt-4 flex h-[180px] items-center justify-center rounded-xl bg-white p-3 shadow-sm">
+              <div className="space-y-4">
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="h-[220px] overflow-hidden rounded-xl bg-white shadow-sm">
                     {photoUrl ? (
-                      <img src={photoUrl} alt="cooperation student" className="max-h-full max-w-full rounded-lg object-contain" />
+                      <img src={photoUrl} alt="cooperation student" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="text-sm text-slate-500">{t.detail.noPhoto}</div>
+                      <div className="h-full w-full bg-white" />
                     )}
                   </div>
                 </div>
