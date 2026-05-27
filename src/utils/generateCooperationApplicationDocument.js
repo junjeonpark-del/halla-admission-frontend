@@ -274,7 +274,7 @@ function getLocalizedSnapshot(snapshot, language, prefix) {
 
 async function fetchPhotoImage(photoUrl) {
   if (!photoUrl) return null;
-  const response = await fetch(photoUrl);
+  const response = await fetch(photoUrl, { mode: "cors" });
   if (!response.ok) return null;
   const blob = await response.blob();
   const contentType = blob.type || "image/jpeg";
@@ -286,7 +286,10 @@ async function fetchPhotoImage(photoUrl) {
 async function fetchPhotoImageFromStorage(filePath) {
   if (!filePath) return null;
   const { data, error } = await supabase.storage.from(MATERIALS_BUCKET).download(filePath);
-  if (error || !data) return null;
+  if (error || !data) {
+    console.warn("download cooperation photo from storage failed:", error);
+    return null;
+  }
   const contentType = data.type || "image/jpeg";
   const extension = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
   const arrayBuffer = await data.arrayBuffer();
@@ -331,8 +334,53 @@ function buildImageDrawingXml(relId, widthEmu = 1440000, heightEmu = 1800000) {
     </w:drawing>`;
 }
 
+function buildPhotoAnchorDrawingXml(relId) {
+  const widthEmu = 1056005;
+  const heightEmu = 1132764;
+  return `<w:drawing>
+<wp:anchor distT="0" distB="0" distL="114300" distR="114300" behindDoc="0" locked="0" layoutInCell="1" simplePos="0" relativeHeight="251660288" allowOverlap="1" hidden="0">
+<wp:simplePos x="0" y="0" />
+<wp:positionH relativeFrom="margin"><wp:align>right</wp:align></wp:positionH>
+<wp:positionV relativeFrom="paragraph"><wp:posOffset>5800</wp:posOffset></wp:positionV>
+<wp:extent cx="${widthEmu}" cy="${heightEmu}"/>
+<wp:effectExtent l="0" t="0" r="10795" b="10795"/>
+<wp:wrapNone />
+<wp:docPr id="2025" name="Cooperation Photo"/>
+<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>
+<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+<pic:nvPicPr>
+<pic:cNvPr id="2025" name="cooperation-photo"/>
+<pic:cNvPicPr><a:picLocks noChangeAspect="1"/></pic:cNvPicPr>
+</pic:nvPicPr>
+<pic:blipFill>
+<a:blip r:embed="${relId}"/>
+<a:srcRect/>
+<a:stretch><a:fillRect/></a:stretch>
+</pic:blipFill>
+<pic:spPr>
+<a:xfrm><a:off x="0" y="0"/><a:ext cx="${widthEmu}" cy="${heightEmu}"/></a:xfrm>
+<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+<a:noFill/>
+</pic:spPr>
+</pic:pic>
+</a:graphicData>
+</a:graphic>
+</wp:anchor>
+</w:drawing>`;
+}
+
 function hasDrawing(paragraph) {
   return paragraph?.getElementsByTagName("w:drawing")?.length > 0;
+}
+
+function replacePhotoShapeDrawing(xmlText, relId) {
+  if (!relId) return xmlText;
+  return xmlText.replace(
+    /<w:drawing>(?=[\s\S]*?wordprocessingShape)(?=[\s\S]*?photo)[\s\S]*?<\/w:drawing>/,
+    buildPhotoAnchorDrawingXml(relId)
+  );
 }
 
 async function addImageToDocx(zip, image) {
@@ -460,14 +508,6 @@ export async function generateCooperationApplicationDocumentBlob({
   });
 
   const paragraphs = getParagraphs(documentNode);
-  const photoParagraph = [...paragraphs]
-    .reverse()
-    .find((paragraph) => getParagraphText(paragraph).includes("photo"));
-
-  if (photoRelId && photoParagraph) {
-    appendDrawingToParagraph(photoParagraph, buildImageDrawingXml(photoRelId), true);
-  }
-
   paragraphs.forEach((paragraph) => {
     const text = getParagraphText(paragraph);
     if (text.includes("년(Year)") && text.includes("월(Month)") && text.includes("일(Day)")) {
@@ -475,16 +515,15 @@ export async function generateCooperationApplicationDocumentBlob({
     } else if (text.includes("신청인(Applicant)")) {
       setParagraphPlainText(paragraph, `신청인(Applicant): ${applicantName} （인）`);
     } else if (text.includes("Do you acknowledge the above") || text.includes("확인했습니다")) {
-      setParagraphPlainText(
-        paragraph,
-        text.includes("Do you acknowledge")
-          ? "Do you acknowledge the above?  ☑ I acknowledge"
-          : "위 내용 확인하셨습니까?  ☑ 확인했습니다."
-      );
+      replaceTextInParagraph(paragraph, [
+        ["□ 확인했습니다", "☑ 확인했습니다"],
+        ["□ I acknowledge", "☑ I acknowledge"],
+      ]);
     }
   });
 
   let nextXml = new XMLSerializer().serializeToString(documentNode);
+  nextXml = replacePhotoShapeDrawing(nextXml, photoRelId);
   nextXml = replaceWingdingsCheckboxesByOrder(nextXml, normalizeGender(student.gender || student.sex));
   nextXml = replaceTextCheckboxes(nextXml);
   zip.file(WORD_DOCUMENT_XML_PATH, nextXml);
