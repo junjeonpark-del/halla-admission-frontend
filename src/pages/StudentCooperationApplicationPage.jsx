@@ -932,19 +932,7 @@ function StudentCooperationApplicationPage() {
               value={form.tel}
               onChange={(event) => updateField("tel", event.target.value)}
             />
-            <Select
-              label={t.fields.academicStatus}
-              required
-              disabled={isReadOnly}
-              value={form.cooperation_academic_status}
-              onChange={(event) => updateField("cooperation_academic_status", event.target.value)}
-            >
-              {t.academicStatusOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
+            
             <Input
               label={t.fields.idCardNumber}
               required
