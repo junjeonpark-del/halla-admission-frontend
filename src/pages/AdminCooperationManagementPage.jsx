@@ -109,6 +109,7 @@ export const cooperationMessages = {
     academicStatus: {
       active: "在学",
       leave: "休学",
+      completed: "结业",
       graduated: "毕业",
       withdrawn: "退学",
     },
@@ -230,6 +231,7 @@ export const cooperationMessages = {
     academicStatus: {
       active: "Active",
       leave: "Leave",
+      completed: "Completed",
       graduated: "Graduated",
       withdrawn: "Withdrawn",
     },
@@ -351,6 +353,7 @@ export const cooperationMessages = {
     academicStatus: {
       active: "재학",
       leave: "휴학",
+      completed: "수료",
       graduated: "졸업",
       withdrawn: "제적",
     },
@@ -502,7 +505,7 @@ export function mapCooperationStatusType(status) {
   if (value === "approved" || value === "active") return "success";
   if (value === "rejected" || value === "missing_documents" || value === "withdrawn") return "danger";
   if (value === "submitted" || value === "under_review" || value === "leave") return "warning";
-  if (value === "graduated") return "blue";
+  if (value === "graduated" || value === "completed") return "blue";
   return "default";
 }
 
@@ -610,7 +613,13 @@ function AdminCooperationManagementPage() {
       .sort((a, b) => String(b.year).localeCompare(String(a.year)));
   }, [yearCounts]);
 
-  const selectedTitle = selectedNode.type === "year" ? `${selectedNode.year}${language === "en" ? "" : t.sidebar.yearSuffix}` : t.search.title;
+  const septemberSemesterLabel = language === "en" ? "September Semester" : language === "ko" ? "9월 학기" : "9月学期";
+  const selectedTitle =
+    selectedNode.type === "year"
+      ? `${selectedNode.year}${language === "en" ? "" : t.sidebar.yearSuffix}`
+      : selectedNode.type === "semester"
+        ? `${selectedNode.year}${language === "en" ? "" : t.sidebar.yearSuffix} / ${septemberSemesterLabel}`
+        : t.search.title;
 
   const resolveKeywordAgencyIds = async (keyword) => {
     const value = keyword.trim();
@@ -628,7 +637,7 @@ function AdminCooperationManagementPage() {
   const applyFiltersToQuery = (query, keyword, agencyIds = []) => {
     let nextQuery = query.eq("application_type", "cooperation");
 
-    if (selectedNode.type === "year") {
+    if (selectedNode.type === "year" || selectedNode.type === "semester") {
       nextQuery = nextQuery.eq("cooperation_admission_year", Number(selectedNode.year));
     }
 
@@ -874,10 +883,10 @@ function AdminCooperationManagementPage() {
                   {expandedYears[yearItem.year] ? (
                     <div className="ml-4 space-y-1 border-l border-slate-100 pl-3">
                       <CooperationTreeButton
-                        active={selectedNode.type === "year" && selectedNode.year === yearItem.year}
-                        onClick={() => setSelectedNode({ type: "year", year: yearItem.year })}
+                        active={selectedNode.type === "semester" && selectedNode.year === yearItem.year}
+                        onClick={() => setSelectedNode({ type: "semester", year: yearItem.year })}
                       >
-                        <span>9月学期</span>
+                        <span>{septemberSemesterLabel}</span>
                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{yearItem.count}</span>
                       </CooperationTreeButton>
                     </div>
@@ -952,7 +961,7 @@ function AdminCooperationManagementPage() {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="min-w-[1300px] text-sm">
+                <table className="w-full table-fixed text-sm">
                   <thead className="bg-slate-50 text-left text-slate-500">
                     <tr>
                       <th className="px-6 py-4 font-semibold">{t.table.index}</th>
@@ -1107,8 +1116,6 @@ function AdminCooperationManagementPage() {
                   <div>{t.detail.fields.tel}: {detailStudent.tel || detailStudent.phone || "-"}</div>
                   <div>{t.detail.fields.idCard}: {detailStudent.cooperation_id_card_number || "-"}</div>
                   <div>{t.detail.fields.address}: {buildCooperationAddress(detailStudent) || "-"}</div>
-                  <div>{t.detail.fields.consent}: {detailStudent.agree_personal_info ? t.common.yes : t.common.no}</div>
-                  <div>{t.detail.fields.signature}: {detailStudent.applicant_signature_method || "-"}</div>
                 </div>
                 <div className="mt-5 rounded-xl border border-white bg-white p-4 shadow-sm">
                   <h5 className="text-sm font-semibold text-slate-900">{t.detail.fields.education}</h5>
@@ -1152,16 +1159,24 @@ function AdminCooperationManagementPage() {
                             </div>
                             <CooperationStatusBadge type={file ? "success" : "danger"}>{file ? t.common.uploaded : t.common.missing}</CooperationStatusBadge>
                           </div>
-                          {file ? (
-                            <div className="mt-3 flex gap-2">
-                              <button type="button" onClick={() => handleViewFile(file)} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">
-                                {t.detail.view}
-                              </button>
-                              <button type="button" onClick={() => downloadApplicationFile(file.file_path, file.file_name)} className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200">
-                                {t.detail.download}
-                              </button>
-                            </div>
-                          ) : null}
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => file && handleViewFile(file)}
+                              disabled={!file}
+                              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                            >
+                              {t.detail.view}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => file && downloadApplicationFile(file.file_path, file.file_name)}
+                              disabled={!file}
+                              className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 disabled:cursor-not-allowed disabled:text-slate-400"
+                            >
+                              {t.detail.download}
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
