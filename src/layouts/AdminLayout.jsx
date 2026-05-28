@@ -215,15 +215,15 @@ function MenuLink({ to, label }) {
       to={to}
       className={({ isActive }) =>
         [
-          "flex items-center rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 whitespace-nowrap",
+          "flex items-start rounded-xl px-4 py-3 text-sm font-medium leading-5 transition-all duration-200",
           isActive
             ? "bg-white text-slate-900 shadow-sm"
             : "text-slate-300 hover:bg-slate-800 hover:text-white",
         ].join(" ")
       }
     >
-      <span className="mr-3 inline-block h-2 w-2 rounded-full bg-current opacity-70" />
-      {label}
+      <span className="mr-3 mt-[6px] inline-block h-2 w-2 shrink-0 rounded-full bg-current opacity-70" />
+<span className="min-w-0 flex-1 break-words">{label}</span>
     </NavLink>
   );
 }
