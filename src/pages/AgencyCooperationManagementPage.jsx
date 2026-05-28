@@ -469,15 +469,18 @@ function AgencyCooperationManagementPage() {
                   </div>
                   {expandedYears[yearItem.year] ? (
                     <div className="ml-4 space-y-1 border-l border-slate-200 pl-3">
-                      <AgencyCooperationTreeButton
-                        active={selectedNode.type === "semester" && selectedNode.year === yearItem.year}
-                        onClick={() => setSelectedNode({ type: "semester", year: yearItem.year })}
-                      >
-                        <span>{septemberSemesterLabel}</span>
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                          {yearItem.count}
-                        </span>
-                      </AgencyCooperationTreeButton>
+                      <div className="flex items-center gap-1">
+                        <span className="h-8 w-8 shrink-0" />
+                        <AgencyCooperationTreeButton
+                          active={selectedNode.type === "semester" && selectedNode.year === yearItem.year}
+                          onClick={() => setSelectedNode({ type: "semester", year: yearItem.year })}
+                        >
+                          <span>{septemberSemesterLabel}</span>
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                            {yearItem.count}
+                          </span>
+                        </AgencyCooperationTreeButton>
+                      </div>
                     </div>
                   ) : null}
                 </div>

@@ -1309,11 +1309,11 @@ const pageNumbers = (() => {
 
       {applicationDialogOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-5xl rounded-3xl bg-white p-6 shadow-2xl">
             <h3 className="text-xl font-bold text-slate-900">{t.dialog.title}</h3>
             <p className="mt-2 text-sm leading-6 text-slate-500">{t.dialog.desc}</p>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {applicationTypeOptions.map((option) => {
                 const active = selectedApplicationType === option.value;
 
@@ -1323,7 +1323,7 @@ const pageNumbers = (() => {
                     type="button"
                     onClick={() => setSelectedApplicationType(option.value)}
                     className={[
-                      "rounded-2xl border p-5 text-left transition",
+                      "rounded-2xl border p-4 text-left transition",
                       active
                         ? "border-emerald-500 bg-emerald-50 shadow-sm"
                         : "border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50",
