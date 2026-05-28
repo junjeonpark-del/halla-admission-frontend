@@ -167,6 +167,24 @@ function AgencyCooperationManagementPage() {
       .sort((a, b) => String(b.year).localeCompare(String(a.year)));
   }, [yearCounts]);
 
+  useEffect(() => {
+    if (yearTree.length === 0) return;
+
+    setExpandedYears((prev) => {
+      const next = { ...prev };
+      let changed = false;
+
+      yearTree.forEach((item) => {
+        if (next[item.year] === undefined) {
+          next[item.year] = true;
+          changed = true;
+        }
+      });
+
+      return changed ? next : prev;
+    });
+  }, [yearTree]);
+
   const septemberSemesterLabel = language === "en" ? "September Semester" : language === "ko" ? "9월 학기" : "9月学期";
   const selectedTitle =
     selectedNode.type === "year"
@@ -414,13 +432,14 @@ function AgencyCooperationManagementPage() {
             </span>
           </AgencyCooperationTreeButton>
 
-          <div className="mt-4 space-y-2">
+          <div className="mt-4">
             {loading ? (
               <div className="rounded-xl bg-slate-50 px-3 py-4 text-sm text-slate-500">{t.sidebar.loading}</div>
             ) : yearTree.length === 0 ? (
               <div className="rounded-xl bg-slate-50 px-3 py-4 text-sm text-slate-500">{t.sidebar.empty}</div>
             ) : (
-              yearTree.map((yearItem) => (
+              <div className="space-y-2">
+                {yearTree.map((yearItem) => (
                 <div key={yearItem.year} className="space-y-1">
                   <div className="flex items-center gap-1">
                     <button
@@ -449,7 +468,7 @@ function AgencyCooperationManagementPage() {
                     </AgencyCooperationTreeButton>
                   </div>
                   {expandedYears[yearItem.year] ? (
-                    <div className="ml-4 space-y-1 border-l border-slate-100 pl-3">
+                    <div className="ml-4 space-y-1 border-l border-slate-200 pl-3">
                       <AgencyCooperationTreeButton
                         active={selectedNode.type === "semester" && selectedNode.year === yearItem.year}
                         onClick={() => setSelectedNode({ type: "semester", year: yearItem.year })}
@@ -462,7 +481,8 @@ function AgencyCooperationManagementPage() {
                     </div>
                   ) : null}
                 </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         </div>
