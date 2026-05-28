@@ -509,10 +509,11 @@ const getAgencyUnitName = (item) => {
       setLoadError("");
 
       const applicationsQuery = supabase
-        .from("applications")
-        .select("*")
-        .eq("agency_id", agencySession.agency_id)
-        .order("created_at", { ascending: false });
+  .from("applications")
+  .select("*")
+  .eq("agency_id", agencySession.agency_id)
+  .neq("application_type", "cooperation")
+  .order("created_at", { ascending: false });
 
       if (agencySession?.is_primary !== true) {
         applicationsQuery.eq("agency_unit_id", agencySession?.agency_unit_id || "");
@@ -547,7 +548,7 @@ const regularApplications = (applicationsData || []).filter(
   (item) => String(item.application_type || "undergraduate").toLowerCase() !== "cooperation"
 );
 
-setApplications(regularApplications);
+setApplications(applicationsData || []);
 setIntakes(intakesData || []);
 setAgencyUnits(agencyUnitsData || []);
 

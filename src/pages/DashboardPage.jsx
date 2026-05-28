@@ -723,9 +723,10 @@ function DashboardPage() {
           { data: agenciesData, error: agenciesError },
         ] = await Promise.all([
           supabase
-            .from("applications")
-            .select("*")
-            .order("updated_at", { ascending: false }),
+  .from("applications")
+  .select("*")
+  .neq("application_type", "cooperation")
+  .order("updated_at", { ascending: false }),
           supabase
             .from("intakes")
             .select("*")
@@ -744,7 +745,7 @@ function DashboardPage() {
           (item) => String(item.application_type || "undergraduate").toLowerCase() !== "cooperation"
         );
 
-        setApplications(regularApplications);
+        setApplications(applicationsData || []);
         setIntakes(intakesData || []);
         setAgencies(agenciesData || []);
       } catch (error) {

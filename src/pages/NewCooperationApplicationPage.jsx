@@ -916,13 +916,19 @@ const buildPublicId = () => {
     if (error) throw error;
 
     if (
-      data.agency_id &&
-      agencySession?.agency_id &&
-      String(data.agency_id) !== String(agencySession.agency_id)
-    ) {
-      throw new Error("No permission to edit this record.");
-    }
+  data.agency_id &&
+  agencySession?.agency_id &&
+  String(data.agency_id) !== String(agencySession.agency_id)
+) {
+  throw new Error("No permission to edit this record.");
+}
 
+if (
+  agencySession?.is_primary !== true &&
+  String(data.agency_unit_id || "") !== String(agencySession?.agency_unit_id || "")
+) {
+  throw new Error("No permission to edit this record.");
+}
     const parseEducation = (value) => {
       const [datePart = "", institution = "", location = ""] = String(value || "").split("|").map((item) => item.trim());
       const [startDate = "", endDate = ""] = datePart.split("~").map((item) => item.trim());

@@ -862,10 +862,10 @@ const buildApplicationsQuery = ({ includeCount = false, mode = activeTab, withSe
   }
 
   if (keyword) {
-    query = query.or(
-      `english_name.ilike.%${keyword}%,full_name_passport.ilike.%${keyword}%,name.ilike.%${keyword}%,major.ilike.%${keyword}%,department.ilike.%${keyword}%`
-    );
-  }
+  query = query.or(
+    `english_name.ilike.%${keyword}%,full_name_passport.ilike.%${keyword}%,major.ilike.%${keyword}%`
+  );
+}
 
   return query;
 };
