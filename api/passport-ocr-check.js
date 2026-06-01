@@ -158,7 +158,116 @@ function parseMrzFromText(text) {
   };
 }
 
-function buildPassportName(fields, fullText) {
+function normalizePassportCountryValue(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function isUzbekistanPassport(fields, fullText) {
+  const countryValues = [
+    pickField(fields, [
+      "CountryRegion",
+      "Country",
+      "CountryCode",
+      "IssuingCountry",
+      "Nationality",
+      "NationalityCountryRegion",
+    ]),
+    fullText,
+  ];
+
+  return countryValues.some((value) => {
+    const normalized = normalizePassportCountryValue(value);
+    return (
+      normalized.includes("uzb") ||
+      normalized.includes("uzbekistan") ||
+      normalized.includes("republicofuzbekistan") ||
+      normalized.includes("ozbekiston") ||
+      normalized.includes("uzbekiston")
+    );
+  });
+}
+
+function cleanPassportNamePart(value) {
+  return String(value || "")
+    .replace(/[^\p{L}\s.'-]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isLikelyPassportNameLine(value) {
+  const text = cleanPassportNamePart(value);
+  if (!text) return false;
+  if (text.length < 2 || text.length > 60) return false;
+  if (!/[A-Za-z]/.test(text)) return false;
+
+  const normalized = normalizePassportCountryValue(text);
+  const blocked = [
+    "surname",
+    "familyasi",
+    "names",
+    "ismi",
+    "father",
+    "fathersname",
+    "otasiningismi",
+    "nationality",
+    "fuqaroligi",
+    "dateofbirth",
+    "passport",
+    "document",
+    "sex",
+    "placeofbirth",
+  ];
+
+  return !blocked.some((item) => normalized.includes(item));
+}
+
+function pickUzbekistanFatherName(fields, fullText) {
+  const fieldValue = pickField(fields, [
+    "FatherName",
+    "FathersName",
+    "FatherFullName",
+    "Patronymic",
+    "MiddleName",
+  ]);
+
+  if (fieldValue) return cleanPassportNamePart(fieldValue);
+
+  const lines = String(fullText || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const normalized = normalizePassportCountryValue(lines[index]);
+
+    if (
+      normalized.includes("fathersname") ||
+      normalized.includes("otasiningismi")
+    ) {
+      const sameLineParts = lines[index].split(/[:：]/);
+      const sameLineCandidate = sameLineParts.length > 1
+        ? sameLineParts.slice(1).join(" ")
+        : "";
+
+      if (isLikelyPassportNameLine(sameLineCandidate)) {
+        return cleanPassportNamePart(sameLineCandidate);
+      }
+
+      for (let offset = 1; offset <= 3; offset += 1) {
+        const candidate = lines[index + offset] || "";
+        if (isLikelyPassportNameLine(candidate)) {
+          return cleanPassportNamePart(candidate);
+        }
+      }
+    }
+  }
+
+  return "";
+}
+
+function buildDefaultPassportName(fields, fullText) {
   const fullName = pickField(fields, [
     "FullName",
     "FullGivenName",
@@ -186,6 +295,54 @@ function buildPassportName(fields, fullText) {
   if (normalName) return normalName;
 
   return parseMrzFromText(fullText).passportName || "";
+}
+
+function buildUzbekistanPassportName(fields, fullText) {
+  const surname = pickField(fields, [
+    "LastName",
+    "Surname",
+    "FamilyName",
+    "PrimaryIdentifier",
+  ]);
+  const given = pickField(fields, [
+    "FirstName",
+    "GivenName",
+    "GivenNames",
+    "Names",
+    "SecondaryIdentifier",
+  ]);
+  const fatherName = pickUzbekistanFatherName(fields, fullText);
+
+  const structuredName = [surname, given]
+    .map(cleanPassportNamePart)
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  const baseName = structuredName || buildDefaultPassportName(fields, fullText);
+  if (!fatherName) return baseName;
+
+  const normalizedBase = normalizePassportCountryValue(baseName);
+  const normalizedFather = normalizePassportCountryValue(fatherName);
+
+  if (normalizedBase.includes(normalizedFather)) {
+    return baseName;
+  }
+
+  return [baseName, fatherName]
+    .map(cleanPassportNamePart)
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
+function buildPassportName(fields, fullText) {
+  if (isUzbekistanPassport(fields, fullText)) {
+    const uzbekistanName = buildUzbekistanPassportName(fields, fullText);
+    if (uzbekistanName) return uzbekistanName;
+  }
+
+  return buildDefaultPassportName(fields, fullText);
 }
 
 function buildPassportNo(fields, fullText) {
