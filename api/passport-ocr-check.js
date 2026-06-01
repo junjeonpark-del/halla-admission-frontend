@@ -361,8 +361,39 @@ function buildPassportNo(fields, fullText) {
   );
 }
 
+function normalizeOcrDate(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const normalized = raw
+    .replace(/[年月.]/g, "/")
+    .replace(/日/g, "")
+    .replace(/-/g, "/")
+    .replace(/\s+/g, "/")
+    .replace(/\/+/g, "/")
+    .trim();
+
+  if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(normalized)) {
+    const [year, month, day] = normalized.split("/");
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+
+  if (/^\d{8}$/.test(normalized)) {
+    return `${normalized.slice(0, 4)}-${normalized.slice(4, 6)}-${normalized.slice(6, 8)}`;
+  }
+
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(normalized)) {
+    const [first, second, year] = normalized.split("/");
+    const month = Number(first) > 12 ? second : first;
+    const day = Number(first) > 12 ? first : second;
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+
+  return raw;
+}
+
 function buildDateOfBirth(fields, fullText) {
-  return (
+  const rawDate =
     pickField(fields, [
       "DateOfBirth",
       "BirthDate",
@@ -371,8 +402,9 @@ function buildDateOfBirth(fields, fullText) {
       "Birth",
     ]) ||
     parseMrzFromText(fullText).dateOfBirth ||
-    ""
-  );
+    "";
+
+  return normalizeOcrDate(rawDate);
 }
 
 async function pollAnalyzeResult(operationLocation, key, text) {
