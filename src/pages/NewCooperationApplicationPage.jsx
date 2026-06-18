@@ -31,6 +31,7 @@ const messages = {
       uploadRule: "上传要求：照片文件不能超过 2MB，PDF 文件不能超过 4MB。",
       imageTooLarge: '图片文件 "{fileName}" 超过 2MB，请压缩后重新上传。',
       pdfTooLarge: 'PDF 文件 "{fileName}" 超过 4MB，请压缩后重新上传。',
+      photoImageOnly: '证件照只能上传 JPG、JPEG、PNG 或 WEBP 图片文件：“{fileName}”。',
       invalidFile: '文件 "{fileName}" 仅支持图片或 PDF。',
       saveSuccess: "草稿已保存",
       updateSuccess: "草稿已更新",
@@ -154,6 +155,7 @@ reopenStudentFill: "重新开启填写",
       pdfTooLarge:
         'PDF file "{fileName}" exceeds 4MB. Please compress it and upload again.',
       invalidFile: 'File "{fileName}" only supports image or PDF.',
+      photoImageOnly: 'ID photo only supports JPG, JPEG, PNG, or WEBP image files: "{fileName}".',
       saveSuccess: "Draft saved",
       updateSuccess: "Draft updated",
       submitSuccess: "Cooperation program information submitted",
@@ -275,6 +277,7 @@ reopenStudentFill: "Re-enable Student Fill",
       pdfTooLarge:
         'PDF 파일 "{fileName}"이 4MB를 초과했습니다. 압축 후 다시 업로드하세요.',
       invalidFile: '파일 "{fileName}"은 이미지 또는 PDF만 지원합니다.',
+      photoImageOnly: '증명사진은 JPG, JPEG, PNG 또는 WEBP 이미지 파일만 업로드할 수 있습니다: "{fileName}".',
       saveSuccess: "초안이 저장되었습니다",
       updateSuccess: "초안이 업데이트되었습니다",
       submitSuccess: "중외합작프로그램 정보가 제출되었습니다",
@@ -506,7 +509,25 @@ function MaterialUploadCard({
   disabled = false,
   t,
 }) {
-  const [isDragging, setIsDragging] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+  const [isInvalidDragging, setIsInvalidDragging] = useState(false);
+
+  const imageOnly = item.key === "cooperation_photo";
+
+  const updateDragState = (fileList) => {
+    if (disabled) return;
+
+    const incomingFiles = Array.from(fileList || []);
+    setIsDragging(true);
+    setIsInvalidDragging(
+      imageOnly && incomingFiles.some((file) => !isUploadImageFile(file))
+    );
+  };
+
+  const resetDragState = () => {
+    setIsDragging(false);
+    setIsInvalidDragging(false);
+  };
 
   const handleSelectedFiles = (selectedFiles) => {
     if (disabled || !selectedFiles || selectedFiles.length === 0) return;
@@ -515,7 +536,7 @@ function MaterialUploadCard({
     const invalidMessages = [];
 
     Array.from(selectedFiles).forEach((file) => {
-      const errorMessage = validateUploadFile(file, t);
+      const errorMessage = validateUploadFile(file, t, { imageOnly });
       if (errorMessage) {
         invalidMessages.push(errorMessage);
       } else {
@@ -535,9 +556,11 @@ function MaterialUploadCard({
   };
 
   return (
-    <div
+        <div
       className={`rounded-2xl border p-5 transition ${
-        isDragging && !disabled
+        isInvalidDragging
+          ? "cursor-not-allowed border-red-400 bg-red-50 ring-4 ring-red-100"
+          : isDragging && !disabled
           ? "border-emerald-400 bg-emerald-50 ring-4 ring-emerald-100"
           : "border-slate-200 bg-white"
       }`}
@@ -545,13 +568,14 @@ function MaterialUploadCard({
         if (disabled) return;
         event.preventDefault();
         event.stopPropagation();
-        setIsDragging(true);
+        updateDragState(event.dataTransfer.items || event.dataTransfer.files);
       }}
       onDragOver={(event) => {
         if (disabled) return;
         event.preventDefault();
         event.stopPropagation();
-        setIsDragging(true);
+        updateDragState(event.dataTransfer.files);
+        event.dataTransfer.dropEffect = isInvalidDragging ? "none" : "copy";
       }}
       onDragLeave={(event) => {
         if (disabled) return;
@@ -559,14 +583,14 @@ function MaterialUploadCard({
         event.stopPropagation();
 
         if (!event.currentTarget.contains(event.relatedTarget)) {
-          setIsDragging(false);
+          resetDragState();
         }
       }}
       onDrop={(event) => {
         if (disabled) return;
         event.preventDefault();
         event.stopPropagation();
-        setIsDragging(false);
+        resetDragState();
         handleSelectedFiles(event.dataTransfer.files);
       }}
     >
@@ -587,7 +611,7 @@ function MaterialUploadCard({
     type="file"
     multiple
     disabled={disabled}
-    accept="image/*,.pdf,application/pdf"
+        accept={imageOnly ? ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" : "image/*,.pdf,application/pdf"}
     onChange={(event) => {
       handleSelectedFiles(event.target.files);
       event.target.value = "";
@@ -697,12 +721,28 @@ function sanitizeFileName(name) {
   return `${safeBase}${ext}`;
 }
 
-function validateUploadFile(file, t) {
+function isUploadImageFile(file) {
+  const fileName = String(file?.name || "").toLowerCase();
+  const mimeType = String(file?.type || "").toLowerCase();
+
+  return (
+    mimeType.startsWith("image/") ||
+    [".jpg", ".jpeg", ".png", ".webp"].some((ext) => fileName.endsWith(ext))
+  );
+}
+
+function validateUploadFile(file, t, options = {}) {
   if (!file) return "";
 
-  const isImage = file.type?.startsWith("image/");
+  const isImage = isUploadImageFile(file);
   const isPdf = file.type === "application/pdf" || file.name?.toLowerCase().endsWith(".pdf");
   const fileName = file.name || "file";
+
+  if (options.imageOnly && !isImage) {
+    return t.common.photoImageOnly
+      ? t.common.photoImageOnly.replace("{fileName}", fileName)
+      : `证件照只能上传 JPG、JPEG、PNG 或 WEBP 图片文件：${fileName}`;
+  }
 
   if (!isImage && !isPdf) {
     return t.common.invalidFile.replace("{fileName}", fileName);

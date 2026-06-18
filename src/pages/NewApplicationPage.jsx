@@ -23,6 +23,7 @@ pdfTooLarge: 'PDF 文件“{fileName}”超过 4MB，请压缩后重新上传。
       uploadFile: "上传文件", chooseFile: "选择文件", uploadedFiles: "已上传文件", selectedFiles: "本次新选择文件", noSelectedFiles: "尚未选择新文件", delete: "删除",
       generatedNoNeedUpload: "此项由系统生成，不需要机构重复上传。", uploadRule: "上传要求：照片文件不能超过 2MB，PDF 文件不能超过 4MB。请尽量上传清晰但压缩后的文件。",
       signatureMethod: "签字方式", signatureHelper: "请选择签字方式。下方将显示当前签字预览，最终会自动回填到学校申请表所有对应签字位置。", autoSignatureDesc: "系统将基于当前姓名字段自动生成名字：",
+      photoImageOnly: '证件照只能上传 JPG、JPEG、PNG 或 WEBP 图片文件：“{fileName}”。',
 fillNameFirst: "请先填写姓名后生成自动签字", noSignaturePreview: "暂无签字预览", drawSignatureDesc: "请在下方区域手写签字。", clearSignature: "清空重签", uploadSignatureImage: "上传签字图片",
 generatedSignatureTip: "当前签字预览如下。重新打开页面时会显示已保存的签字效果。",
  passportReminderTitle: "护照信息辅助提醒",
@@ -72,6 +73,7 @@ pdfTooLarge: 'PDF file "{fileName}" exceeds 4MB. Please compress it and upload a
 fillNameFirst: "Please enter the name first to generate the Generate Name", noSignaturePreview: "No signature preview", drawSignatureDesc: "Please sign in the area below.", clearSignature: "Clear Signature", uploadSignatureImage: "Upload Signature Image", generatedSignatureTip: "The current signature preview is shown below. Saved signatures will appear again when you reopen this page.",
 
  passportReminderTitle: "Passport Information Reminder",
+ photoImageOnly: 'ID photo only supports JPG, JPEG, PNG, or WEBP image files: "{fileName}".',
 passportChecking: "Reading passport information and comparing it with the form. Please wait...",
 passportReminderDesc: "This reminder is for manual review only and does not affect saving or submission.",
 passportCompareFormValue: "Form",
@@ -96,7 +98,7 @@ materialOnlyBanner: "Material-only mode: only refund account information, financ
 pdfTooLarge: 'PDF 파일 "{fileName}" 이 4MB를 초과합니다. 압축 후 다시 업로드해 주세요.',
 select: "선택하세요", currentStep: "현재 단계", prev: "이전", next: "다음", saveDraft: "초안 저장", submit: "지원 제출", loadingAgency: "기관 정보를 불러오는 중...", newApplication: "새 지원서", copyLink: "링크 복사", copyLinkSuccess: "링크가 복사되었습니다", copyLinkFailed: "복사에 실패했습니다. 수동으로 복사하세요.", downloadQr: "QR 코드 다운로드", qrNotReady: "QR 코드가 아직 생성되지 않았습니다", studentFillLink: "학생 작성 링크", currentStatus: "현재 상태", enabled: "활성", disabled: "비활성", reopenStudentFill: "학생 작성 다시 열기", closeStudentFill: "학생 작성 닫기", uploadFile: "파일 업로드", chooseFile: "파일 선택", uploadedFiles: "업로드된 파일", selectedFiles: "이번에 선택한 파일", noSelectedFiles: "새로 선택한 파일이 없습니다", delete: "삭제", generatedNoNeedUpload: "이 항목은 시스템이 생성하므로 다시 업로드할 필요가 없습니다.", uploadRule: "업로드 제한: 이미지 2MB 이하, PDF 4MB 이하.", signatureMethod: "서명 방식", signatureHelper: "서명 방식을 선택하세요. 아래에 현재 서명 미리보기가 표시되며, 이후 모든 서명 위치에 자동 반영됩니다.", autoSignatureDesc: "시스템이 현재 이름 입력값을 기준으로 이름을 자동 생성합니다:",
 fillNameFirst: "먼저 이름을 입력한 뒤 이름을 자동 생성하세요", noSignaturePreview: "서명 미리보기가 없습니다", drawSignatureDesc: "아래 영역에 직접 서명하세요.", clearSignature: "서명 지우기", uploadSignatureImage: "서명 이미지 업로드", generatedSignatureTip: "현재 서명 미리보기가 아래에 표시됩니다. 페이지를 다시 열어도 저장된 서명이 그대로 표시됩니다.",
- 
+ photoImageOnly: '증명사진은 JPG, JPEG, PNG 또는 WEBP 이미지 파일만 업로드할 수 있습니다: "{fileName}".',
  passportReminderTitle: "여권 정보 보조 알림",
 passportChecking: "여권 정보를 인식하여 신청서와 비교하는 중입니다. 잠시만 기다려 주세요...",
 passportReminderDesc: "이 알림은 수동 검토용이며 초안 저장이나 제출에는 영향을 주지 않습니다.",
@@ -199,7 +201,17 @@ const IMAGE_MAX_SIZE = 2 * 1024 * 1024; // 2MB
 const PDF_MAX_SIZE = 4 * 1024 * 1024; // 4MB
 const OCR_PDF_MAX_SIZE = 3 * 1024 * 1024; // Keep base64 JSON safely under Vercel's 4.5MB function limit
 
-function validateUploadFile(file, t) {
+function isUploadImageFile(file) {
+  const fileName = String(file?.name || "").toLowerCase();
+  const mimeType = String(file?.type || "").toLowerCase();
+
+  return (
+    mimeType.startsWith("image/") ||
+    [".jpg", ".jpeg", ".png", ".webp"].some((ext) => fileName.endsWith(ext))
+  );
+}
+
+function validateUploadFile(file, t, options = {}) {
   const fileName = String(file?.name || "");
   const lowerName = fileName.toLowerCase();
   const mimeType = String(file?.type || "").toLowerCase();
@@ -207,9 +219,19 @@ function validateUploadFile(file, t) {
   const isPdf =
     mimeType === "application/pdf" || lowerName.endsWith(".pdf");
 
-  const isImage =
-    mimeType.startsWith("image/") ||
-    [".jpg", ".jpeg", ".png", ".webp"].some((ext) => lowerName.endsWith(ext));
+  const isImage = isUploadImageFile(file);
+
+  if (options.imageOnly && !isImage) {
+    return t.common.photoImageOnly
+      ? t.common.photoImageOnly.replace("{fileName}", fileName)
+      : `证件照只能上传 JPG、JPEG、PNG 或 WEBP 图片文件：${fileName}`;
+  }
+
+  if (!isImage && !isPdf) {
+    return t.common.invalidFile
+      ? t.common.invalidFile.replace("{fileName}", fileName)
+      : `文件格式不支持：${fileName}`;
+  }
 
   if (isImage && file.size > IMAGE_MAX_SIZE) {
     return t.common.imageTooLarge.replace("{fileName}", fileName);
@@ -834,10 +856,27 @@ function MaterialUploadCard({
   passportWarnings = [],
   t,
 }) {
-  const [isDragging, setIsDragging] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+  const [isInvalidDragging, setIsInvalidDragging] = useState(false);
 
   const hasExistingFiles = existingFiles && existingFiles.length > 0;
   const hasNewFiles = files && files.length > 0;
+  const imageOnly = item.key === "photo";
+
+  const updateDragState = (fileList) => {
+    if (!item.uploadable) return;
+
+    const incomingFiles = Array.from(fileList || []);
+    setIsDragging(true);
+    setIsInvalidDragging(
+      imageOnly && incomingFiles.some((file) => !isUploadImageFile(file))
+    );
+  };
+
+  const resetDragState = () => {
+    setIsDragging(false);
+    setIsInvalidDragging(false);
+  };
 
   const handleSelectedFiles = (selectedFiles) => {
     if (!item.uploadable || !selectedFiles || selectedFiles.length === 0) return;
@@ -846,7 +885,7 @@ function MaterialUploadCard({
     const validFiles = [];
 
     Array.from(selectedFiles).forEach((file) => {
-      const errorMessage = validateUploadFile(file, t);
+      const errorMessage = validateUploadFile(file, t, { imageOnly });
       if (errorMessage) {
         invalidMessages.push(errorMessage);
       } else {
@@ -866,9 +905,11 @@ function MaterialUploadCard({
   };
 
   return (
-    <div
+        <div
       className={`rounded-2xl border p-5 shadow-sm transition ${
-        isDragging && item.uploadable
+        isInvalidDragging
+          ? "cursor-not-allowed border-red-400 bg-red-50 ring-4 ring-red-100"
+          : isDragging && item.uploadable
           ? "border-emerald-400 bg-emerald-50 ring-4 ring-emerald-100"
           : "border-slate-200 bg-white"
       }`}
@@ -876,13 +917,14 @@ function MaterialUploadCard({
         if (!item.uploadable) return;
         e.preventDefault();
         e.stopPropagation();
-        setIsDragging(true);
+        updateDragState(e.dataTransfer.items || e.dataTransfer.files);
       }}
       onDragOver={(e) => {
         if (!item.uploadable) return;
         e.preventDefault();
         e.stopPropagation();
-        setIsDragging(true);
+        updateDragState(e.dataTransfer.files);
+        e.dataTransfer.dropEffect = isInvalidDragging ? "none" : "copy";
       }}
       onDragLeave={(e) => {
         if (!item.uploadable) return;
@@ -890,14 +932,14 @@ function MaterialUploadCard({
         e.stopPropagation();
 
         if (!e.currentTarget.contains(e.relatedTarget)) {
-          setIsDragging(false);
+          resetDragState();
         }
       }}
       onDrop={(e) => {
         if (!item.uploadable) return;
         e.preventDefault();
         e.stopPropagation();
-        setIsDragging(false);
+        resetDragState();
         handleSelectedFiles(e.dataTransfer.files);
       }}
     >
@@ -1569,7 +1611,7 @@ setLoadedAgencyUnitId(data.agency_unit_id || "");
         required: true,
         uploadable: true,
         multiple: false,
-        accept: ".jpg,.jpeg,.png",
+                accept: ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp",
         statusType: "required",
         statusLabel: t.materialStatus.required,
       },
