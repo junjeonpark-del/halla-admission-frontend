@@ -1147,7 +1147,12 @@ const pageNumbers = (() => {
 <th className="px-6 py-4 font-semibold">{t.table.intake}</th>
 <th className="px-6 py-4 font-semibold">{t.table.major}</th>
                   <th className="px-6 py-4 font-semibold">{t.table.status}</th>
-                  <th className="px-6 py-4 font-semibold">{t.table.time}</th>
+                  <th className="px-6 py-4 font-semibold">
+                    {language === "en" ? "Last Editor" : language === "ko" ? "최종 편집자" : "最后编辑人"}
+                  </th>
+                  <th className="px-6 py-4 font-semibold">
+                    {language === "en" ? "Last Edited At" : language === "ko" ? "최종 편집 시간" : "最后编辑时间"}
+                  </th>
                   <th className="px-6 py-4 font-semibold">{t.table.actions}</th>
                   <th className="px-6 py-4 font-semibold">{t.table.delete}</th>
                 </tr>
@@ -1182,12 +1187,18 @@ const pageNumbers = (() => {
 <td className="px-6 py-4 text-slate-600">
   <EllipsisText text={getMajor(student)} widthClass="max-w-[150px]" />
 </td>
-                      <td className="px-6 py-4">
+                                            <td className="px-6 py-4">
                         <StatusBadge type={mapStatusType(status)}>
                           {formatStatusLabel(status)}
                         </StatusBadge>
                       </td>
                       <td className="px-6 py-4 text-slate-600">
+                        <EllipsisText
+                          text={student.last_saved_by_account_name || "-"}
+                          widthClass="max-w-[130px]"
+                        />
+                      </td>
+                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">
                         {formatDateTime(student.updated_at || student.created_at)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

@@ -1099,7 +1099,8 @@ setCreating(true);
           .eq("agency_id", agencyId);
       }
 
-      await loadAgencies();
+            await loadAgencies();
+      window.dispatchEvent(new Event("admin-pending-counts-refresh"));
 
       if (detailAgency?.id === agencyId) {
         await handleOpenDetail({ id: agencyId });

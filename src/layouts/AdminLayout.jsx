@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AdminSessionContext } from "../contexts/AdminSessionContext";
+import { supabase } from "../lib/supabase";
 
 const LANGUAGE_OPTIONS = [
   { value: "zh", label: "中文" },
@@ -181,17 +182,25 @@ function saveLanguage(value) {
   }
 }
 
-function buildMenuItems(t) {
+function buildMenuItems(t, counts = {}) {
   return [
     { to: "/dashboard", label: t.nav.dashboard },
     { to: "/intakes", label: t.nav.intakes },
-    { to: "/agencies", label: t.nav.agencies },
-    { to: "/applications", label: t.nav.applications },
+    {
+      to: "/agencies",
+      label: t.nav.agencies,
+      badgeCount: counts.pendingAgencyCount || 0,
+    },
+    {
+      to: "/applications",
+      label: t.nav.applications,
+      badgeCount: counts.pendingApplicationCount || 0,
+    },
     { to: "/history", label: t.nav.history },
     {
-  to: "/cooperation-management",
-  label: t.nav.cooperationManagement,
-},
+      to: "/cooperation-management",
+      label: t.nav.cooperationManagement,
+    },
   ];
 }
 
@@ -209,7 +218,9 @@ function getPageMeta(pathname, t) {
   return t.pages.dashboard;
 }
 
-function MenuLink({ to, label }) {
+function MenuLink({ to, label, badgeCount = 0 }) {
+  const safeBadgeCount = Number(badgeCount) || 0;
+
   return (
     <NavLink
       to={to}
@@ -223,7 +234,14 @@ function MenuLink({ to, label }) {
       }
     >
       <span className="mr-3 mt-[6px] inline-block h-2 w-2 shrink-0 rounded-full bg-current opacity-70" />
-<span className="min-w-0 flex-1 break-words">{label}</span>
+      <span className="min-w-0 break-words">
+        {label}
+        {safeBadgeCount > 0 ? (
+          <span className="ml-1.5 inline-flex h-4 min-w-4 translate-y-[-1px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+            {safeBadgeCount > 99 ? "99+" : safeBadgeCount}
+          </span>
+        ) : null}
+      </span>
     </NavLink>
   );
 }
@@ -232,20 +250,69 @@ function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [session, setSession] = useState(() => readLocalAdminSession());
+   const [session, setSession] = useState(() => readLocalAdminSession());
   const [checking, setChecking] = useState(true);
   const [language, setLanguage] = useState(() => readLanguage());
+  const [pendingAgencyCount, setPendingAgencyCount] = useState(0);
+  const [pendingApplicationCount, setPendingApplicationCount] = useState(0);
 
   const t = messages[language] || messages.zh;
-  const menuItems = useMemo(() => buildMenuItems(t), [t]);
+  const menuItems = useMemo(
+    () => buildMenuItems(t, { pendingAgencyCount, pendingApplicationCount }),
+    [t, pendingAgencyCount, pendingApplicationCount]
+  );
   const pageMeta = useMemo(
     () => getPageMeta(location.pathname, t),
     [location.pathname, t]
   );
 
-  useEffect(() => {
+    useEffect(() => {
     saveLanguage(language);
   }, [language]);
+
+    useEffect(() => {
+    if (!session?.admin_id) return;
+
+    let cancelled = false;
+
+    const refreshPendingCounts = async () => {
+      try {
+        const [agencyResult, applicationResult] = await Promise.all([
+          supabase
+            .from("agencies")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "pending"),
+          supabase
+            .from("applications")
+            .select("id", { count: "exact", head: true })
+            .neq("application_type", "cooperation")
+            .neq("status", "draft")
+            .is("admin_first_operated_at", null),
+        ]);
+
+        if (agencyResult.error) throw agencyResult.error;
+        if (applicationResult.error) throw applicationResult.error;
+
+        if (!cancelled) {
+          setPendingAgencyCount(agencyResult.count || 0);
+          setPendingApplicationCount(applicationResult.count || 0);
+        }
+      } catch (error) {
+        console.error("AdminLayout refreshPendingCounts error:", error);
+      }
+    };
+
+    refreshPendingCounts();
+
+    const timer = window.setInterval(refreshPendingCounts, 60000);
+    window.addEventListener("admin-pending-counts-refresh", refreshPendingCounts);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      window.removeEventListener("admin-pending-counts-refresh", refreshPendingCounts);
+    };
+  }, [session?.admin_id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -378,8 +445,13 @@ function AdminLayout() {
               </div>
 
               <div className="space-y-2">
-                {menuItems.map((item) => (
-                  <MenuLink key={item.to} to={item.to} label={item.label} />
+                                {menuItems.map((item) => (
+                  <MenuLink
+                    key={item.to}
+                    to={item.to}
+                    label={item.label}
+                    badgeCount={item.badgeCount}
+                  />
                 ))}
               </div>
             </div>

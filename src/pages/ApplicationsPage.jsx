@@ -577,13 +577,32 @@ const [filtersReady, setFiltersReady] = useState(false);
     return value;
   };
 
-  const formatDormitory = (student) => {
+    const formatDormitory = (student) => {
     const value = String(student.dormitory || "").trim().toUpperCase();
 
     if (value === "YES") return t.dormitory.yes;
     if (value === "NO") return t.dormitory.no;
 
     return student.dormitory || "";
+  };
+
+  const formatOperatedAt = (value) => {
+    if (!value) return "-";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+
+    const locale =
+      language === "ko" ? "ko-KR" : language === "en" ? "en-US" : "zh-CN";
+
+    return date.toLocaleString(locale, {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
   };
 
   const agencyMap = useMemo(() => {
@@ -920,6 +939,12 @@ const filteredApplications = applications;
 <th className="px-6 py-4 font-semibold">{t.table.intake}</th>
 <th className="px-6 py-4 font-semibold">{t.table.major}</th>
 <th className="px-6 py-4 font-semibold">{t.table.status}</th>
+<th className="px-6 py-4 font-semibold">
+  {language === "en" ? "Last Operator" : language === "ko" ? "최종 처리자" : "最后操作老师"}
+</th>
+<th className="px-6 py-4 font-semibold">
+  {language === "en" ? "Last Operated At" : language === "ko" ? "최종 처리 시간" : "最后操作时间"}
+</th>
 
                   <th className="px-6 py-4 font-semibold">{t.table.actions}</th>
                 </tr>
@@ -968,6 +993,12 @@ const filteredApplications = applications;
   <StatusBadge type={mapStatusType(getStatus(student))}>
     {getStatus(student)}
   </StatusBadge>
+</td>
+<td className="px-6 py-4 text-slate-600">
+  <EllipsisText text={student.admin_last_operated_by_name || "-"} widthClass="max-w-[130px]" />
+</td>
+<td className="px-6 py-4 text-slate-600 whitespace-nowrap">
+  {formatOperatedAt(student.admin_last_operated_at)}
 </td>
 
                       <td className="px-6 py-4 whitespace-nowrap">
