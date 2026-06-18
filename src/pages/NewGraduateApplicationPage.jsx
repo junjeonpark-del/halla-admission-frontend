@@ -788,7 +788,7 @@ function SignaturePad({
 function MaterialUploadCard({
   item,
   files,
-  existingFiles = [],
+  existingFiles,
   onFilesChange,
   onRemoveSelectedFile,
   onRemoveExistingFile,
@@ -796,11 +796,73 @@ function MaterialUploadCard({
   passportWarnings = [],
   t,
 }) {
+  const [isDragging, setIsDragging] = useState(false);
+
   const hasExistingFiles = existingFiles && existingFiles.length > 0;
   const hasNewFiles = files && files.length > 0;
 
+  const handleSelectedFiles = (selectedFiles) => {
+    if (!item.uploadable || !selectedFiles || selectedFiles.length === 0) return;
+
+    const invalidMessages = [];
+    const validFiles = [];
+
+    Array.from(selectedFiles).forEach((file) => {
+      const errorMessage = validateUploadFile(file, t);
+      if (errorMessage) {
+        invalidMessages.push(errorMessage);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (invalidMessages.length > 0) {
+      alert(invalidMessages.join("\n"));
+    }
+
+    if (validFiles.length > 0) {
+      onFilesChange(item.key, item.multiple ? validFiles : validFiles.slice(0, 1));
+    } else {
+      onFilesChange(item.key, []);
+    }
+  };
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div
+      className={`rounded-2xl border p-5 shadow-sm transition ${
+        isDragging && item.uploadable
+          ? "border-emerald-400 bg-emerald-50 ring-4 ring-emerald-100"
+          : "border-slate-200 bg-white"
+      }`}
+      onDragEnter={(e) => {
+        if (!item.uploadable) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+      }}
+      onDragOver={(e) => {
+        if (!item.uploadable) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+      }}
+      onDragLeave={(e) => {
+        if (!item.uploadable) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+          setIsDragging(false);
+        }
+      }}
+      onDrop={(e) => {
+        if (!item.uploadable) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        handleSelectedFiles(e.dataTransfer.files);
+      }}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h4 className="text-base font-bold text-slate-900">{item.label}</h4>
@@ -848,37 +910,12 @@ function MaterialUploadCard({
 
     <label className="inline-flex cursor-pointer items-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700">
       {t.common.chooseFile}
-      <input
+            <input
         type="file"
         multiple={item.multiple}
         accept={item.accept}
         onChange={(e) => {
-          const selectedFiles = Array.from(e.target.files || []);
-
-          if (selectedFiles.length === 0) return;
-
-          const invalidMessages = [];
-          const validFiles = [];
-
-          selectedFiles.forEach((file) => {
-            const errorMessage = validateUploadFile(file, t);
-            if (errorMessage) {
-              invalidMessages.push(errorMessage);
-            } else {
-              validFiles.push(file);
-            }
-          });
-
-          if (invalidMessages.length > 0) {
-            alert(invalidMessages.join("\n"));
-          }
-
-          if (validFiles.length > 0) {
-            onFilesChange(item.key, validFiles);
-          } else {
-            onFilesChange(item.key, []);
-          }
-
+          handleSelectedFiles(e.target.files);
           e.target.value = "";
         }}
         className="hidden"

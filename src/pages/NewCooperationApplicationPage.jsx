@@ -503,10 +503,73 @@ function MaterialUploadCard({
   onFilesChange,
   onRemoveSelectedFile,
   onRemoveExistingFile,
+  disabled = false,
   t,
 }) {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleSelectedFiles = (selectedFiles) => {
+    if (disabled || !selectedFiles || selectedFiles.length === 0) return;
+
+    const validFiles = [];
+    const invalidMessages = [];
+
+    Array.from(selectedFiles).forEach((file) => {
+      const errorMessage = validateUploadFile(file, t);
+      if (errorMessage) {
+        invalidMessages.push(errorMessage);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (invalidMessages.length > 0) {
+      alert(invalidMessages.join("\n"));
+    }
+
+    if (validFiles.length > 0) {
+      onFilesChange(item.key, validFiles);
+    } else {
+      onFilesChange(item.key, []);
+    }
+  };
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+    <div
+      className={`rounded-2xl border p-5 transition ${
+        isDragging && !disabled
+          ? "border-emerald-400 bg-emerald-50 ring-4 ring-emerald-100"
+          : "border-slate-200 bg-white"
+      }`}
+      onDragEnter={(event) => {
+        if (disabled) return;
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDragging(true);
+      }}
+      onDragOver={(event) => {
+        if (disabled) return;
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDragging(true);
+      }}
+      onDragLeave={(event) => {
+        if (disabled) return;
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setIsDragging(false);
+        }
+      }}
+      onDrop={(event) => {
+        if (disabled) return;
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDragging(false);
+        handleSelectedFiles(event.dataTransfer.files);
+      }}
+    >
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="text-base font-bold text-slate-900">
@@ -520,11 +583,15 @@ function MaterialUploadCard({
       <div className="mt-4">
         <Label required>{t.common.chooseFile}</Label>
         <label className="flex cursor-pointer flex-col gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-600 transition hover:border-emerald-300 hover:bg-emerald-50">
-  <input
+    <input
     type="file"
     multiple
+    disabled={disabled}
     accept="image/*,.pdf,application/pdf"
-    onChange={(event) => onFilesChange(item.key, event.target.files)}
+    onChange={(event) => {
+      handleSelectedFiles(event.target.files);
+      event.target.value = "";
+    }}
     className="sr-only"
   />
   <span className="inline-flex w-fit rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">
