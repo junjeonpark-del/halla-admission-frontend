@@ -2029,6 +2029,24 @@ function ApplicationReviewPage() {
   return { ok: true, data: lockedRow };
 };
 
+    const getAdminOperatorName = () =>
+    adminSession?.name || adminSession?.username || "Admin";
+
+  const buildAdminOperationPayload = () => {
+    const nowIso = new Date().toISOString();
+    const operatorId = adminSession?.admin_id || null;
+    const operatorName = getAdminOperatorName();
+
+    return {
+      admin_first_operated_at: student?.admin_first_operated_at || nowIso,
+      admin_first_operated_by_id: student?.admin_first_operated_by_id || operatorId,
+      admin_first_operated_by_name: student?.admin_first_operated_by_name || operatorName,
+      admin_last_operated_at: nowIso,
+      admin_last_operated_by_id: operatorId,
+      admin_last_operated_by_name: operatorName,
+    };
+  };
+
   const handleSaveApplicationForm = async () => {
     try {
       if (!student?.id) {
@@ -2052,10 +2070,10 @@ function ApplicationReviewPage() {
         degree_level: applicationForm.degree_level || null,
         admission_type: applicationForm.admission_type || null,
         program_track: applicationForm.program_track || null,
-        dormitory: applicationForm.dormitory || null,
+                dormitory: applicationForm.dormitory || null,
+        ...buildAdminOperationPayload(),
         admin_editing_by_account_id: adminSession?.admin_id || null,
-        admin_editing_by_account_name:
-          adminSession?.name || adminSession?.username || "Admin",
+        admin_editing_by_account_name: getAdminOperatorName(),
         admin_editing_started_at: new Date().toISOString(),
       };
 
@@ -2077,6 +2095,8 @@ function ApplicationReviewPage() {
       setStudent(normalizedData);
       setLoadedUpdatedAt(data.updated_at || "");
       setIsEditingApplication(false);
+
+            window.dispatchEvent(new Event("admin-pending-counts-refresh"));
 
       setApplicationForm({
         english_name: data.english_name || data.full_name_passport || "",
@@ -2132,11 +2152,11 @@ const payload = {
         payload.review_note = applicationReviewNote || null;
       }
 
-      const updatePayload = {
+            const updatePayload = {
         ...payload,
+        ...buildAdminOperationPayload(),
         admin_editing_by_account_id: adminSession?.admin_id || null,
-        admin_editing_by_account_name:
-          adminSession?.name || adminSession?.username || "Admin",
+        admin_editing_by_account_name: getAdminOperatorName(),
         admin_editing_started_at: new Date().toISOString(),
       };
 
@@ -2156,7 +2176,8 @@ const payload = {
 
       setLoadedUpdatedAt(data.updated_at || "");
       const normalizedData = await withLinkedIntakeTitle(data);
-      setStudent(normalizedData);
+            setStudent(normalizedData);
+      window.dispatchEvent(new Event("admin-pending-counts-refresh"));
 
       alert(t.applicationReview.saved);
     } catch (error) {
@@ -2242,30 +2263,33 @@ if (!lockResult.ok) {
       payload.review_status = nextStatus;
     }
 
-    await updateApplicationFileReview(selectedItem.fileId, payload);
+        await updateApplicationFileReview(selectedItem.fileId, payload);
 
     const shouldSyncApplicationStatus =
       nextStatus === "missing_documents" || nextStatus === "rejected";
 
-    if (shouldSyncApplicationStatus) {
-      const { error: applicationStatusError } = await supabase
-        .from("applications")
-        .update({
-          status: nextStatus,
-          admin_editing_by_account_id: adminSession?.admin_id || null,
-          admin_editing_by_account_name:
-            adminSession?.name || adminSession?.username || "Admin",
-          admin_editing_started_at: new Date().toISOString(),
-        })
-        .eq("id", student.id);
+    const applicationOperationPayload = {
+      ...buildAdminOperationPayload(),
+      admin_editing_by_account_id: adminSession?.admin_id || null,
+      admin_editing_by_account_name: getAdminOperatorName(),
+      admin_editing_started_at: new Date().toISOString(),
+    };
 
-      if (applicationStatusError) throw applicationStatusError;
+    if (shouldSyncApplicationStatus) {
+      applicationOperationPayload.status = nextStatus;
     }
 
-    const { data: refreshedApplication, error: refreshedApplicationError } = await supabase
+    const { error: applicationOperationError } = await supabase
+      .from("applications")
+      .update(applicationOperationPayload)
+      .eq("id", student.id);
+
+    if (applicationOperationError) throw applicationOperationError;
+
+        const { data: refreshedApplication, error: refreshedApplicationError } = await supabase
       .from("applications")
       .select(
-        "id, status, updated_at, admin_editing_by_account_id, admin_editing_by_account_name, admin_editing_started_at"
+        "id, status, updated_at, admin_first_operated_at, admin_first_operated_by_id, admin_first_operated_by_name, admin_last_operated_at, admin_last_operated_by_id, admin_last_operated_by_name, admin_editing_by_account_id, admin_editing_by_account_name, admin_editing_started_at"
       )
       .eq("id", student.id)
       .single();
@@ -2282,7 +2306,8 @@ if (!lockResult.ok) {
         : prev
     );
 
-    await reloadFiles();
+        await reloadFiles();
+    window.dispatchEvent(new Event("admin-pending-counts-refresh"));
 
     alert(t.materials.saveSuccess);
   } catch (error) {
