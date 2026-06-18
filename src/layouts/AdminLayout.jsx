@@ -236,8 +236,8 @@ function MenuLink({ to, label, badgeCount = 0 }) {
       <span className="mr-3 mt-[6px] inline-block h-2 w-2 shrink-0 rounded-full bg-current opacity-70" />
       <span className="min-w-0 break-words">
         {label}
-        {safeBadgeCount > 0 ? (
-          <span className="ml-1.5 inline-flex h-4 min-w-4 translate-y-[-1px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+                {safeBadgeCount > 0 ? (
+          <span className="ml-2 inline-flex h-5 min-w-5 translate-y-[-1px] items-center justify-center whitespace-nowrap rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-none text-white shadow-sm">
             {safeBadgeCount > 99 ? "99+" : safeBadgeCount}
           </span>
         ) : null}
