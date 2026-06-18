@@ -857,14 +857,27 @@ function MaterialUploadCard({
   const hasNewFiles = files && files.length > 0;
   const imageOnly = item.key === "photo";
 
-  const updateDragState = (fileList) => {
-    if (!item.uploadable) return;
-
-    const incomingFiles = Array.from(fileList || []);
-    setIsDragging(true);
-    setIsInvalidDragging(
-      imageOnly && incomingFiles.some((file) => !isUploadImageFile(file))
+    const getDraggedFiles = (dataTransfer) => {
+    const items = Array.from(dataTransfer?.items || []).filter(
+      (dragItem) => dragItem.kind === "file"
     );
+
+    if (items.length > 0) return items;
+
+    return Array.from(dataTransfer?.files || []);
+  };
+
+  const updateDragState = (dataTransfer) => {
+    if (!item.uploadable) return false;
+
+    const incomingFiles = getDraggedFiles(dataTransfer);
+    const invalid =
+      imageOnly && incomingFiles.some((file) => !isUploadImageFile(file));
+
+    setIsDragging(true);
+    setIsInvalidDragging(invalid);
+
+    return invalid;
   };
 
   const resetDragState = () => {
@@ -907,18 +920,21 @@ function MaterialUploadCard({
           ? "border-emerald-400 bg-emerald-50 ring-4 ring-emerald-100"
           : "border-slate-200 bg-white"
       }`}
-      onDragEnter={(e) => {
+            onDragEnter={(e) => {
         if (!item.uploadable) return;
         e.preventDefault();
         e.stopPropagation();
-        updateDragState(e.dataTransfer.items || e.dataTransfer.files);
+
+        const invalid = updateDragState(e.dataTransfer);
+        e.dataTransfer.dropEffect = invalid ? "none" : "copy";
       }}
       onDragOver={(e) => {
         if (!item.uploadable) return;
         e.preventDefault();
         e.stopPropagation();
-        updateDragState(e.dataTransfer.files);
-        e.dataTransfer.dropEffect = isInvalidDragging ? "none" : "copy";
+
+        const invalid = updateDragState(e.dataTransfer);
+        e.dataTransfer.dropEffect = invalid ? "none" : "copy";
       }}
       onDragLeave={(e) => {
         if (!item.uploadable) return;

@@ -514,14 +514,27 @@ function MaterialUploadCard({
 
   const imageOnly = item.key === "cooperation_photo";
 
-  const updateDragState = (fileList) => {
-    if (disabled) return;
-
-    const incomingFiles = Array.from(fileList || []);
-    setIsDragging(true);
-    setIsInvalidDragging(
-      imageOnly && incomingFiles.some((file) => !isUploadImageFile(file))
+    const getDraggedFiles = (dataTransfer) => {
+    const items = Array.from(dataTransfer?.items || []).filter(
+      (dragItem) => dragItem.kind === "file"
     );
+
+    if (items.length > 0) return items;
+
+    return Array.from(dataTransfer?.files || []);
+  };
+
+  const updateDragState = (dataTransfer) => {
+    if (disabled) return false;
+
+    const incomingFiles = getDraggedFiles(dataTransfer);
+    const invalid =
+      imageOnly && incomingFiles.some((file) => !isUploadImageFile(file));
+
+    setIsDragging(true);
+    setIsInvalidDragging(invalid);
+
+    return invalid;
   };
 
   const resetDragState = () => {
@@ -564,18 +577,21 @@ function MaterialUploadCard({
           ? "border-emerald-400 bg-emerald-50 ring-4 ring-emerald-100"
           : "border-slate-200 bg-white"
       }`}
-      onDragEnter={(event) => {
+            onDragEnter={(event) => {
         if (disabled) return;
         event.preventDefault();
         event.stopPropagation();
-        updateDragState(event.dataTransfer.items || event.dataTransfer.files);
+
+        const invalid = updateDragState(event.dataTransfer);
+        event.dataTransfer.dropEffect = invalid ? "none" : "copy";
       }}
       onDragOver={(event) => {
         if (disabled) return;
         event.preventDefault();
         event.stopPropagation();
-        updateDragState(event.dataTransfer.files);
-        event.dataTransfer.dropEffect = isInvalidDragging ? "none" : "copy";
+
+        const invalid = updateDragState(event.dataTransfer);
+        event.dataTransfer.dropEffect = invalid ? "none" : "copy";
       }}
       onDragLeave={(event) => {
         if (disabled) return;
