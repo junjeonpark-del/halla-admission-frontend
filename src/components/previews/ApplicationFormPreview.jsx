@@ -1,3 +1,5 @@
+import { getLocalizedMajorLabel, getMajorCatalog } from "../../data/majorCatalog";
+
 function Cell({ children, className = "", center = false, small = false }) {
   return (
     <div
@@ -67,13 +69,37 @@ function getDateParts(value) {
 
 function splitAddress(student) {
   const raw = student.address || "";
-  const city = student.beneficiaryCity || "";
-  const country = student.beneficiaryCountry || student.nationality || "";
+  const city = student.address_city || student.addressCity || "";
+  const country = student.address_country || student.addressCountry || "";
+
   return {
     street: raw,
     city,
     country,
   };
+}
+
+function getPreviewMajor(student, applicationType = "undergraduate") {
+  const rawMajor = String(
+    student.major ||
+      student.major_zh ||
+      student.majorZh ||
+      student.major_ko ||
+      student.majorKo ||
+      student.major_en ||
+      student.majorEn ||
+      ""
+  ).trim();
+
+  if (!rawMajor) return "-";
+
+  const matchedMajor = getMajorCatalog(applicationType).find((major) => {
+    return [major.zh, major.ko, major.en, major.id]
+      .filter(Boolean)
+      .some((value) => String(value).trim() === rawMajor);
+  });
+
+  return matchedMajor ? getLocalizedMajorLabel(matchedMajor, "ko") : rawMajor;
 }
 
 function getAdmissionType(student) {
@@ -206,11 +232,16 @@ export default function ApplicationFormPreview({ student, photoUrl = "" }) {
 
       const applicantSignatureImage = getApplicantSignatureImage(student, fullName);
 
-  const major = student.major || "-";
+    const major = getPreviewMajor(student, "undergraduate");
   const applicantNationality =
-    student.nationality || student.nationalityApplicant || "-";
-  const fatherNationality = student.nationalityFather || "-";
-  const motherNationality = student.nationalityMother || "-";
+    student.nationality_applicant ||
+    student.nationalityApplicant ||
+    student.nationality ||
+    "-";
+  const fatherNationality =
+    student.nationality_father || student.nationalityFather || "-";
+  const motherNationality =
+    student.nationality_mother || student.nationalityMother || "-";
   const passportNo = student.passport_no || student.passportNo || "-";
   const alienNo =
     student.alien_registration_no || student.alienRegistrationNo || "";
@@ -239,22 +270,29 @@ export default function ApplicationFormPreview({ student, photoUrl = "" }) {
   const teps = student.teps || "";
   const newTeps = student.newTeps || "";
 
-  const refundName = student.refundName || "";
-    const refundDob = formatDateYMD(student.refundDob);
+    const refundName = student.refund_name || student.refundName || "";
+  const refundDob = formatDateYMD(student.refund_dob || student.refundDob);
   const applicationFormDate = getApplicationFormDate(student);
   const dateParts = getDateParts(applicationFormDate);
-  const refundEmail = student.refundEmail || "";
-  const accountHolder = student.accountHolder || "";
-  const relationship = student.relationship || "";
-  const beneficiaryAddress = student.beneficiaryAddress || "";
-  const beneficiaryCity = student.beneficiaryCity || "";
-  const beneficiaryCountry = student.beneficiaryCountry || "";
-  const bankName = student.bankName || "";
-  const bankAddress = student.bankAddress || "";
-  const bankCity = student.bankCity || "";
-  const bankCountry = student.bankCountry || "";
-  const accountNumber = student.accountNumber || "";
-  const swiftCode = student.swiftCode || "";
+  const refundEmail = student.refund_email || student.refundEmail || "";
+  const accountHolder = student.account_holder || student.accountHolder || "";
+  const relationship =
+    student.relationship_with_applicant ||
+    student.relationshipWithApplicant ||
+    student.relationship ||
+    "";
+  const beneficiaryAddress =
+    student.beneficiary_address || student.beneficiaryAddress || "";
+  const beneficiaryCity =
+    student.beneficiary_city || student.beneficiaryCity || "";
+  const beneficiaryCountry =
+    student.beneficiary_country || student.beneficiaryCountry || "";
+  const bankName = student.bank_name || student.bankName || "";
+  const bankAddress = student.bank_address || student.bankAddress || "";
+  const bankCity = student.bank_city || student.bankCity || "";
+  const bankCountry = student.bank_country || student.bankCountry || "";
+  const accountNumber = student.account_number || student.accountNumber || "";
+  const swiftCode = student.swift_code || student.swiftCode || "";
 
     return (
     <div className="school-application-form mx-auto w-full max-w-[980px] bg-white p-2 text-[12px] leading-4 text-black">

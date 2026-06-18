@@ -1,3 +1,29 @@
+import { getLocalizedMajorLabel, getMajorCatalog } from "../../data/majorCatalog";
+
+function getPreviewMajor(student) {
+  const applicationType = student?.application_type === "graduate" ? "graduate" : "undergraduate";
+  const rawMajor = String(
+    student?.major ||
+      student?.major_zh ||
+      student?.majorZh ||
+      student?.major_ko ||
+      student?.majorKo ||
+      student?.major_en ||
+      student?.majorEn ||
+      ""
+  ).trim();
+
+  if (!rawMajor) return "-";
+
+  const matchedMajor = getMajorCatalog(applicationType).find((major) => {
+    return [major.zh, major.ko, major.en, major.id]
+      .filter(Boolean)
+      .some((value) => String(value).trim() === rawMajor);
+  });
+
+  return matchedMajor ? getLocalizedMajorLabel(matchedMajor, "ko") : rawMajor;
+}
+
 function BlockTitle({ children }) {
   return (
     <div className="border border-black bg-[#eef3f8] px-2 py-1.5 text-[10px] font-bold leading-[1.25]">
@@ -24,7 +50,7 @@ export default function PersonalStatementPreview({ student }) {
     student.chinese_name ||
     "-";
 
-  const major = student.major || "-";
+    const major = getPreviewMajor(student);
   const dob = student.date_of_birth || student.dateOfBirth || "-";
 
   const q1 =

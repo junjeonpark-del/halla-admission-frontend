@@ -1,3 +1,5 @@
+import { getLocalizedMajorLabel, getMajorCatalog } from "../../data/majorCatalog";
+
 function Cell({ children, className = "", center = false, small = false }) {
   return (
     <div
@@ -67,13 +69,37 @@ function getDateParts(value) {
 
 function splitAddress(student) {
   const raw = student.address || "";
-  const city = student.beneficiaryCity || "";
-  const country = student.beneficiaryCountry || student.nationality || "";
+  const city = student.address_city || student.addressCity || "";
+  const country = student.address_country || student.addressCountry || "";
+
   return {
     street: raw,
     city,
     country,
   };
+}
+
+function getPreviewMajor(student, applicationType = "undergraduate") {
+  const rawMajor = String(
+    student.major ||
+      student.major_zh ||
+      student.majorZh ||
+      student.major_ko ||
+      student.majorKo ||
+      student.major_en ||
+      student.majorEn ||
+      ""
+  ).trim();
+
+  if (!rawMajor) return "-";
+
+  const matchedMajor = getMajorCatalog(applicationType).find((major) => {
+    return [major.zh, major.ko, major.en, major.id]
+      .filter(Boolean)
+      .some((value) => String(value).trim() === rawMajor);
+  });
+
+  return matchedMajor ? getLocalizedMajorLabel(matchedMajor, "ko") : rawMajor;
 }
 
 function getAdmissionType(student) {
@@ -216,11 +242,16 @@ export default function LanguageApplicationFormPreview({ student, photoUrl = "" 
     "-";
       const applicantSignatureImage = getApplicantSignatureImage(student, fullName);
 
-  const major = student.major || "-";
+    const major = getPreviewMajor(student, "undergraduate");
   const applicantNationality =
-    student.nationality || student.nationalityApplicant || "-";
-  const fatherNationality = student.nationalityFather || "-";
-  const motherNationality = student.nationalityMother || "-";
+    student.nationality_applicant ||
+    student.nationalityApplicant ||
+    student.nationality ||
+    "-";
+  const fatherNationality =
+    student.nationality_father || student.nationalityFather || "-";
+  const motherNationality =
+    student.nationality_mother || student.nationalityMother || "-";
   const passportNo = student.passport_no || student.passportNo || "-";
   const alienNo =
     student.alien_registration_no || student.alienRegistrationNo || "";

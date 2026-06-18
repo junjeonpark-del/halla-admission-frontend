@@ -620,12 +620,7 @@ function ReviewMenuItem({ item, active, checked, onClick, onCheck }) {
               <StatusBadge type={item.statusType}>{item.statusLabel}</StatusBadge>
             </div>
           </div>
-
-          {item.fileName ? (
-            <div className="mt-2 break-all text-xs leading-5 text-slate-500">
-              {item.fileName}
-            </div>
-          ) : null}
+          
         </button>
       </div>
     </div>
