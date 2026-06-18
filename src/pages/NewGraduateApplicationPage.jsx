@@ -160,6 +160,37 @@ applicant_signature_method: "auto",
 guarantor_signature_method: "auto",
 };
 
+function parseEducationRecord(value) {
+  const raw = String(value || "").trim();
+
+  if (!raw) {
+    return { startDate: "", endDate: "", institution: "", location: "" };
+  }
+
+  const [datePart = "", institution = "", location = ""] = raw
+    .split("|")
+    .map((part) => part.trim());
+
+  const [startDate = "", endDate = ""] = datePart
+    .split("~")
+    .map((part) => part.trim());
+
+  return {
+    startDate,
+    endDate,
+    institution,
+    location,
+  };
+}
+
+function parseEducationRows(data) {
+  return [
+    parseEducationRecord(data?.education1),
+    parseEducationRecord(data?.education2),
+    parseEducationRecord(data?.education3),
+  ];
+}
+
 const IMAGE_MAX_SIZE = 2 * 1024 * 1024; // 2MB
 const PDF_MAX_SIZE = 4 * 1024 * 1024; // 4MB
 const OCR_PDF_MAX_SIZE = 3 * 1024 * 1024; // Keep base64 JSON safely under Vercel's 4.5MB function limit
@@ -1434,8 +1465,9 @@ setLoadedAgencyUnitId(data.agency_unit_id || "");
         dateOfBirth: data.date_of_birth || "",
         tel: data.tel || data.phone || "",
         email: data.email || "",
-        address: data.address || "",
+                address: data.address || "",
         residenceStatus: data.residence_status || "abroad",
+        educationRows: parseEducationRows(data),
 
         topikLevel: data.topik || "",
         skaLevel: data.ska || "",
