@@ -554,18 +554,33 @@ function SignaturePad({
   const [drawing, setDrawing] = useState(false);
 
   const generatedSignature = useMemo(() => {
-    if (!signerName) return "";
-    const canvas = document.createElement("canvas");
-    canvas.width = 500;
-    canvas.height = 140;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#0f172a";
-    ctx.font = "48px cursive";
-    ctx.textBaseline = "middle";
-    ctx.fillText(signerName, 24, 70);
-    return canvas.toDataURL("image/png");
-  }, [signerName]);
+  const name = String(signerName || "").trim();
+  if (!name) return "";
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 500;
+  canvas.height = 140;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+
+  const paddingX = 24;
+  const maxTextWidth = canvas.width - paddingX * 2;
+  let fontSize = 48;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#0f172a";
+  ctx.textBaseline = "middle";
+
+  while (fontSize > 22) {
+    ctx.font = `${fontSize}px cursive`;
+    if (ctx.measureText(name).width <= maxTextWidth) break;
+    fontSize -= 2;
+  }
+
+  ctx.fillText(name, paddingX, 70);
+  return canvas.toDataURL("image/png");
+}, [signerName]);
 
     const exportTrimmedSignature = () => {
     const canvas = canvasRef.current;
