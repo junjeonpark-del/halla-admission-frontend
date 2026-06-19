@@ -2016,7 +2016,7 @@ const exportAgencies = allExportAgencies;
 
       {detailAgency ? (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/30 px-4 py-8">
-          <div className="mx-auto w-[96vw] max-w-[1200px] rounded-2xl bg-white p-6 shadow-xl">
+          <div className="mx-auto w-full max-w-[1040px] rounded-2xl bg-white p-6 shadow-xl">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-xl font-bold text-slate-900">
@@ -2128,21 +2128,21 @@ const exportAgencies = allExportAgencies;
                 <h4 className="text-base font-bold text-slate-900">{t.detail.accountsTitle}</h4>
               </div>
 
-                            <div className="max-h-[220px] overflow-auto">
-                <table className="min-w-[920px] table-fixed text-sm">
+                 <div className="max-h-[220px] overflow-y-auto overflow-x-hidden">
+  <table className="w-full table-fixed text-sm">
                   <thead className="bg-slate-50 text-left text-slate-500">
                     <tr>
-                                            <th className="w-14 px-4 py-3 font-semibold">{t.detail.accountColumns.index}</th>
-                      <th className="w-32 px-4 py-3 font-semibold">{t.detail.accountColumns.username}</th>
-                      <th className="w-36 px-4 py-3 font-semibold">{t.detail.accountColumns.accountName}</th>
-                      <th className="w-32 px-4 py-3 font-semibold">{t.detail.accountColumns.phone}</th>
-                      <th className="w-56 px-4 py-3 font-semibold">{t.detail.accountColumns.email}</th>
-                      <th className="w-24 px-4 py-3 font-semibold">{t.detail.accountColumns.primary}</th>
-                      <th className="w-24 px-4 py-3 font-semibold">{t.detail.accountColumns.active}</th>
-                      <th className="w-28 px-4 py-3 font-semibold">
-                        {language === "en" ? "Actions" : language === "ko" ? "작업" : "操作"}
-                      </th>
-                    </tr>
+  <th className="w-[6%] px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.index}</th>
+  <th className="w-[14%] px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.username}</th>
+  <th className="w-[15%] px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.accountName}</th>
+  <th className="w-[14%] px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.phone}</th>
+  <th className="w-[24%] px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.email}</th>
+  <th className="w-[9%] px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.primary}</th>
+  <th className="w-[9%] px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.active}</th>
+  <th className="w-[9%] px-3 py-3 font-semibold whitespace-nowrap">
+    {language === "en" ? "Actions" : language === "ko" ? "작업" : "操作"}
+  </th>
+</tr>
                   </thead>
                   <tbody>
                     {(detailAgency.agency_accounts || []).length === 0 ? (
@@ -2260,7 +2260,7 @@ const exportAgencies = allExportAgencies;
                                   );
                                 }
                               }}
-                              className="min-w-[72px] whitespace-nowrap rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                              className="whitespace-nowrap rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold leading-none text-white hover:bg-blue-700"
                             >
                               {language === "en" ? "Reset Password" : language === "ko" ? "비밀번호 재설정" : "重置密码"}
                             </button>
