@@ -230,7 +230,7 @@ function StatusBadge({ children, type = "default" }) {
 
   return (
     <span
-      className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold leading-none ${classes[type]}`}
+      className={`inline-flex whitespace-nowrap rounded-full px-2 py-1 text-[11px] font-semibold leading-none ${classes[type]}`}
     >
       {children}
     </span>
@@ -1993,29 +1993,29 @@ const toggleMonth = (year, applicationType, month) => {
                   : "表格较宽，可左右滑动查看全部列。"}
               </div>
               <div className="overflow-x-auto pb-2">
-                <table className="min-w-[1700px] text-sm">
+                <table className="min-w-[1480px] text-sm">
                   <thead className="bg-slate-50 text-left text-slate-500">
 
                   <tr>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.index}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.studentName}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.index}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.studentName}</th>
   {isPrimarySession ? (
-    <th className="whitespace-nowrap px-4 py-4 font-semibold">{agencyUnitColumnLabel}</th>
+    <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{agencyUnitColumnLabel}</th>
   ) : null}
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.year}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.intake}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.applicationForm}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.passport}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.transcript}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.diploma}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.languageCertificate}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.arc}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.bankStatement}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.guarantorIncome}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.overall}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.applicationStatus}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.reviewNote}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.actions}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.year}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.intake}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.applicationForm}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.passport}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.transcript}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.diploma}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.languageCertificate}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.arc}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.bankStatement}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.guarantorIncome}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.overall}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.applicationStatus}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.reviewNote}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.actions}</th>
 </tr>
                 </thead>
                 <tbody>
@@ -2027,72 +2027,72 @@ const toggleMonth = (year, applicationType, month) => {
                         key={row.student.id || row.publicId || index}
                         className="border-t border-slate-100 hover:bg-slate-50"
                       >
-                        <td className="px-6 py-4 font-medium text-slate-500">
+                        <td className="px-3 py-3.5 font-medium text-slate-500">
                           {(page - 1) * pageSize + index + 1}
                         </td>
-                        <td className="px-6 py-4 font-medium text-slate-800">
+                        <td className="px-3 py-3.5 font-medium text-slate-800">
   <EllipsisText text={row.studentName} widthClass="max-w-[140px]" />
 </td>
 {isPrimarySession ? (
-  <td className="px-6 py-4 text-slate-600">
+  <td className="px-3 py-3.5 text-slate-600">
     <EllipsisText text={row.agencyUnitName} widthClass="max-w-[170px]" />
   </td>
 ) : null}
-<td className="px-6 py-4 text-slate-600">{row.year}</td>
-                        <td className="px-6 py-4 text-slate-600">
+<td className="px-3 py-3.5 text-slate-600">{row.year}</td>
+                        <td className="px-3 py-3.5 text-slate-600">
                           <EllipsisText text={row.intake} widthClass="max-w-[180px]" />
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <StatusBadge type={row.applicationForm.type}>
                             {row.applicationForm.label}
                           </StatusBadge>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <StatusBadge type={row.passport.type}>
                             {row.passport.label}
                           </StatusBadge>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <StatusBadge type={row.finalTranscript.type}>
                             {row.finalTranscript.label}
                           </StatusBadge>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <StatusBadge type={row.finalDiploma.type}>
                             {row.finalDiploma.label}
                           </StatusBadge>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <StatusBadge type={row.languageCertificate.type}>
                             {row.languageCertificate.label}
                           </StatusBadge>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <StatusBadge type={row.arc.type}>
                             {row.arc.label}
                           </StatusBadge>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <StatusBadge type={row.bankStatement.type}>
                             {row.bankStatement.label}
                           </StatusBadge>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <StatusBadge type={row.guarantorEmploymentIncome.type}>
                             {row.guarantorEmploymentIncome.label}
                           </StatusBadge>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <StatusBadge type={row.overall.type}>
                             {row.overall.label}
                           </StatusBadge>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <StatusBadge type={mapStatusType(status)}>
                             {formatStatusLabel(status)}
                           </StatusBadge>
                         </td>
-                        <td className="px-6 py-4 text-slate-600">
+                        <td className="px-3 py-3.5 text-slate-600">
                           {row.applicationReviewNote ? (
                             <EllipsisText
                               text={row.applicationReviewNote}
@@ -2103,7 +2103,7 @@ const toggleMonth = (year, applicationType, month) => {
                             <span className="text-xs text-slate-400">{t.table.noNote}</span>
                           )}
                         </td>
-                         <td className="px-6 py-4">
+                                                <td className="px-3 py-3.5">
   {!row.publicId ? (
     <span className="text-xs text-red-500">{t.table.noPublicId}</span>
   ) : row.isInactive || row.isNotStarted ? (

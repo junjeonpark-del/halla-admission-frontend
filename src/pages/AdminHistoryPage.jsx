@@ -504,7 +504,7 @@ function StatusBadge({ children, type = "default" }) {
 
   return (
     <span
-      className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold leading-none ${classes[type]}`}
+      className={`inline-flex whitespace-nowrap rounded-full px-2 py-1 text-[11px] font-semibold leading-none ${classes[type]}`}
     >
       {children}
     </span>
@@ -2192,27 +2192,27 @@ const fetchAllFilteredApplicationsForExport = async () => {
                   : "表格较宽，可左右滑动查看全部列。"}
               </div>
               <div className="overflow-x-auto pb-2">
-                <table className="min-w-[1900px] text-sm">
+                <table className="min-w-[1560px] text-sm">
                   <thead className="bg-slate-50 text-center text-slate-500">
 
                   <tr>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.index}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.studentName}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.agency}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.year}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.intake}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.applicationForm}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.passport}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.transcript}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.diploma}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.languageCertificate}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.arc}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.bankStatement}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.guarantorIncome}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.overall}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.applicationStatus}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.applicationReviewNote}</th>
-  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.actions}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.index}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.studentName}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.agency}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.year}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.intake}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.applicationForm}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.passport}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.transcript}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.diploma}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.languageCertificate}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.arc}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.bankStatement}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.guarantorIncome}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.overall}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.applicationStatus}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.applicationReviewNote}</th>
+  <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.actions}</th>
 </tr>
                 </thead>
                 <tbody>
@@ -2224,31 +2224,31 @@ const fetchAllFilteredApplicationsForExport = async () => {
                         key={row.student.id || row.publicId || index}
                         className="border-t border-slate-100 align-middle hover:bg-slate-50"
                       >
-                        <td className="px-6 py-4 font-medium text-slate-500">
+                        <td className="px-3 py-3.5 font-medium text-slate-500">
   {(page - 1) * pageSize + index + 1}
 </td>
-                        <td className="px-6 py-4 font-medium text-slate-800">
+                        <td className="px-3 py-3.5 font-medium text-slate-800">
                           <div className="mx-auto">
                             <EllipsisText text={row.studentName} widthClass="max-w-[110px]" />
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-600">
+                        <td className="px-3 py-3.5 text-slate-600">
                           <div className="mx-auto">
                             <EllipsisText text={row.agencyName} widthClass="max-w-[120px]" />
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-600">{row.year}</td>
-                        <td className="px-6 py-4 text-slate-600">
+                        <td className="px-3 py-3.5 text-slate-600">{row.year}</td>
+                        <td className="px-3 py-3.5 text-slate-600">
                           <div className="mx-auto">
                             <EllipsisText text={row.intake} widthClass="max-w-[130px]" />
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <StatusBadge type={row.applicationForm.type}>
                             {row.applicationForm.label}
                           </StatusBadge>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <div className="space-y-2">
                             <StatusBadge type={row.passport.type}>
                               {row.passport.label}
@@ -2260,7 +2260,7 @@ const fetchAllFilteredApplicationsForExport = async () => {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <div className="space-y-2">
                             <StatusBadge type={row.finalTranscript.type}>
                               {row.finalTranscript.label}
@@ -2272,7 +2272,7 @@ const fetchAllFilteredApplicationsForExport = async () => {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <div className="space-y-2">
                             <StatusBadge type={row.finalDiploma.type}>
                               {row.finalDiploma.label}
@@ -2284,7 +2284,7 @@ const fetchAllFilteredApplicationsForExport = async () => {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <div className="space-y-2">
                             <StatusBadge type={row.languageCertificate.type}>
                               {row.languageCertificate.label}
@@ -2296,7 +2296,7 @@ const fetchAllFilteredApplicationsForExport = async () => {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <div className="space-y-2">
                             <StatusBadge type={row.arc.type}>
                               {row.arc.label}
@@ -2308,7 +2308,7 @@ const fetchAllFilteredApplicationsForExport = async () => {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <div className="space-y-2">
                             <StatusBadge type={row.bankStatement.type}>
                               {row.bankStatement.label}
@@ -2320,7 +2320,7 @@ const fetchAllFilteredApplicationsForExport = async () => {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <div className="space-y-2">
                             <StatusBadge type={row.guarantorEmploymentIncome.type}>
                               {row.guarantorEmploymentIncome.label}
@@ -2332,17 +2332,17 @@ const fetchAllFilteredApplicationsForExport = async () => {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <StatusBadge type={row.overall.type}>
                             {row.overall.label}
                           </StatusBadge>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3.5">
                           <StatusBadge type={mapStatusType(status)}>
                             {formatStatusLabel(status)}
                           </StatusBadge>
                         </td>
-                        <td className="px-6 py-4 text-slate-600">
+                        <td className="px-3 py-3.5 text-slate-600">
                           {row.applicationReviewNote ? (
                             <div className="mx-auto">
                               <EllipsisText
@@ -2355,7 +2355,7 @@ const fetchAllFilteredApplicationsForExport = async () => {
                             <span className="text-xs text-slate-400">{t.table.noNote}</span>
                           )}
                         </td>
-                        <td className="px-4 py-4 align-middle text-center">
+                        <td className="px-3 py-3.5 align-middle text-center">
                           {row.publicId ? (
                             <Link
                               to={`/applications/${row.publicId}/review`}
