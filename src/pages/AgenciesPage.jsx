@@ -448,7 +448,7 @@ function getLatestDate(values = []) {
 }
 
 function getLocalizedApplicationMajor(application, language = "zh") {
-  const rawMajor = String(application?.major || application?.department || "").trim();
+  const rawMajor = String(application?.major || "").trim();
   if (!rawMajor) return "";
 
   const applicationType = application?.application_type === "graduate" ? "graduate" : "undergraduate";
@@ -1041,7 +1041,7 @@ setCreating(true);
           .single(),
                 supabase
           .from("applications")
-          .select("id, status, created_at, updated_at, intake_id, application_type, major, department")
+          .select("id, status, created_at, updated_at, intake_id, application_type, major")
           .eq("agency_id", agency.id)
           .neq("application_type", "cooperation"),
         supabase
