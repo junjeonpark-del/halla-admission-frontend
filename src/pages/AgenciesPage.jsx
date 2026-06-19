@@ -4,12 +4,12 @@ import { supabase } from "../lib/supabase";
 import { useAdminSession } from "../contexts/AdminSessionContext";
 import {
   generateAuthorizationLetterDocx,
-  generateMouKoEnDocx,
 } from "../utils/generateAgencyDocuments";
 import {
   generateCommissionClaimDocx,
   getCommissionSettlementSeason,
 } from "../utils/generateCommissionClaimDocument";
+import { getLocalizedMajorLabel, getMajorCatalog } from "../data/majorCatalog";
 
 const messages = {
   zh: {
@@ -447,7 +447,23 @@ function getLatestDate(values = []) {
   return sorted[0] ? sorted[0].toISOString() : "";
 }
 
-function buildAgencyApplicationStats(applications = [], openIntakeIds = new Set()) {
+function getLocalizedApplicationMajor(application, language = "zh") {
+  const rawMajor = String(application?.major || application?.department || "").trim();
+  if (!rawMajor) return "";
+
+  const applicationType = application?.application_type === "graduate" ? "graduate" : "undergraduate";
+  const catalog = getMajorCatalog(applicationType);
+
+  const matchedMajor = catalog.find((major) =>
+    [major.zh, major.en, major.ko, major.value, major.id]
+      .filter(Boolean)
+      .some((value) => String(value).trim() === rawMajor)
+  );
+
+  return matchedMajor ? getLocalizedMajorLabel(matchedMajor, language) : rawMajor;
+}
+
+function buildAgencyApplicationStats(applications = [], openIntakeIds = new Set(), language = "zh") {
   const stats = {
     totalCount: 0,
     draftCount: 0,
@@ -479,7 +495,7 @@ function buildAgencyApplicationStats(applications = [], openIntakeIds = new Set(
       stats.totalCount += 1;
     }
 
-    const major = String(application.major || "").trim();
+    const major = getLocalizedApplicationMajor(application, language);
     const dateValue = application.updated_at || application.created_at || "";
 
     if (status === "draft") stats.draftCount += 1;
@@ -1025,7 +1041,7 @@ setCreating(true);
           .single(),
                 supabase
           .from("applications")
-          .select("id, status, created_at, updated_at, intake_id, major")
+          .select("id, status, created_at, updated_at, intake_id, application_type, major, department")
           .eq("agency_id", agency.id)
           .neq("application_type", "cooperation"),
         supabase
@@ -1041,7 +1057,7 @@ setCreating(true);
       if (openIntakesResponse.error) throw openIntakesResponse.error;
 
       const openIntakeIds = new Set((openIntakesResponse.data || []).map((item) => item.id));
-      const nextStats = buildAgencyApplicationStats(applicationsResponse.data || [], openIntakeIds);
+      const nextStats = buildAgencyApplicationStats(applicationsResponse.data || [], openIntakeIds, language);
 
       setDetailAgency(agencyResponse.data);
       setDetailStats(nextStats);
@@ -1130,33 +1146,6 @@ setCreating(true);
         : `生成授权书失败：${error.message}`
     );
   }
-};
-
-const handleDownloadMouKoEn = async () => {
-  if (!detailAgency) return;
-
-  try {
-    await generateMouKoEnDocx(detailAgency);
-  } catch (error) {
-    console.error("download mou ko-en error:", error);
-    alert(
-      language === "en"
-        ? `Failed to download MOU: ${error.message}`
-        : language === "ko"
-        ? `MOU 다운로드에 실패했습니다: ${error.message}`
-        : `下载 MOU 失败：${error.message}`
-    );
-  }
-};
-
-const handleDownloadMouZhKo = () => {
-  alert(
-    language === "en"
-      ? "Chinese-Korean MOU template is not ready yet."
-      : language === "ko"
-      ? "중한 MOU 템플릿이 아직 준비되지 않았습니다."
-      : "中韩版 MOU 模板暂未准备好。"
-  );
 };
 
 const handleGenerateCommissionClaim = async () => {
@@ -2128,18 +2117,18 @@ const exportAgencies = allExportAgencies;
                 <h4 className="text-base font-bold text-slate-900">{t.detail.accountsTitle}</h4>
               </div>
 
-                 <div className="max-h-[220px] overflow-y-auto overflow-x-hidden">
-  <table className="w-full table-fixed text-sm">
+                 <div className="max-h-[220px] overflow-y-auto overflow-x-auto">
+  <table className="w-full min-w-full table-auto text-sm">
                   <thead className="bg-slate-50 text-left text-slate-500">
                     <tr>
-  <th className="w-[6%] px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.index}</th>
-  <th className="w-[14%] px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.username}</th>
-  <th className="w-[15%] px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.accountName}</th>
-  <th className="w-[14%] px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.phone}</th>
-  <th className="w-[24%] px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.email}</th>
-  <th className="w-[9%] px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.primary}</th>
-  <th className="w-[9%] px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.active}</th>
-  <th className="w-[9%] px-3 py-3 font-semibold whitespace-nowrap">
+  <th className="px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.index}</th>
+  <th className="px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.username}</th>
+  <th className="px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.accountName}</th>
+  <th className="px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.phone}</th>
+  <th className="px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.email}</th>
+  <th className="px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.primary}</th>
+  <th className="px-3 py-3 font-semibold whitespace-nowrap">{t.detail.accountColumns.active}</th>
+  <th className="px-3 py-3 font-semibold whitespace-nowrap">
     {language === "en" ? "Actions" : language === "ko" ? "작업" : "操作"}
   </th>
 </tr>
@@ -2299,30 +2288,6 @@ const exportAgencies = allExportAgencies;
     : "生成运营费申请表"}
 </button>
 
-                <button
-                  type="button"
-                  onClick={handleDownloadMouKoEn}
-                  className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
-                >
-                  {language === "en"
-                    ? "Download MOU (KO-EN)"
-                    : language === "ko"
-                    ? "MOU 다운로드 (한영)"
-                    : "下载MOU（韩英）"}
-                </button>
-
-                <button
-                  type="button"
-                  disabled
-                  onClick={handleDownloadMouZhKo}
-                  className="cursor-not-allowed rounded-xl bg-slate-300 px-4 py-2.5 text-sm font-semibold text-white opacity-70"
-                >
-                  {language === "en"
-                    ? "Download MOU (ZH-KO)"
-                    : language === "ko"
-                    ? "MOU 다운로드 (중한)"
-                    : "下载MOU（中韩）"}
-                </button>
               </div>
 
               <div className="flex flex-wrap justify-end gap-3">
