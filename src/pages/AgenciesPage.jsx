@@ -2128,18 +2128,18 @@ const exportAgencies = allExportAgencies;
                 <h4 className="text-base font-bold text-slate-900">{t.detail.accountsTitle}</h4>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
+                            <div className="max-h-[220px] overflow-auto">
+                <table className="min-w-[920px] table-fixed text-sm">
                   <thead className="bg-slate-50 text-left text-slate-500">
                     <tr>
-                                            <th className="px-5 py-3 font-semibold">{t.detail.accountColumns.index}</th>
-                      <th className="px-5 py-3 font-semibold">{t.detail.accountColumns.username}</th>
-                      <th className="px-5 py-3 font-semibold">{t.detail.accountColumns.accountName}</th>
-                      <th className="px-5 py-3 font-semibold">{t.detail.accountColumns.phone}</th>
-                      <th className="px-5 py-3 font-semibold">{t.detail.accountColumns.email}</th>
-                      <th className="px-5 py-3 font-semibold">{t.detail.accountColumns.primary}</th>
-                      <th className="px-5 py-3 font-semibold">{t.detail.accountColumns.active}</th>
-                      <th className="px-5 py-3 font-semibold">
+                                            <th className="w-14 px-4 py-3 font-semibold">{t.detail.accountColumns.index}</th>
+                      <th className="w-32 px-4 py-3 font-semibold">{t.detail.accountColumns.username}</th>
+                      <th className="w-36 px-4 py-3 font-semibold">{t.detail.accountColumns.accountName}</th>
+                      <th className="w-32 px-4 py-3 font-semibold">{t.detail.accountColumns.phone}</th>
+                      <th className="w-56 px-4 py-3 font-semibold">{t.detail.accountColumns.email}</th>
+                      <th className="w-24 px-4 py-3 font-semibold">{t.detail.accountColumns.primary}</th>
+                      <th className="w-24 px-4 py-3 font-semibold">{t.detail.accountColumns.active}</th>
+                      <th className="w-28 px-4 py-3 font-semibold">
                         {language === "en" ? "Actions" : language === "ko" ? "작업" : "操作"}
                       </th>
                     </tr>
@@ -2154,19 +2154,34 @@ const exportAgencies = allExportAgencies;
                     ) : (
                                             detailAgency.agency_accounts.map((account, index) => (
                         <tr key={account.id} className="border-t border-slate-100">
-                          <td className="px-5 py-3 text-slate-700">{index + 1}</td>
-                          <td className="px-5 py-3 text-slate-700">{account.username || "-"}</td>
-                          <td className="px-5 py-3 text-slate-700">{account.account_name || "-"}</td>
-                          <td className="px-5 py-3 text-slate-700">{account.phone || "-"}</td>
-                          <td className="px-5 py-3 text-slate-700">{account.email || "-"}</td>
-                          <td className="px-5 py-3">
+                                                    <td className="whitespace-nowrap px-4 py-3 text-slate-700">{index + 1}</td>
+                          <td className="px-4 py-3 text-slate-700">
+                            <EllipsisText text={account.username || "-"} widthClass="max-w-[110px]" />
+                          </td>
+                          <td className="px-4 py-3 text-slate-700">
+                            <EllipsisText text={account.account_name || "-"} widthClass="max-w-[120px]" />
+                          </td>
+                          <td className="px-4 py-3 text-slate-700">
+                            <EllipsisText text={account.phone || "-"} widthClass="max-w-[110px]" />
+                          </td>
+                          <td className="px-4 py-3 text-slate-700">
+                            <EllipsisText text={account.email || "-"} widthClass="max-w-[210px]" />
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3">
                             {account.is_primary ? (
                               <StatusBadge type="success">{t.detail.primary}</StatusBadge>
                             ) : (
                               <StatusBadge>{t.detail.sub}</StatusBadge>
                             )}
                           </td>
-                          <td className="px-5 py-3">
+                          <td className="whitespace-nowrap px-4 py-3">
+                            {account.is_active ? (
+                              <StatusBadge type="success">{t.detail.active}</StatusBadge>
+                            ) : (
+                              <StatusBadge type="danger">{t.detail.inactive}</StatusBadge>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3">
                             {account.is_active ? (
                               <StatusBadge type="success">{t.detail.active}</StatusBadge>
                             ) : (
