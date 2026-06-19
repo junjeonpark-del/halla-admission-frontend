@@ -2174,14 +2174,7 @@ const exportAgencies = allExportAgencies;
                               <StatusBadge>{t.detail.sub}</StatusBadge>
                             )}
                           </td>
-                          <td className="whitespace-nowrap px-4 py-3">
-                            {account.is_active ? (
-                              <StatusBadge type="success">{t.detail.active}</StatusBadge>
-                            ) : (
-                              <StatusBadge type="danger">{t.detail.inactive}</StatusBadge>
-                            )}
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3">
+                                                    <td className="whitespace-nowrap px-4 py-3">
                             {account.is_active ? (
                               <StatusBadge type="success">{t.detail.active}</StatusBadge>
                             ) : (
