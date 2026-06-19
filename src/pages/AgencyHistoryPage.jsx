@@ -1993,7 +1993,7 @@ const toggleMonth = (year, applicationType, month) => {
                   : "表格较宽，可左右滑动查看全部列。"}
               </div>
               <div className="overflow-x-auto pb-2">
-                <table className="min-w-[1480px] text-sm">
+                <table className="w-full min-w-max text-sm">
                   <thead className="bg-slate-50 text-left text-slate-500">
 
                   <tr>
