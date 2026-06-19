@@ -504,7 +504,7 @@ function StatusBadge({ children, type = "default" }) {
 
   return (
     <span
-      className={`inline-flex whitespace-nowrap rounded-full px-2 py-1 text-[11px] font-semibold leading-none ${classes[type]}`}
+      className={`inline-flex whitespace-nowrap rounded-full px-2 py-1 text-xs font-semibold leading-none ${classes[type]}`}
     >
       {children}
     </span>
@@ -2193,7 +2193,7 @@ const fetchAllFilteredApplicationsForExport = async () => {
               </div>
               <div className="overflow-x-auto pb-2">
                 <table className="w-full min-w-max text-sm">
-                  <thead className="bg-slate-50 text-center text-slate-500">
+                  <thead className="bg-slate-50 text-left text-slate-500">
 
                   <tr>
   <th className="whitespace-nowrap px-3 py-3.5 font-semibold">{t.table.index}</th>

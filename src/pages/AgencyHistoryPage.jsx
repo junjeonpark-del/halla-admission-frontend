@@ -230,7 +230,7 @@ function StatusBadge({ children, type = "default" }) {
 
   return (
     <span
-      className={`inline-flex whitespace-nowrap rounded-full px-2 py-1 text-[11px] font-semibold leading-none ${classes[type]}`}
+      className={`inline-flex whitespace-nowrap rounded-full px-2 py-1 text-xs font-semibold leading-none ${classes[type]}`}
     >
       {children}
     </span>
