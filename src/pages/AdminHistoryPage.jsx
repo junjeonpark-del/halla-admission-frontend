@@ -504,7 +504,7 @@ function StatusBadge({ children, type = "default" }) {
 
   return (
     <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${classes[type]}`}
+      className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold leading-none ${classes[type]}`}
     >
       {children}
     </span>
@@ -2196,24 +2196,24 @@ const fetchAllFilteredApplicationsForExport = async () => {
                   <thead className="bg-slate-50 text-center text-slate-500">
 
                   <tr>
-                    <th className="px-6 py-4 font-semibold">{t.table.index}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.studentName}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.agency}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.year}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.intake}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.applicationForm}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.passport}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.transcript}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.diploma}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.languageCertificate}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.arc}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.bankStatement}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.guarantorIncome}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.overall}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.applicationStatus}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.applicationReviewNote}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.actions}</th>
-                  </tr>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.index}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.studentName}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.agency}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.year}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.intake}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.applicationForm}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.passport}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.transcript}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.diploma}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.languageCertificate}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.arc}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.bankStatement}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.guarantorIncome}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.overall}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.applicationStatus}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.applicationReviewNote}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.actions}</th>
+</tr>
                 </thead>
                 <tbody>
                   {rows.map((row, index) => {
@@ -2359,7 +2359,7 @@ const fetchAllFilteredApplicationsForExport = async () => {
                           {row.publicId ? (
                             <Link
                               to={`/applications/${row.publicId}/review`}
-                              className="inline-flex rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                              className="inline-flex whitespace-nowrap rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700"
                             >
                               {t.table.review}
                             </Link>

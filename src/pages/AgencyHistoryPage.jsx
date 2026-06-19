@@ -230,7 +230,7 @@ function StatusBadge({ children, type = "default" }) {
 
   return (
     <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${classes[type]}`}
+      className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold leading-none ${classes[type]}`}
     >
       {children}
     </span>
@@ -1997,26 +1997,26 @@ const toggleMonth = (year, applicationType, month) => {
                   <thead className="bg-slate-50 text-left text-slate-500">
 
                   <tr>
-                    <th className="px-6 py-4 font-semibold">{t.table.index}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.studentName}</th>
-{isPrimarySession ? (
-  <th className="px-6 py-4 font-semibold">{agencyUnitColumnLabel}</th>
-) : null}
-<th className="px-6 py-4 font-semibold">{t.table.year}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.intake}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.applicationForm}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.passport}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.transcript}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.diploma}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.languageCertificate}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.arc}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.bankStatement}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.guarantorIncome}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.overall}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.applicationStatus}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.reviewNote}</th>
-                    <th className="px-6 py-4 font-semibold">{t.table.actions}</th>
-                  </tr>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.index}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.studentName}</th>
+  {isPrimarySession ? (
+    <th className="whitespace-nowrap px-4 py-4 font-semibold">{agencyUnitColumnLabel}</th>
+  ) : null}
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.year}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.intake}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.applicationForm}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.passport}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.transcript}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.diploma}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.languageCertificate}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.arc}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.bankStatement}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.guarantorIncome}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.overall}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.applicationStatus}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.reviewNote}</th>
+  <th className="whitespace-nowrap px-4 py-4 font-semibold">{t.table.actions}</th>
+</tr>
                 </thead>
                 <tbody>
                   {rows.map((row, index) => {
@@ -2107,7 +2107,7 @@ const toggleMonth = (year, applicationType, month) => {
                           {!row.publicId ? (
                             <span className="text-xs text-red-500">{t.table.noPublicId}</span>
                           ) : row.isInactive || row.isNotStarted ? (
-                            <span className="inline-flex rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-500">
+                            className="inline-flex whitespace-nowrap rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-500"
                               {language === "en"
                                 ? "Not Editable"
                                 : language === "ko"
@@ -2118,24 +2118,24 @@ const toggleMonth = (year, applicationType, month) => {
                             row.canPostDeadlineMaterialEdit ? (
                               <Link
                                 to={buildEditApplicationUrl(row, "material_only")}
-                                className="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                                className="inline-flex whitespace-nowrap rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
                               >
                                 {t.table.supplementMaterials}
                               </Link>
                             ) : (
-                              <span className="inline-flex rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-500">
+                              className="inline-flex whitespace-nowrap rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-500"
                                 {t.table.cannotSupplement}
                               </span>
                             )
                           ) : row.canContinueEdit ? (
                             <Link
                               to={buildEditApplicationUrl(row)}
-                              className="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                              className="inline-flex whitespace-nowrap rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
                             >
                               {t.table.continueEdit}
                             </Link>
                           ) : (
-                            <span className="inline-flex rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-500">
+                            className="inline-flex whitespace-nowrap rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-500"
                               {language === "en"
                                 ? "Not Editable"
                                 : language === "ko"
