@@ -2103,47 +2103,47 @@ const toggleMonth = (year, applicationType, month) => {
                             <span className="text-xs text-slate-400">{t.table.noNote}</span>
                           )}
                         </td>
-                                                <td className="px-6 py-4">
-                          {!row.publicId ? (
-                            <span className="text-xs text-red-500">{t.table.noPublicId}</span>
-                          ) : row.isInactive || row.isNotStarted ? (
-                            className="inline-flex whitespace-nowrap rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-500"
-                              {language === "en"
-                                ? "Not Editable"
-                                : language === "ko"
-                                ? "수정 불가"
-                                : "不可编辑"}
-                            </span>
-                          ) : row.isClosed ? (
-                            row.canPostDeadlineMaterialEdit ? (
-                              <Link
-                                to={buildEditApplicationUrl(row, "material_only")}
-                                className="inline-flex whitespace-nowrap rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
-                              >
-                                {t.table.supplementMaterials}
-                              </Link>
-                            ) : (
-                              className="inline-flex whitespace-nowrap rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-500"
-                                {t.table.cannotSupplement}
-                              </span>
-                            )
-                          ) : row.canContinueEdit ? (
-                            <Link
-                              to={buildEditApplicationUrl(row)}
-                              className="inline-flex whitespace-nowrap rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
-                            >
-                              {t.table.continueEdit}
-                            </Link>
-                          ) : (
-                            className="inline-flex whitespace-nowrap rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-500"
-                              {language === "en"
-                                ? "Not Editable"
-                                : language === "ko"
-                                ? "수정 불가"
-                                : "不可编辑"}
-                            </span>
-                          )}
-                        </td>
+                         <td className="px-6 py-4">
+  {!row.publicId ? (
+    <span className="text-xs text-red-500">{t.table.noPublicId}</span>
+  ) : row.isInactive || row.isNotStarted ? (
+    <span className="inline-flex whitespace-nowrap rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-500">
+      {language === "en"
+        ? "Not Editable"
+        : language === "ko"
+        ? "수정 불가"
+        : "不可编辑"}
+    </span>
+  ) : row.isClosed ? (
+    row.canPostDeadlineMaterialEdit ? (
+      <Link
+        to={buildEditApplicationUrl(row, "material_only")}
+        className="inline-flex whitespace-nowrap rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+      >
+        {t.table.supplementMaterials}
+      </Link>
+    ) : (
+      <span className="inline-flex whitespace-nowrap rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-500">
+        {t.table.cannotSupplement}
+      </span>
+    )
+  ) : row.canContinueEdit ? (
+    <Link
+      to={buildEditApplicationUrl(row)}
+      className="inline-flex whitespace-nowrap rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+    >
+      {t.table.continueEdit}
+    </Link>
+  ) : (
+    <span className="inline-flex whitespace-nowrap rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-500">
+      {language === "en"
+        ? "Not Editable"
+        : language === "ko"
+        ? "수정 불가"
+        : "不可编辑"}
+    </span>
+  )}
+</td>
                       </tr>
                     );
                   })}
