@@ -2016,7 +2016,7 @@ const exportAgencies = allExportAgencies;
 
       {detailAgency ? (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/30 px-4 py-8">
-          <div className="mx-auto w-full max-w-5xl rounded-2xl bg-white p-6 shadow-xl">
+          <div className="mx-auto w-[96vw] max-w-[1200px] rounded-2xl bg-white p-6 shadow-xl">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-xl font-bold text-slate-900">
@@ -2260,7 +2260,7 @@ const exportAgencies = allExportAgencies;
                                   );
                                 }
                               }}
-                              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                              className="min-w-[72px] whitespace-nowrap rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                             >
                               {language === "en" ? "Reset Password" : language === "ko" ? "비밀번호 재설정" : "重置密码"}
                             </button>
