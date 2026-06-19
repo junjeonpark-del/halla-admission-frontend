@@ -56,7 +56,7 @@ const messages = {
       "",  
       guideDownload: "Admission Guide", 
     adminTitle: "Admin Login",
-    adminDesc: "Portal for the International Talent Development Center",
+    adminDesc: "Portal for the international office",
     agencyTitle: "Agency Login",
     agencyDesc: "Portal for partner agencies",
     usernamePlaceholderAdmin: "Enter admin username",
