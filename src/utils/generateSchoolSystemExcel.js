@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import JSZip from "jszip";
 import {
   getCefrCode,
   getSchoolAdmissionTypeCode,
@@ -192,7 +192,11 @@ function buildSchoolSystemRow({
     BI:
       asText(student.account_holder) ||
       asText(student.refund_name),
-    BJ: asText(student.relationship),
+        BJ: getSponsorRelationCode(
+      student.relationship_with_applicant ||
+      student.relationshipWithApplicant ||
+      student.relationship
+    ),
     BK: asText(student.beneficiary_address),
     BL: phone,
     BM: asText(student.beneficiary_city),
@@ -206,18 +210,158 @@ function buildSchoolSystemRow({
   };
 
   return Array.from({ length: COLUMN_COUNT }, (_, columnIndex) => {
-    const column = XLSX.utils.encode_col(columnIndex);
+        const column = encodeColumn(columnIndex);
     return asText(values[column]);
   });
 }
 
-function cloneCellStyle(cell) {
-  if (!cell) return null;
+function encodeColumn(columnIndex) {
+  let result = "";
+  let value = columnIndex + 1;
 
-  return {
-    s: cell.s ? JSON.parse(JSON.stringify(cell.s)) : undefined,
-    z: cell.z,
-  };
+  while (value > 0) {
+    const remainder = (value - 1) % 26;
+    result =
+      String.fromCharCode(65 + remainder) + result;
+    value = Math.floor((value - 1) / 26);
+  }
+
+  return result;
+}
+
+function parseXml(xmlText, description) {
+  const document = new DOMParser().parseFromString(
+    xmlText,
+    "application/xml"
+  );
+
+  if (
+    document.getElementsByTagName("parsererror").length > 0
+  ) {
+    throw new Error(`${description}格式无法解析`);
+  }
+
+  return document;
+}
+
+function getDirectChildren(parent, localName) {
+  return Array.from(parent.childNodes).filter(
+    (node) =>
+      node.nodeType === 1 &&
+      node.localName === localName
+  );
+}
+
+function getColumnFromCellReference(reference) {
+  const matched = String(reference || "").match(
+    /^([A-Z]+)\d+$/
+  );
+
+  return matched ? matched[1] : "";
+}
+
+function createExportRow({
+  worksheetDocument,
+  templateRow,
+  values,
+  excelRowNumber,
+}) {
+  const spreadsheetNamespace =
+    "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+
+  const templateCells = new Map();
+
+  getDirectChildren(templateRow, "c").forEach((cell) => {
+    const column = getColumnFromCellReference(
+      cell.getAttribute("r")
+    );
+
+    if (column) {
+      templateCells.set(column, cell);
+    }
+  });
+
+  const outputRow = templateRow.cloneNode(false);
+
+  outputRow.setAttribute("r", String(excelRowNumber));
+  outputRow.setAttribute("spans", `1:${COLUMN_COUNT}`);
+
+  values.forEach((value, columnIndex) => {
+    const column = encodeColumn(columnIndex);
+    const templateCell = templateCells.get(column);
+
+    const outputCell = templateCell
+      ? templateCell.cloneNode(false)
+      : worksheetDocument.createElementNS(
+          spreadsheetNamespace,
+          "c"
+        );
+
+    outputCell.setAttribute(
+      "r",
+      `${column}${excelRowNumber}`
+    );
+
+    outputCell.removeAttribute("t");
+
+    while (outputCell.firstChild) {
+      outputCell.removeChild(outputCell.firstChild);
+    }
+
+    const textValue = asText(value);
+
+    if (textValue) {
+      outputCell.setAttribute("t", "inlineStr");
+
+      const inlineString =
+        worksheetDocument.createElementNS(
+          spreadsheetNamespace,
+          "is"
+        );
+
+      const textNode =
+        worksheetDocument.createElementNS(
+          spreadsheetNamespace,
+          "t"
+        );
+
+      if (
+        /^\s/.test(textValue) ||
+        /\s$/.test(textValue)
+      ) {
+        textNode.setAttributeNS(
+          "http://www.w3.org/XML/1998/namespace",
+          "xml:space",
+          "preserve"
+        );
+      }
+
+      textNode.textContent = textValue;
+      inlineString.appendChild(textNode);
+      outputCell.appendChild(inlineString);
+    }
+
+    outputRow.appendChild(outputCell);
+  });
+
+  return outputRow;
+}
+
+function downloadBlob(blob, fileName) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = objectUrl;
+  link.download = fileName;
+  link.style.display = "none";
+
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  window.setTimeout(() => {
+    URL.revokeObjectURL(objectUrl);
+  }, 1000);
 }
 
 export async function downloadSchoolSystemExcel({
@@ -237,39 +381,58 @@ export async function downloadSchoolSystemExcel({
     );
   }
 
-  const arrayBuffer = await response.arrayBuffer();
-  const workbook = XLSX.read(arrayBuffer, {
-    type: "array",
-    cellStyles: true,
-  });
+  const templateBuffer = await response.arrayBuffer();
+  const zip = await JSZip.loadAsync(templateBuffer);
 
-  const sheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[sheetName];
+  const worksheetPath =
+    "xl/worksheets/sheet1.xml";
 
-  if (!worksheet) {
-    throw new Error("学校 Excel 模板中没有可用工作表");
+  const worksheetFile = zip.file(worksheetPath);
+
+  if (!worksheetFile) {
+    throw new Error(
+      "学校 Excel 模板中没有找到第一个工作表"
+    );
   }
 
-  const rowThreeStyles = Array.from(
-    { length: COLUMN_COUNT },
-    (_, columnIndex) => {
-      const address = XLSX.utils.encode_cell({
-        r: 2,
-        c: columnIndex,
-      });
-
-      return cloneCellStyle(worksheet[address]);
-    }
+  const worksheetXml = await worksheetFile.async(
+    "string"
   );
+
+  const worksheetDocument = parseXml(
+    worksheetXml,
+    "学校 Excel 工作表"
+  );
+
+  const sheetData =
+    worksheetDocument.getElementsByTagNameNS(
+      "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+      "sheetData"
+    )[0];
+
+  if (!sheetData) {
+    throw new Error(
+      "学校 Excel 模板中没有找到数据区域"
+    );
+  }
+
+  const templateRow = getDirectChildren(
+    sheetData,
+    "row"
+  ).find((row) => row.getAttribute("r") === "3");
+
+  if (!templateRow) {
+    throw new Error(
+      "学校 Excel 模板中没有找到第3行样式模板"
+    );
+  }
 
   const rows = applications.map((student, index) => {
     const intake =
-      intakeMap[student.intake_id] ||
-      student;
+      intakeMap[student.intake_id] || student;
 
     const passportFile =
-      passportFileMap[student.public_id] ||
-      null;
+      passportFileMap[student.public_id] || null;
 
     return buildSchoolSystemRow({
       student,
@@ -280,44 +443,65 @@ export async function downloadSchoolSystemExcel({
     });
   });
 
-  XLSX.utils.sheet_add_aoa(worksheet, rows, {
-    origin: "A3",
-  });
-
-  rows.forEach((row, rowIndex) => {
-    row.forEach((value, columnIndex) => {
-      const address = XLSX.utils.encode_cell({
-        r: rowIndex + 2,
-        c: columnIndex,
-      });
-
-      if (!worksheet[address]) {
-        worksheet[address] = {
-          t: "s",
-          v: asText(value),
-        };
-      }
-
-      worksheet[address].t = "s";
-      worksheet[address].v = asText(value);
-
-      const style = rowThreeStyles[columnIndex];
-
-      if (style?.s) {
-        worksheet[address].s = JSON.parse(
-          JSON.stringify(style.s)
-        );
-      }
-
-      if (style?.z) {
-        worksheet[address].z = style.z;
-      }
+  getDirectChildren(sheetData, "row")
+    .filter(
+      (row) =>
+        Number(row.getAttribute("r")) >= 3
+    )
+    .forEach((row) => {
+      sheetData.removeChild(row);
     });
+
+  rows.forEach((values, rowIndex) => {
+    const excelRowNumber = rowIndex + 3;
+
+    const outputRow = createExportRow({
+      worksheetDocument,
+      templateRow,
+      values,
+      excelRowNumber,
+    });
+
+    sheetData.appendChild(outputRow);
   });
 
-  XLSX.writeFile(workbook, fileName, {
-    bookType: "xlsx",
-    compression: true,
-    cellStyles: true,
+  const dimension =
+    worksheetDocument.getElementsByTagNameNS(
+      "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+      "dimension"
+    )[0];
+
+  if (dimension) {
+    const finalRowNumber = Math.max(
+      3,
+      rows.length + 2
+    );
+
+    dimension.setAttribute(
+      "ref",
+      `A1:BU${finalRowNumber}`
+    );
+  }
+
+  const updatedWorksheetXml =
+    new XMLSerializer().serializeToString(
+      worksheetDocument
+    );
+
+  zip.file(
+    worksheetPath,
+    updatedWorksheetXml
+  );
+
+  const outputBlob = await zip.generateAsync({
+    type: "blob",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    compression: "DEFLATE",
+    compressionOptions: {
+      level: 6,
+    },
   });
+
+  downloadBlob(outputBlob, fileName);
 }
