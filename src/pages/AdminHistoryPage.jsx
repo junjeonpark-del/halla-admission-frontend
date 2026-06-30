@@ -2234,88 +2234,119 @@ const fetchAllFilteredApplicationsForExport = async () => {
     </div>
   </div>
 
-            <div className="min-w-0 space-y-6">
+      <div className="min-w-0 space-y-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-  <h2 className="text-2xl font-bold text-slate-900">{headerTitle}</h2>
-  <p className="mt-1 text-sm text-slate-500">{headerDesc}</p>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">
+              {headerTitle}
+            </h2>
 
-  <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
-  <div>
-    <span className="font-semibold text-slate-800">
-      {language === "en" ? "Year:" : language === "ko" ? "연도:" : "年份："}
-    </span>{" "}
-    {selectedNode.year || "-"}
-  </div>
-  <div>
-    <span className="font-semibold text-slate-800">
-      {language === "en" ? "Type:" : language === "ko" ? "지원 유형:" : "申请类型："}
-    </span>{" "}
-    {selectedNode.applicationTypeLabel ||
-      (language === "en" ? "All" : language === "ko" ? "전체" : "全部")}
-  </div>
-  <div>
-    <span className="font-semibold text-slate-800">
-      {language === "en"
-        ? "Month/Season:"
-        : language === "ko"
-        ? "입학 월/계절:"
-        : "月份/季节："}
-    </span>{" "}
-    {selectedNode.monthLabel ||
-      (language === "en" ? "All" : language === "ko" ? "전체" : "全部")}
-  </div>
-  <div>
-    <span className="font-semibold text-slate-800">
-      {language === "en" ? "Intake:" : language === "ko" ? "차수:" : "批次："}
-    </span>{" "}
-    {selectedNode.intakeLabel ||
-      (language === "en" ? "All" : language === "ko" ? "전체" : "全部")}
-  </div>
-</div>
+            <p className="mt-1 text-sm text-slate-500">
+              {headerDesc}
+            </p>
 
-</div>
-
-
-            <div className="flex w-full max-w-[520px] flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="flex-1">
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  {t.search.label}
-                </label>
-                <input
-                  value={searchKeyword}
-                  onChange={(e) => setSearchKeyword(e.target.value)}
-                  placeholder={t.search.placeholder}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                />
+            <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <span className="font-semibold text-slate-800">
+                  {language === "en"
+                    ? "Year:"
+                    : language === "ko"
+                    ? "연도:"
+                    : "年份："}
+                </span>{" "}
+                {selectedNode.year || "-"}
               </div>
 
-                              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleExportExcel}
-                  className="inline-flex rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-                >
-                  {t.search.exportApplication}
-                </button>
-
-                                <button
-                  type="button"
-                  onClick={handleExportSchoolSystemExcel}
-                  className="inline-flex rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-violet-700"
-                >
-                  {t.search.exportSchoolSystem}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleExportRefundExcel}
-                  className="inline-flex rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                >
-                  {t.search.exportRefund}
-                </button>
+              <div>
+                <span className="font-semibold text-slate-800">
+                  {language === "en"
+                    ? "Type:"
+                    : language === "ko"
+                    ? "지원 유형:"
+                    : "申请类型："}
+                </span>{" "}
+                {selectedNode.applicationTypeLabel ||
+                  (language === "en"
+                    ? "All"
+                    : language === "ko"
+                    ? "전체"
+                    : "全部")}
               </div>
+
+              <div>
+                <span className="font-semibold text-slate-800">
+                  {language === "en"
+                    ? "Month/Season:"
+                    : language === "ko"
+                    ? "입학 월/계절:"
+                    : "月份/季节："}
+                </span>{" "}
+                {selectedNode.monthLabel ||
+                  (language === "en"
+                    ? "All"
+                    : language === "ko"
+                    ? "전체"
+                    : "全部")}
+              </div>
+
+              <div>
+                <span className="font-semibold text-slate-800">
+                  {language === "en"
+                    ? "Intake:"
+                    : language === "ko"
+                    ? "차수:"
+                    : "批次："}
+                </span>{" "}
+                {selectedNode.intakeLabel ||
+                  (language === "en"
+                    ? "All"
+                    : language === "ko"
+                    ? "전체"
+                    : "全部")}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(320px,520px)_1fr] xl:items-end">
+            <div className="w-full">
+              <label className="mb-2 block whitespace-nowrap text-sm font-medium text-slate-700">
+                {t.search.label}
+              </label>
+
+              <input
+                value={searchKeyword}
+                onChange={(e) =>
+                  setSearchKeyword(e.target.value)
+                }
+                placeholder={t.search.placeholder}
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                className="inline-flex min-h-[46px] items-center justify-center whitespace-nowrap rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+              >
+                {t.search.exportApplication}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportSchoolSystemExcel}
+                className="inline-flex min-h-[46px] items-center justify-center whitespace-nowrap rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-violet-700"
+              >
+                {t.search.exportSchoolSystem}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportRefundExcel}
+                className="inline-flex min-h-[46px] items-center justify-center whitespace-nowrap rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              >
+                {t.search.exportRefund}
+              </button>
             </div>
           </div>
         </div>
