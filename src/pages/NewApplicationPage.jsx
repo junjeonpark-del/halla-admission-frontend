@@ -2496,12 +2496,17 @@ const uploadApplicationFiles = async (applicationId, publicId) => {
         );
       }
 
-      const passportOcrFields =
+            const passportOcrFields =
         fileType === "passport" && passportOcrResult?.success
           ? {
-              ocr_passport_name: passportOcrResult.passport_name || null,
+                            ocr_passport_name: passportOcrResult.passport_name || null,
+              ocr_last_name: passportOcrResult.last_name || null,
+              ocr_given_names: passportOcrResult.given_names || null,
               ocr_passport_no: passportOcrResult.passport_no || null,
               ocr_date_of_birth: passportOcrResult.date_of_birth || null,
+              ocr_date_of_issue: passportOcrResult.date_of_issue || null,
+              ocr_date_of_expiration:
+                passportOcrResult.date_of_expiration || null,
               ocr_checked_at: new Date().toISOString(),
               ocr_raw_fields: Array.isArray(passportOcrResult.raw_fields)
                 ? passportOcrResult.raw_fields

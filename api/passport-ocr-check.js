@@ -136,13 +136,16 @@ function parseMrzFromText(text) {
 
   const namePart = line1.slice(5);
   const [surname = "", given = ""] = namePart.split("<<");
-  const passportName = [normalizeMrzName(surname), normalizeMrzName(given)]
+  const lastName = normalizeMrzName(surname);
+  const givenNames = normalizeMrzName(given);
+  const passportName = [lastName, givenNames]
     .filter(Boolean)
     .join(" ")
     .trim();
 
   const passportNo = line2.slice(0, 9).replace(/</g, "").trim();
   const dobRaw = line2.slice(13, 19);
+  const expirationRaw = line2.slice(21, 27);
 
   let dateOfBirth = "";
   if (/^\d{6}$/.test(dobRaw)) {
@@ -151,10 +154,28 @@ function parseMrzFromText(text) {
     dateOfBirth = `${yyyy}-${dobRaw.slice(2, 4)}-${dobRaw.slice(4, 6)}`;
   }
 
+  let dateOfExpiration = "";
+  if (/^\d{6}$/.test(expirationRaw)) {
+    const yy = Number(expirationRaw.slice(0, 2));
+    const currentYear = new Date().getUTCFullYear();
+    const yearCandidates = [1900 + yy, 2000 + yy, 2100 + yy];
+    const yyyy = yearCandidates.reduce((closest, candidate) =>
+      Math.abs(candidate - currentYear) < Math.abs(closest - currentYear)
+        ? candidate
+        : closest
+    );
+
+    dateOfExpiration =
+      `${yyyy}-${expirationRaw.slice(2, 4)}-${expirationRaw.slice(4, 6)}`;
+  }
+
   return {
     passportName,
+    lastName,
+    givenNames,
     passportNo,
     dateOfBirth,
+    dateOfExpiration,
   };
 }
 
@@ -345,6 +366,36 @@ function buildPassportName(fields, fullText) {
   return buildDefaultPassportName(fields, fullText);
 }
 
+function buildPassportNameParts(fields, fullText) {
+  const mrzResult = parseMrzFromText(fullText);
+
+  const lastName =
+    pickField(fields, [
+      "LastName",
+      "Surname",
+      "FamilyName",
+      "PrimaryIdentifier",
+    ]) ||
+    mrzResult.lastName ||
+    "";
+
+  const givenNames =
+    pickField(fields, [
+      "FirstName",
+      "GivenName",
+      "GivenNames",
+      "Names",
+      "SecondaryIdentifier",
+    ]) ||
+    mrzResult.givenNames ||
+    "";
+
+  return {
+    lastName: cleanPassportNamePart(lastName),
+    givenNames: cleanPassportNamePart(givenNames),
+  };
+}
+
 function buildPassportNo(fields, fullText) {
   return (
     pickField(fields, [
@@ -405,6 +456,185 @@ function buildDateOfBirth(fields, fullText) {
     "";
 
   return normalizeOcrDate(rawDate);
+}
+
+function normalizePassportDate(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const monthNumbers = {
+    jan: "01",
+    january: "01",
+    feb: "02",
+    february: "02",
+    mar: "03",
+    march: "03",
+    apr: "04",
+    april: "04",
+    may: "05",
+    jun: "06",
+    june: "06",
+    jul: "07",
+    july: "07",
+    aug: "08",
+    august: "08",
+    sep: "09",
+    sept: "09",
+    september: "09",
+    oct: "10",
+    october: "10",
+    nov: "11",
+    november: "11",
+    dec: "12",
+    december: "12",
+  };
+
+  const dayFirstMatch = raw.match(
+    /^(\d{1,2})[\s./-]+([A-Za-z]{3,9})[\s,./-]+(\d{4})$/i
+  );
+
+  if (dayFirstMatch) {
+    const [, day, monthName, year] = dayFirstMatch;
+    const month = monthNumbers[monthName.toLowerCase()];
+
+    if (month) {
+      return validatePassportDate(
+        `${year}-${month}-${String(day).padStart(2, "0")}`
+      );
+    }
+  }
+
+  const yearFirstMatch = raw.match(
+    /^(\d{4})[\s./-]+([A-Za-z]{3,9})[\s,./-]+(\d{1,2})$/i
+  );
+
+  if (yearFirstMatch) {
+    const [, year, monthName, day] = yearFirstMatch;
+    const month = monthNumbers[monthName.toLowerCase()];
+
+    if (month) {
+      return validatePassportDate(
+        `${year}-${month}-${String(day).padStart(2, "0")}`
+      );
+    }
+  }
+
+  return validatePassportDate(normalizeOcrDate(raw));
+}
+
+function validatePassportDate(value) {
+  const normalized = String(value || "").trim();
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) return "";
+
+  const [, year, month, day] = match;
+  const parsed = new Date(
+    Date.UTC(Number(year), Number(month) - 1, Number(day))
+  );
+
+  if (
+    parsed.getUTCFullYear() !== Number(year) ||
+    parsed.getUTCMonth() + 1 !== Number(month) ||
+    parsed.getUTCDate() !== Number(day)
+  ) {
+    return "";
+  }
+
+  return normalized;
+}
+
+function extractDateNearLabel(fullText, labelPatterns) {
+  const lines = String(fullText || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const datePattern =
+    /\b(?:\d{4}[./-]\d{1,2}[./-]\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]\d{4}|\d{8}|\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}|\d{4}\s+[A-Za-z]{3,9}\s+\d{1,2})\b/g;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+
+    if (!labelPatterns.some((pattern) => pattern.test(line))) {
+      continue;
+    }
+
+    const nearbyText = [
+      line,
+      lines[index + 1] || "",
+      lines[index + 2] || "",
+    ].join(" ");
+
+    const candidates = nearbyText.match(datePattern) || [];
+
+    for (const candidate of candidates) {
+      const normalized = normalizePassportDate(candidate);
+      if (normalized) return normalized;
+    }
+  }
+
+  return "";
+}
+
+function buildDateOfIssue(fields, fullText) {
+  const structuredDate = pickField(fields, [
+    "DateOfIssue",
+    "IssueDate",
+    "DateIssued",
+    "IssuedDate",
+    "IssuanceDate",
+    "DateOfIssuance",
+  ]);
+
+  const normalizedStructuredDate = normalizePassportDate(structuredDate);
+  if (normalizedStructuredDate) return normalizedStructuredDate;
+
+  return extractDateNearLabel(fullText, [
+    /date\s+of\s+issue/i,
+    /date\s+of\s+issuance/i,
+    /issued\s+on/i,
+    /签发日期/i,
+    /簽發日期/i,
+    /발급일/i,
+    /발행일/i,
+    /date\s+de\s+d[ée]livrance/i,
+    /fecha\s+de\s+expedici[oó]n/i,
+    /дата\s+выдачи/i,
+  ]);
+}
+
+function buildDateOfExpiration(fields, fullText) {
+  const structuredDate = pickField(fields, [
+    "DateOfExpiration",
+    "ExpirationDate",
+    "ExpiryDate",
+    "DateOfExpiry",
+    "ValidUntil",
+  ]);
+
+  const normalizedStructuredDate = normalizePassportDate(structuredDate);
+  if (normalizedStructuredDate) return normalizedStructuredDate;
+
+  const mrzDate = normalizePassportDate(
+    parseMrzFromText(fullText).dateOfExpiration
+  );
+  if (mrzDate) return mrzDate;
+
+  return extractDateNearLabel(fullText, [
+    /date\s+of\s+expiration/i,
+    /expiration\s+date/i,
+    /date\s+of\s+expiry/i,
+    /expiry\s+date/i,
+    /valid\s+until/i,
+    /有效期至/i,
+    /有效期限/i,
+    /만료일/i,
+    /유효기간/i,
+    /date\s+d['’]expiration/i,
+    /fecha\s+de\s+caducidad/i,
+    /действителен\s+до/i,
+  ]);
 }
 
 async function pollAnalyzeResult(operationLocation, key, text) {
@@ -538,16 +768,23 @@ export default async function handler(req, res) {
       .filter(Boolean)
       .join("\n");
 
-    const passportName = buildPassportName(fields, fullText);
+        const passportName = buildPassportName(fields, fullText);
+    const passportNameParts = buildPassportNameParts(fields, fullText);
     const passportNo = buildPassportNo(fields, fullText);
     const dateOfBirth = buildDateOfBirth(fields, fullText);
+    const dateOfIssue = buildDateOfIssue(fields, fullText);
+    const dateOfExpiration = buildDateOfExpiration(fields, fullText);
 
     return json(res, 200, {
       success: true,
       file_name: fileName || "",
-      passport_name: passportName || "",
+           passport_name: passportName || "",
+      last_name: passportNameParts.lastName || "",
+      given_names: passportNameParts.givenNames || "",
       passport_no: passportNo || "",
       date_of_birth: dateOfBirth || "",
+      date_of_issue: dateOfIssue || "",
+      date_of_expiration: dateOfExpiration || "",
       raw_fields: Object.keys(fields || {}),
       field_debug: buildFieldDebug(fields),
       content_preview: fullText.slice(0, 1200),

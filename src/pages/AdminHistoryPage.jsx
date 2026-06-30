@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 import { supabase } from "../lib/supabase";
 import { useAdminSession } from "../contexts/AdminSessionContext";
 import { getLocalizedMajorLabel, getMajorCatalog } from "../data/majorCatalog";
+import { downloadSchoolSystemExcel } from "../utils/generateSchoolSystemExcel";
 
 const messages = {
   zh: {
@@ -30,8 +31,11 @@ const messages = {
       label: "学生姓名 / 机构 / 专业",
       placeholder: "输入姓名、机构或专业搜索",
       export: "导出 Excel",
-      exportApplication: "导出申请信息",
+            exportApplication: "导出申请信息",
+      exportSchoolSystem: "导出学校系统 Excel",
       exportRefund: "导出退款信息",
+      schoolSystemFilePrefix: "学校系统导入",
+      noUndergraduateExportData: "当前条件下没有可导出的本科申请。",
       refundSheetName: "退款信息",
       refundFilePrefix: "管理员退款信息",
       noExportData: "当前没有可导出的申请数据。",
@@ -192,8 +196,12 @@ const messages = {
       label: "Student / Agency / Major",
       placeholder: "Search by name, agency, or major",
       export: "Export Excel",
-      exportApplication: "Export Application Info",
+            exportApplication: "Export Application Info",
+      exportSchoolSystem: "Export School System Excel",
       exportRefund: "Export Refund Info",
+      schoolSystemFilePrefix: "School_System_Import",
+      noUndergraduateExportData:
+        "There are no undergraduate applications to export.",
       refundSheetName: "Refund Info",
       refundFilePrefix: "Admin_Refund_Info",
       noExportData: "There is no application data to export.",
@@ -354,8 +362,12 @@ const messages = {
       label: "학생 / 기관 / 전공",
       placeholder: "이름, 기관 또는 전공으로 검색",
       export: "Excel 내보내기",
-      exportApplication: "지원정보 내보내기",
+            exportApplication: "지원정보 내보내기",
+      exportSchoolSystem: "학교 시스템 Excel 내보내기",
       exportRefund: "환불정보 내보내기",
+      schoolSystemFilePrefix: "학교시스템_업로드",
+      noUndergraduateExportData:
+        "내보낼 학부 지원 데이터가 없습니다.",
       refundSheetName: "환불정보",
       refundFilePrefix: "관리자_환불정보",
       noExportData: "내보낼 지원 데이터가 없습니다.",
@@ -1710,6 +1722,142 @@ const fetchAllFilteredApplicationsForExport = async () => {
     }
   };
 
+      const handleExportSchoolSystemExcel = async () => {
+    try {
+      const exportApplications =
+        await fetchAllFilteredApplicationsForExport();
+
+      const undergraduateApplications = (
+        exportApplications || []
+      ).filter((student) => {
+        const linkedIntake = student.intake_id
+          ? intakeMap[student.intake_id]
+          : null;
+
+        return (
+          getApplicationType(linkedIntake || student) ===
+          "undergraduate"
+        );
+      });
+
+      if (undergraduateApplications.length === 0) {
+        alert(t.search.noUndergraduateExportData);
+        return;
+      }
+
+      const publicIds = [
+        ...new Set(
+          undergraduateApplications
+            .map((student) => student.public_id)
+            .filter(Boolean)
+        ),
+      ];
+
+      const passportRows = [];
+      const queryBatchSize = 500;
+
+      for (
+        let index = 0;
+        index < publicIds.length;
+        index += queryBatchSize
+      ) {
+        const idBatch = publicIds.slice(
+          index,
+          index + queryBatchSize
+        );
+
+        const { data, error } = await supabase
+          .from("application_files")
+          .select(
+            [
+              "public_id",
+              "file_type",
+              "created_at",
+              "ocr_last_name",
+              "ocr_given_names",
+              "ocr_date_of_issue",
+              "ocr_date_of_expiration",
+            ].join(",")
+          )
+          .in("public_id", idBatch)
+          .eq("file_type", "passport");
+
+        if (error) throw error;
+
+        passportRows.push(...(data || []));
+      }
+
+      const passportFileMap = passportRows.reduce(
+        (acc, file) => {
+          const current = acc[file.public_id];
+
+          if (
+            !current ||
+            String(file.created_at || "") >
+              String(current.created_at || "")
+          ) {
+            acc[file.public_id] = file;
+          }
+
+          return acc;
+        },
+        {}
+      );
+
+      let fileLabel = t.search.fileAll;
+
+      if (selectedNode.type === "year") {
+        fileLabel = String(selectedNode.year);
+      } else if (selectedNode.type === "applicationType") {
+        fileLabel =
+          `${selectedNode.year}_${selectedNode.applicationTypeLabel}`;
+      } else if (selectedNode.type === "month") {
+        fileLabel =
+          `${selectedNode.year}_${selectedNode.applicationTypeLabel}_${selectedNode.monthLabel}`;
+      } else if (selectedNode.type === "intake") {
+        fileLabel =
+          `${selectedNode.year}_${selectedNode.applicationTypeLabel}_${selectedNode.monthLabel}_${selectedNode.intakeLabel}`;
+      }
+
+      const today = new Date();
+      const dateText =
+        `${today.getFullYear()}-${String(
+          today.getMonth() + 1
+        ).padStart(2, "0")}-${String(
+          today.getDate()
+        ).padStart(2, "0")}`;
+
+      const fileName =
+        `${sanitizeExportFileSegment(
+          t.search.schoolSystemFilePrefix,
+          "SchoolSystem"
+        )}_${sanitizeExportFileSegment(
+          fileLabel,
+          "Undergraduate"
+        )}_${sanitizeExportFileSegment(
+          dateText,
+          "date"
+        )}.xlsx`;
+
+      await downloadSchoolSystemExcel({
+        applications: undergraduateApplications,
+        intakeMap,
+        passportFileMap,
+        majorCatalog: getMajorCatalog("undergraduate"),
+        fileName,
+      });
+    } catch (error) {
+      console.error(
+        "handleExportSchoolSystemExcel error:",
+        error
+      );
+
+      alert(
+        `${t.search.exportFailed}${error.message}`
+      );
+    }
+  };
+
     const handleExportRefundExcel = async () => {
   try {
     const exportApplications = await fetchAllFilteredApplicationsForExport();
@@ -2150,6 +2298,14 @@ const fetchAllFilteredApplicationsForExport = async () => {
                   className="inline-flex rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
                 >
                   {t.search.exportApplication}
+                </button>
+
+                                <button
+                  type="button"
+                  onClick={handleExportSchoolSystemExcel}
+                  className="inline-flex rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-violet-700"
+                >
+                  {t.search.exportSchoolSystem}
                 </button>
 
                 <button
