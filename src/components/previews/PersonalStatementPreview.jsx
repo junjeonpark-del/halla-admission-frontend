@@ -34,7 +34,14 @@ function BlockTitle({ children }) {
 
 function ValueCell({ children }) {
   return (
-    <div className="h-[43mm] border border-t-0 border-black px-2 py-1.5 text-[10px] leading-[1.35] whitespace-pre-wrap">
+    <div
+      className="border border-t-0 border-black px-2 py-1.5 text-[10px] leading-[1.35] whitespace-pre-wrap break-words"
+      style={{
+        minHeight: "43mm",
+        height: "auto",
+        overflowWrap: "anywhere",
+      }}
+    >
       {children || ""}
     </div>
   );
@@ -80,12 +87,13 @@ export default function PersonalStatementPreview({ student }) {
   return (
     <div
       className="personal-statement-form mx-auto bg-white text-black"
-      style={{
+            style={{
         width: "210mm",
-        height: "297mm",
+        minHeight: "297mm",
+        height: "auto",
         padding: "10mm",
         boxSizing: "border-box",
-        overflow: "hidden",
+        overflow: "visible",
       }}
     >
       <div className="border border-black px-4 py-3 text-center">
