@@ -3806,8 +3806,9 @@ onChange={(value) => updateField("bank_certificate_holder_type", value)}
                 guarantor_applicant_nationality: name,
                 guarantorApplicantNationalityCode: code,
               }));
-            }}
+                        }}
           />
+          </div>
           <Input
             label={t.fields.guarId}
             value={form.guarantor_applicant_id_number}
