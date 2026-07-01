@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import CountrySearchSelect from "../components/CountrySearchSelect";
 
 const LANGUAGE_OPTIONS = [
   { value: "zh", label: "中文" },
@@ -205,8 +206,9 @@ function saveLanguage(value) {
 
 function getInitialForm() {
   return {
-    agency_name: "",
+        agency_name: "",
     country: "",
+    country_code: "",
     company_founded_year: "",
     business_license_no: "",
     legal_representative: "",
@@ -270,8 +272,8 @@ function AgencyRegisterPage() {
   const handleSubmit = async () => {
   try {
     const requiredFields = [
-      [form.agency_name, t.alerts.agencyName],
-      [form.country, t.alerts.country],
+            [form.agency_name, t.alerts.agencyName],
+      [form.country_code, t.alerts.country],
       [form.contact_name, t.alerts.contactName],
       [form.phone, t.alerts.phone],
       [form.email, t.alerts.email],
@@ -382,12 +384,25 @@ function AgencyRegisterPage() {
                 onChange={(e) => handleChange("agency_name", e.target.value)}
                 placeholder={t.placeholders.agencyName}
               />
-              <FormField
-  label={language === "en" ? "Country" : language === "ko" ? "국가" : "国家"}
-  required
-                value={form.country}
-                onChange={(e) => handleChange("country", e.target.value)}
-                placeholder={language === "en" ? "Enter country" : language === "ko" ? "국가 입력" : "请输入国家"}
+                            <CountrySearchSelect
+                label={
+                  language === "en"
+                    ? "Country"
+                    : language === "ko"
+                    ? "국가"
+                    : "国家"
+                }
+                language={language}
+                required
+                value={form.country_code}
+                legacyValue={form.country}
+                onChange={({ code, name }) => {
+                  setForm((prev) => ({
+                    ...prev,
+                    country: name,
+                    country_code: code,
+                  }));
+                }}
               />
               <FormField
                 label={t.fields.foundedYear}

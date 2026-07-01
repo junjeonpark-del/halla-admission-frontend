@@ -5,6 +5,8 @@ import {
   isMajorAllowedForTrack,
 } from "../data/majorCatalog";
 import { supabase } from "../lib/supabase";
+import CountrySearchSelect from "../components/CountrySearchSelect";
+import { resolveCountry } from "../data/countryCatalog";
 
 const admissionTypes = [
   "Freshman",
@@ -44,11 +46,14 @@ const initialForm = {
   programTrack: "",
   dormitory: "",
 
-  fullNamePassport: "",
+    fullNamePassport: "",
   sex: "",
   nationalityApplicant: "",
+  nationalityApplicantCode: "",
   nationalityFather: "",
+  nationalityFatherCode: "",
   nationalityMother: "",
+  nationalityMotherCode: "",
   passportNo: "",
   alienRegistrationNo: "",
   dateOfBirth: "",
@@ -74,13 +79,15 @@ const initialForm = {
   refundEmail: "",
   accountHolder: "",
   relationshipWithApplicant: "",
-  beneficiaryAddress: "",
+    beneficiaryAddress: "",
   beneficiaryCity: "",
   beneficiaryCountry: "",
+  beneficiaryCountryCode: "",
   bankName: "",
   bankAddress: "",
   bankCity: "",
   bankCountry: "",
+  bankCountryCode: "",
   accountNumber: "",
   swiftCode: "",
 
@@ -94,9 +101,10 @@ const initialForm = {
   agree_personal_info: true,
   acknowledge_notice: true,
 
-  guarantor_department_major: "",
+    guarantor_department_major: "",
   guarantor_applicant_name: "",
   guarantor_applicant_nationality: "",
+  guarantorApplicantNationalityCode: "",
   guarantor_applicant_id_number: "",
   guarantor_applicant_passport_number: "",
   guarantor_name: "",
@@ -986,9 +994,24 @@ previewReady: txt("当前签字预览如下。重新打开页面时会显示已�
 
           fullNamePassport: data.full_name_passport || data.english_name || "",
           sex: data.gender || "",
-          nationalityApplicant: data.nationality_applicant || data.nationality || "",
+                    nationalityApplicant:
+            data.nationality_applicant || data.nationality || "",
+          nationalityApplicantCode:
+            data.nationality_applicant_code ||
+            resolveCountry(
+              data.nationality_applicant || data.nationality
+            )?.numeric ||
+            "",
           nationalityFather: data.nationality_father || "",
+          nationalityFatherCode:
+            data.nationality_father_code ||
+            resolveCountry(data.nationality_father)?.numeric ||
+            "",
           nationalityMother: data.nationality_mother || "",
+          nationalityMotherCode:
+            data.nationality_mother_code ||
+            resolveCountry(data.nationality_mother)?.numeric ||
+            "",
           passportNo: data.passport_no || "",
           alienRegistrationNo: data.alien_registration_no || "",
           dateOfBirth: data.date_of_birth || "",
@@ -1016,11 +1039,19 @@ previewReady: txt("当前签字预览如下。重新打开页面时会显示已�
           relationshipWithApplicant: data.relationship || "",
           beneficiaryAddress: data.beneficiary_address || "",
           beneficiaryCity: data.beneficiary_city || "",
-          beneficiaryCountry: data.beneficiary_country || "",
+                    beneficiaryCountry: data.beneficiary_country || "",
+          beneficiaryCountryCode:
+            data.beneficiary_country_code ||
+            resolveCountry(data.beneficiary_country)?.numeric ||
+            "",
           bankName: data.bank_name || "",
           bankAddress: data.bank_address || "",
           bankCity: data.bank_city || "",
           bankCountry: data.bank_country || "",
+          bankCountryCode:
+            data.bank_country_code ||
+            resolveCountry(data.bank_country)?.numeric ||
+            "",
           accountNumber: data.account_number || "",
           swiftCode: data.swift_code || "",
 
@@ -1034,11 +1065,22 @@ previewReady: txt("当前签字预览如下。重新打开页面时会显示已�
           agree_personal_info: (data.agree_personal_info || "").toLowerCase() !== "disagree",
           acknowledge_notice: (data.acknowledge_notice || "").toLowerCase() !== "no",
 
-          guarantor_department_major: data.guarantor_department_major || "",
-          guarantor_applicant_name: data.guarantor_applicant_name || "",
-          guarantor_applicant_nationality: data.guarantor_applicant_nationality || "",
-          guarantor_applicant_id_number: data.guarantor_applicant_id_number || "",
-          guarantor_applicant_passport_number: data.guarantor_applicant_passport_number || "",
+                    guarantor_department_major:
+            data.guarantor_department_major || "",
+          guarantor_applicant_name:
+            data.guarantor_applicant_name || "",
+          guarantor_applicant_nationality:
+            data.guarantor_applicant_nationality || "",
+          guarantorApplicantNationalityCode:
+            data.guarantor_applicant_nationality_code ||
+            resolveCountry(
+              data.guarantor_applicant_nationality
+            )?.numeric ||
+            "",
+          guarantor_applicant_id_number:
+            data.guarantor_applicant_id_number || "",
+          guarantor_applicant_passport_number:
+            data.guarantor_applicant_passport_number || "",
           guarantor_name: data.guarantor_name || "",
           guarantor_relationship: data.guarantor_relationship || "",
           guarantor_id_number: data.guarantor_id_number || "",
@@ -1179,10 +1221,13 @@ previewReady: txt("当前签字预览如下。重新打开页面时会显示已�
       full_name_passport: form.fullNamePassport,
       english_name: form.fullNamePassport,
       gender: form.sex,
-      nationality: normalizeCountryInput(form.nationalityApplicant),
-      nationality_applicant: normalizeCountryInput(form.nationalityApplicant),
-      nationality_father: normalizeCountryInput(form.nationalityFather),
-      nationality_mother: normalizeCountryInput(form.nationalityMother),
+            nationality: form.nationalityApplicant,
+      nationality_applicant: form.nationalityApplicant,
+      nationality_applicant_code: form.nationalityApplicantCode || null,
+      nationality_father: form.nationalityFather,
+      nationality_father_code: form.nationalityFatherCode || null,
+      nationality_mother: form.nationalityMother,
+      nationality_mother_code: form.nationalityMotherCode || null,
       passport_no: form.passportNo,
       alien_registration_no: form.alienRegistrationNo,
       date_of_birth: normalizeDate(form.dateOfBirth),
@@ -1213,11 +1258,13 @@ previewReady: txt("当前签字预览如下。重新打开页面时会显示已�
       relationship: form.relationshipWithApplicant,
       beneficiary_address: form.beneficiaryAddress,
       beneficiary_city: form.beneficiaryCity,
-      beneficiary_country: form.beneficiaryCountry,
+            beneficiary_country: form.beneficiaryCountry,
+      beneficiary_country_code: form.beneficiaryCountryCode || null,
       bank_name: form.bankName,
       bank_address: form.bankAddress,
       bank_city: form.bankCity,
       bank_country: form.bankCountry,
+      bank_country_code: form.bankCountryCode || null,
       account_number: form.accountNumber,
       swift_code: form.swiftCode,
 
@@ -1231,11 +1278,16 @@ previewReady: txt("当前签字预览如下。重新打开页面时会显示已�
 
       bank_certificate_holder_type: form.bank_certificate_holder_type,
 
-      guarantor_department_major: form.guarantor_department_major,
+            guarantor_department_major: form.guarantor_department_major,
       guarantor_applicant_name: form.guarantor_applicant_name,
-      guarantor_applicant_nationality: normalizeCountryInput(form.guarantor_applicant_nationality),
-      guarantor_applicant_id_number: form.guarantor_applicant_id_number,
-      guarantor_applicant_passport_number: form.guarantor_applicant_passport_number,
+      guarantor_applicant_nationality:
+        form.guarantor_applicant_nationality,
+      guarantor_applicant_nationality_code:
+        form.guarantorApplicantNationalityCode || null,
+      guarantor_applicant_id_number:
+        form.guarantor_applicant_id_number,
+      guarantor_applicant_passport_number:
+        form.guarantor_applicant_passport_number,
 
       guarantor_name: form.guarantor_name,
       guarantor_relationship: form.guarantor_relationship,
@@ -1471,39 +1523,51 @@ student_form_status: submitMode === "submitted" ? "submitted" : "draft",
                 onChange={(value) => updateField("sex", value)}
                 options={sexOptions}
               />
-              <div>
-                <Label required>국적 (Nationality) - Applicant</Label>
-                <input
-                  value={form.nationalityApplicant || ""}
-                  disabled={isReadOnly}
-                  onChange={(e) => updateCountryField("nationalityApplicant", e.target.value)}
-                  onBlur={() => normalizeCountryField("nationalityApplicant")}
-                  placeholder={txt("申请人国籍", "Applicant nationality", "지원자 국적")}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 disabled:bg-slate-100 disabled:text-slate-400"
-                />
-              </div>
-              <div>
-                <Label>국적 (Nationality) - Father</Label>
-                <input
-                  value={form.nationalityFather || ""}
-                  disabled={isReadOnly}
-                  onChange={(e) => updateCountryField("nationalityFather", e.target.value)}
-                  onBlur={() => normalizeCountryField("nationalityFather")}
-                  placeholder={txt("父亲国籍", "Father nationality", "부 국적")}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 disabled:bg-slate-100 disabled:text-slate-400"
-                />
-              </div>
-              <div>
-                <Label>국적 (Nationality) - Mother</Label>
-                <input
-                  value={form.nationalityMother || ""}
-                  disabled={isReadOnly}
-                  onChange={(e) => updateCountryField("nationalityMother", e.target.value)}
-                  onBlur={() => normalizeCountryField("nationalityMother")}
-                  placeholder={txt("母亲国籍", "Mother nationality", "모 국적")}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 disabled:bg-slate-100 disabled:text-slate-400"
-                />
-              </div>
+                            <CountrySearchSelect
+                label="국적 (Nationality) - Applicant"
+                language={language}
+                value={form.nationalityApplicantCode}
+                legacyValue={form.nationalityApplicant}
+                required
+                disabled={isReadOnly}
+                onChange={({ code, name }) => {
+                  setForm((previous) => ({
+                    ...previous,
+                    nationalityApplicant: name,
+                    nationalityApplicantCode: code,
+                  }));
+                }}
+              />
+
+              <CountrySearchSelect
+                label="국적 (Nationality) - Father"
+                language={language}
+                value={form.nationalityFatherCode}
+                legacyValue={form.nationalityFather}
+                disabled={isReadOnly}
+                onChange={({ code, name }) => {
+                  setForm((previous) => ({
+                    ...previous,
+                    nationalityFather: name,
+                    nationalityFatherCode: code,
+                  }));
+                }}
+              />
+
+              <CountrySearchSelect
+                label="국적 (Nationality) - Mother"
+                language={language}
+                value={form.nationalityMotherCode}
+                legacyValue={form.nationalityMother}
+                disabled={isReadOnly}
+                onChange={({ code, name }) => {
+                  setForm((previous) => ({
+                    ...previous,
+                    nationalityMother: name,
+                    nationalityMotherCode: code,
+                  }));
+                }}
+              />
               <Input
                 label="여권번호 (Passport No.)"
                 required
@@ -1701,13 +1765,20 @@ student_form_status: submitMode === "submitted" ? "submitted" : "draft",
                   onChange={(e) => updateField("relationshipWithApplicant", e.target.value)}
                   placeholder={txt("与申请人关系", "Relationship with applicant", "지원자와의 관계")}
                 />
-                <Input
+                                <CountrySearchSelect
                   label="국가 (Country)"
+                  language={language}
+                  value={form.beneficiaryCountryCode}
+                  legacyValue={form.beneficiaryCountry}
                   required
                   disabled={isReadOnly}
-                  value={form.beneficiaryCountry}
-                  onChange={(e) => updateField("beneficiaryCountry", e.target.value)}
-                  placeholder={txt("国家", "Country", "국가")}
+                  onChange={({ code, name }) => {
+                    setForm((previous) => ({
+                      ...previous,
+                      beneficiaryCountry: name,
+                      beneficiaryCountryCode: code,
+                    }));
+                  }}
                 />
                 <Input
                   label="도시 (City)"
@@ -1743,13 +1814,20 @@ student_form_status: submitMode === "submitted" ? "submitted" : "draft",
                   onChange={(e) => updateField("bankName", e.target.value)}
                   placeholder={txt("银行名称", "Bank name", "은행명")}
                 />
-                <Input
+                                <CountrySearchSelect
                   label="국가 (Country)"
+                  language={language}
+                  value={form.bankCountryCode}
+                  legacyValue={form.bankCountry}
                   required
                   disabled={isReadOnly}
-                  value={form.bankCountry}
-                  onChange={(e) => updateField("bankCountry", e.target.value)}
-                  placeholder={txt("银行所在国家", "Bank country", "은행 소재 국가")}
+                  onChange={({ code, name }) => {
+                    setForm((previous) => ({
+                      ...previous,
+                      bankCountry: name,
+                      bankCountryCode: code,
+                    }));
+                  }}
                 />
                 <Input
                   label="도시 (City)"
@@ -1913,16 +1991,21 @@ student_form_status: submitMode === "submitted" ? "submitted" : "draft",
                         value={form.guarantor_applicant_name}
                         onChange={(e) => updateField("guarantor_applicant_name", e.target.value)}
                       />
-                      <div>
-                        <Label required>국적 (Nationality)</Label>
-                        <input
-                          value={form.guarantor_applicant_nationality || ""}
-                          disabled={isReadOnly}
-                          onChange={(e) => updateCountryField("guarantor_applicant_nationality", e.target.value)}
-                          onBlur={() => normalizeCountryField("guarantor_applicant_nationality")}
-                          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 disabled:bg-slate-100 disabled:text-slate-400"
-                        />
-                      </div>
+                                            <CountrySearchSelect
+                        label="국적 (Nationality)"
+                        language={language}
+                        value={form.guarantorApplicantNationalityCode}
+                        legacyValue={form.guarantor_applicant_nationality}
+                        required
+                        disabled={isReadOnly}
+                        onChange={({ code, name }) => {
+                          setForm((previous) => ({
+                            ...previous,
+                            guarantor_applicant_nationality: name,
+                            guarantorApplicantNationalityCode: code,
+                          }));
+                        }}
+                      />
                       <Input
                         label="신분증번호 (ID number)"
                         disabled={isReadOnly}

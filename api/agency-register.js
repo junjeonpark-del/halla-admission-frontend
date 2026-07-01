@@ -4,6 +4,10 @@ import {
   json,
   supabaseAdmin,
 } from "./_agencyAuth.js";
+import {
+  getCountryByNumericCode,
+  resolveCountry,
+} from "../src/data/countryCatalog.js";
 
 const messages = {
   zh: {
@@ -80,8 +84,9 @@ export default async function handler(req, res) {
   try {
     const {
       language = "zh",
-      agency_name = "",
+            agency_name = "",
       country = "",
+      country_code = "",
       company_founded_year = "",
       business_license_no = "",
       legal_representative = "",
@@ -98,11 +103,21 @@ export default async function handler(req, res) {
     const lang = ["zh", "en", "ko"].includes(language) ? language : "zh";
     text = messages[lang];
 
-    const cleanUsername = String(username).trim();
+        const cleanUsername = String(username).trim();
+
+    const selectedCountry =
+      getCountryByNumericCode(country_code) ||
+      resolveCountry(country);
+
+    if (!selectedCountry) {
+      return json(res, 400, {
+        success: false,
+        message: text.countryRequired,
+      });
+    }
 
     const requiredFields = [
       [agency_name, text.agencyNameRequired],
-      [country, text.countryRequired],
       [contact_name, text.contactNameRequired],
       [phone, text.phoneRequired],
       [email, text.emailRequired],
@@ -171,10 +186,13 @@ export default async function handler(req, res) {
       }
     }
 
-    const agencyPayload = {
+        const agencyPayload = {
       agency_name: String(agency_name).trim(),
-      country: String(country).trim(),
-      company_founded_year: company_founded_year ? Number(company_founded_year) : null,
+      country: selectedCountry.names.en,
+      country_code: selectedCountry.numeric,
+      company_founded_year: company_founded_year
+        ? Number(company_founded_year)
+        : null,
       business_license_no: String(business_license_no).trim() || null,
       legal_representative: String(legal_representative).trim() || null,
       contact_name: String(contact_name).trim(),

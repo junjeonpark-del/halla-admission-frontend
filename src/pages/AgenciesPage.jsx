@@ -10,6 +10,8 @@ import {
   getCommissionSettlementSeason,
 } from "../utils/generateCommissionClaimDocument";
 import { getLocalizedMajorLabel, getMajorCatalog } from "../data/majorCatalog";
+import CountrySearchSelect from "../components/CountrySearchSelect";
+import { getCountryByNumericCode } from "../data/countryCatalog";
 
 const messages = {
   zh: {
@@ -545,9 +547,10 @@ function buildAgencyApplicationStats(applications = [], openIntakeIds = new Set(
 }
 
 function getInitialAgencyForm() {
-  return {
+    return {
     agency_name: "",
     country: "",
+    country_code: "",
     company_founded_year: "",
     business_license_no: "",
     legal_representative: "",
@@ -814,13 +817,13 @@ const pageNumbers = (() => {
     try {
       const requiredFields = [
   [createForm.agency_name, t.alerts.needAgencyName],
-  [
-    createForm.country,
+    [
+    createForm.country_code,
     language === "en"
-      ? "Please enter the country"
+      ? "Please select the country"
       : language === "ko"
-      ? "국가를 입력해 주세요"
-      : "请填写国家",
+      ? "국가를 선택해 주세요"
+      : "请选择国家",
   ],
   [
     createForm.contact_name,
@@ -881,6 +884,21 @@ for (const [value, message] of requiredFields) {
   }
 }
 
+const selectedCountry = getCountryByNumericCode(
+  createForm.country_code
+);
+
+if (!selectedCountry) {
+  alert(
+    language === "en"
+      ? "Please select a valid country"
+      : language === "ko"
+      ? "올바른 국가를 선택해 주세요"
+      : "请选择有效的国家"
+  );
+  return;
+}
+
 const cleanUsername = createForm.username.trim();
 
 if (cleanUsername.length < 4 || cleanUsername.length > 20) {
@@ -935,9 +953,10 @@ setCreating(true);
         }
       }
 
-              const agencyPayload = {
+               const agencyPayload = {
         agency_name: createForm.agency_name.trim(),
-        country: createForm.country.trim() || null,
+        country: selectedCountry.names.en,
+        country_code: selectedCountry.numeric,
         company_founded_year:
           createForm.company_founded_year &&
           /^\d+$/.test(String(createForm.company_founded_year).trim())
@@ -1817,16 +1836,26 @@ const exportAgencies = allExportAgencies;
                 />
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  {language === "en" ? "Country" : language === "ko" ? "국가" : "国家"}
-                </label>
-                <input
-                  value={createForm.country}
-                  onChange={(e) => handleCreateChange("country", e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                />
-              </div>
+                            <CountrySearchSelect
+                label={
+                  language === "en"
+                    ? "Country"
+                    : language === "ko"
+                    ? "국가"
+                    : "国家"
+                }
+                language={language}
+                required
+                value={createForm.country_code}
+                legacyValue={createForm.country}
+                onChange={({ code, name }) => {
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    country: name,
+                    country_code: code,
+                  }));
+                }}
+              />
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">

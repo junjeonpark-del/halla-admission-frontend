@@ -9,6 +9,8 @@ import {
 } from "../data/majorCatalog";
 import { supabase } from "../lib/supabase";
 import { useAgencySession } from "../contexts/AgencySessionContext";
+import CountrySearchSelect from "../components/CountrySearchSelect";
+import { resolveCountry } from "../data/countryCatalog";
 
 const messages = {
   zh: {
@@ -132,8 +134,11 @@ const initialForm = {
   fullNamePassport: "",
   sex: "",
   nationalityApplicant: "",
+  nationalityApplicantCode: "",
   nationalityFather: "",
+  nationalityFatherCode: "",
   nationalityMother: "",
+  nationalityMotherCode: "",
   passportNo: "",
   alienRegistrationNo: "",
   dateOfBirth: "",
@@ -159,13 +164,15 @@ const initialForm = {
   refundEmail: "",
   accountHolder: "",
   relationshipWithApplicant: "",
-  beneficiaryAddress: "",
+    beneficiaryAddress: "",
   beneficiaryCity: "",
   beneficiaryCountry: "",
+  beneficiaryCountryCode: "",
   bankName: "",
   bankAddress: "",
   bankCity: "",
   bankCountry: "",
+  bankCountryCode: "",
   accountNumber: "",
   swiftCode: "",
 
@@ -182,6 +189,7 @@ acknowledge_notice: true,
 guarantor_department_major: "",
 guarantor_applicant_name: "",
 guarantor_applicant_nationality: "",
+guarantorApplicantNationalityCode: "",
 guarantor_applicant_id_number: "",
 guarantor_applicant_passport_number: "",
 guarantor_name: "",
@@ -1513,10 +1521,22 @@ setLoadedAgencyUnitId(data.agency_unit_id || "");
 
         fullNamePassport: data.full_name_passport || data.english_name || "",
         sex: data.gender || "",
-        nationalityApplicant:
+                nationalityApplicant:
           data.nationality_applicant || data.nationality || "",
+        nationalityApplicantCode:
+          data.nationality_applicant_code ||
+          resolveCountry(data.nationality_applicant || data.nationality)?.numeric ||
+          "",
         nationalityFather: data.nationality_father || "",
+        nationalityFatherCode:
+          data.nationality_father_code ||
+          resolveCountry(data.nationality_father)?.numeric ||
+          "",
         nationalityMother: data.nationality_mother || "",
+        nationalityMotherCode:
+          data.nationality_mother_code ||
+          resolveCountry(data.nationality_mother)?.numeric ||
+          "",
         passportNo: data.passport_no || "",
         alienRegistrationNo: data.alien_registration_no || "",
         dateOfBirth: data.date_of_birth || "",
@@ -1543,11 +1563,19 @@ setLoadedAgencyUnitId(data.agency_unit_id || "");
         relationshipWithApplicant: data.relationship || "",
         beneficiaryAddress: data.beneficiary_address || "",
         beneficiaryCity: data.beneficiary_city || "",
-        beneficiaryCountry: data.beneficiary_country || "",
+                beneficiaryCountry: data.beneficiary_country || "",
+        beneficiaryCountryCode:
+          data.beneficiary_country_code ||
+          resolveCountry(data.beneficiary_country)?.numeric ||
+          "",
         bankName: data.bank_name || "",
         bankAddress: data.bank_address || "",
         bankCity: data.bank_city || "",
         bankCountry: data.bank_country || "",
+        bankCountryCode:
+          data.bank_country_code ||
+          resolveCountry(data.bank_country)?.numeric ||
+          "",
         accountNumber: data.account_number || "",
         swiftCode: data.swift_code || "",
 
@@ -1566,8 +1594,12 @@ setLoadedAgencyUnitId(data.agency_unit_id || "");
 
         guarantor_department_major: data.guarantor_department_major || "",
         guarantor_applicant_name: data.guarantor_applicant_name || "",
-        guarantor_applicant_nationality:
+                guarantor_applicant_nationality:
           data.guarantor_applicant_nationality || "",
+        guarantorApplicantNationalityCode:
+          data.guarantor_applicant_nationality_code ||
+          resolveCountry(data.guarantor_applicant_nationality)?.numeric ||
+          "",
         guarantor_applicant_id_number:
           data.guarantor_applicant_id_number || "",
         guarantor_applicant_passport_number:
@@ -2305,11 +2337,13 @@ agency_unit_id: payloadAgencyUnitId,
       relationship: form.relationshipWithApplicant,
       beneficiary_address: form.beneficiaryAddress,
       beneficiary_city: form.beneficiaryCity,
-      beneficiary_country: form.beneficiaryCountry,
+            beneficiary_country: form.beneficiaryCountry,
+      beneficiary_country_code: form.beneficiaryCountryCode || null,
       bank_name: form.bankName,
       bank_address: form.bankAddress,
       bank_city: form.bankCity,
       bank_country: form.bankCountry,
+      bank_country_code: form.bankCountryCode || null,
       account_number: form.accountNumber,
       swift_code: form.swiftCode,
 
@@ -2318,13 +2352,16 @@ agency_unit_id: payloadAgencyUnitId,
       agree_personal_info: form.agree_personal_info ? "agree" : "disagree",
       acknowledge_notice: form.acknowledge_notice ? "yes" : "no",
 
-      guarantor_department_major: form.guarantor_department_major,
+            guarantor_department_major: form.guarantor_department_major,
       guarantor_applicant_name: form.guarantor_applicant_name,
-      guarantor_applicant_nationality: normalizeCountryInput(
-        form.guarantor_applicant_nationality
-      ),
-      guarantor_applicant_id_number: form.guarantor_applicant_id_number,
-      guarantor_applicant_passport_number: form.guarantor_applicant_passport_number,
+      guarantor_applicant_nationality:
+        form.guarantor_applicant_nationality,
+      guarantor_applicant_nationality_code:
+        form.guarantorApplicantNationalityCode || null,
+      guarantor_applicant_id_number:
+        form.guarantor_applicant_id_number,
+      guarantor_applicant_passport_number:
+        form.guarantor_applicant_passport_number,
 
       guarantor_name: form.guarantor_name,
       guarantor_relationship: form.guarantor_relationship,
@@ -2374,10 +2411,13 @@ agency_unit_id: payloadAgencyUnitId,
     english_name: form.fullNamePassport,
     full_name_passport: form.fullNamePassport,
     gender: form.sex,
-    nationality: normalizeCountryInput(form.nationalityApplicant),
-nationality_applicant: normalizeCountryInput(form.nationalityApplicant),
-nationality_father: normalizeCountryInput(form.nationalityFather),
-nationality_mother: normalizeCountryInput(form.nationalityMother),
+        nationality: form.nationalityApplicant,
+    nationality_applicant: form.nationalityApplicant,
+    nationality_applicant_code: form.nationalityApplicantCode || null,
+    nationality_father: form.nationalityFather,
+    nationality_father_code: form.nationalityFatherCode || null,
+    nationality_mother: form.nationalityMother,
+    nationality_mother_code: form.nationalityMotherCode || null,
     passport_no: form.passportNo,
     alien_registration_no: form.alienRegistrationNo,
     date_of_birth: normalizeDate(form.dateOfBirth),
@@ -2426,13 +2466,16 @@ nationality_mother: normalizeCountryInput(form.nationalityMother),
 
     bank_certificate_holder_type: form.bank_certificate_holder_type,
 
-    guarantor_department_major: form.guarantor_department_major,
+        guarantor_department_major: form.guarantor_department_major,
     guarantor_applicant_name: form.guarantor_applicant_name,
-    guarantor_applicant_nationality: normalizeCountryInput(
-  form.guarantor_applicant_nationality
-),
-    guarantor_applicant_id_number: form.guarantor_applicant_id_number,
-    guarantor_applicant_passport_number: form.guarantor_applicant_passport_number,
+    guarantor_applicant_nationality:
+      form.guarantor_applicant_nationality,
+    guarantor_applicant_nationality_code:
+      form.guarantorApplicantNationalityCode || null,
+    guarantor_applicant_id_number:
+      form.guarantor_applicant_id_number,
+    guarantor_applicant_passport_number:
+      form.guarantor_applicant_passport_number,
 
     guarantor_name: form.guarantor_name,
     guarantor_relationship: form.guarantor_relationship,
@@ -3277,38 +3320,48 @@ if (sessionLoading) {
               onChange={(value) => updateField("sex", value)}
               options={sexOptions}
             />
-            <div>
-  <Label required>{t.fields.nationalityApplicant}</Label>
-  <input
-    value={form.nationalityApplicant}
-    onChange={(e) =>
-      updateCountryField("nationalityApplicant", e.target.value)
-    }
-    onBlur={() => normalizeCountryField("nationalityApplicant")}
-    placeholder={t.fields.nationalityApplicantPlaceholder}
-    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-  />
-</div>
-            <div>
-  <Label>{t.fields.nationalityFather}</Label>
-  <input
-    value={form.nationalityFather}
-    onChange={(e) => updateCountryField("nationalityFather", e.target.value)}
-    onBlur={() => normalizeCountryField("nationalityFather")}
-    placeholder={t.fields.nationalityFatherPlaceholder}
-    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-  />
-</div>
-            <div>
-  <Label>{t.fields.nationalityMother}</Label>
-  <input
-    value={form.nationalityMother}
-    onChange={(e) => updateCountryField("nationalityMother", e.target.value)}
-    onBlur={() => normalizeCountryField("nationalityMother")}
-    placeholder={t.fields.nationalityMotherPlaceholder}
-    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-  />
-</div>
+                        <CountrySearchSelect
+              label={t.fields.nationalityApplicant}
+              language={language}
+              value={form.nationalityApplicantCode}
+              legacyValue={form.nationalityApplicant}
+              required
+              onChange={({ code, name }) => {
+                setForm((previous) => ({
+                  ...previous,
+                  nationalityApplicant: name,
+                  nationalityApplicantCode: code,
+                }));
+              }}
+            />
+
+            <CountrySearchSelect
+              label={t.fields.nationalityFather}
+              language={language}
+              value={form.nationalityFatherCode}
+              legacyValue={form.nationalityFather}
+              onChange={({ code, name }) => {
+                setForm((previous) => ({
+                  ...previous,
+                  nationalityFather: name,
+                  nationalityFatherCode: code,
+                }));
+              }}
+            />
+
+            <CountrySearchSelect
+              label={t.fields.nationalityMother}
+              language={language}
+              value={form.nationalityMotherCode}
+              legacyValue={form.nationalityMother}
+              onChange={({ code, name }) => {
+                setForm((previous) => ({
+                  ...previous,
+                  nationalityMother: name,
+                  nationalityMotherCode: code,
+                }));
+              }}
+            />
             <Input
               label={t.fields.passportNo}
               required
@@ -3532,14 +3585,19 @@ if (sessionLoading) {
                 }
                 placeholder={t.fields.relationshipWithApplicantPlaceholder}
               />
-              <Input
+                            <CountrySearchSelect
                 label={t.fields.country}
+                language={language}
+                value={form.beneficiaryCountryCode}
+                legacyValue={form.beneficiaryCountry}
                 required
-                value={form.beneficiaryCountry}
-                onChange={(e) =>
-                  updateField("beneficiaryCountry", e.target.value)
-                }
-                placeholder={t.fields.countryPlaceholder}
+                onChange={({ code, name }) => {
+                  setForm((previous) => ({
+                    ...previous,
+                    beneficiaryCountry: name,
+                    beneficiaryCountryCode: code,
+                  }));
+                }}
               />
               <Input
                 label={t.fields.city}
@@ -3574,12 +3632,19 @@ if (sessionLoading) {
                 onChange={(e) => updateField("bankName", e.target.value)}
                 placeholder={t.fields.bankNamePlaceholder}
               />
-              <Input
+                            <CountrySearchSelect
                 label={t.fields.country}
+                language={language}
+                value={form.bankCountryCode}
+                legacyValue={form.bankCountry}
                 required
-                value={form.bankCountry}
-                onChange={(e) => updateField("bankCountry", e.target.value)}
-                placeholder={t.fields.bankCountryPlaceholder}
+                onChange={({ code, name }) => {
+                  setForm((previous) => ({
+                    ...previous,
+                    bankCountry: name,
+                    bankCountryCode: code,
+                  }));
+                }}
               />
               <Input
                 label={t.fields.city}
@@ -3729,16 +3794,20 @@ onChange={(value) => updateField("bank_certificate_holder_type", value)}
             }
           />
           <div>
-  <Label required>{t.fields.guarNationality}</Label>
-  <input
-    value={form.guarantor_applicant_nationality}
-    onChange={(e) =>
-      updateCountryField("guarantor_applicant_nationality", e.target.value)
-    }
-    onBlur={() => normalizeCountryField("guarantor_applicant_nationality")}
-    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-  />
-</div>
+            <CountrySearchSelect
+            label={t.fields.guarNationality}
+            language={language}
+            value={form.guarantorApplicantNationalityCode}
+            legacyValue={form.guarantor_applicant_nationality}
+            required
+            onChange={({ code, name }) => {
+              setForm((previous) => ({
+                ...previous,
+                guarantor_applicant_nationality: name,
+                guarantorApplicantNationalityCode: code,
+              }));
+            }}
+          />
           <Input
             label={t.fields.guarId}
             value={form.guarantor_applicant_id_number}

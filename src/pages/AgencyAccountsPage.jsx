@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAgencySession } from "../contexts/AgencySessionContext";
+import CountrySearchSelect from "../components/CountrySearchSelect";
+import {
+  getCountryByNumericCode,
+  getCountryLabel,
+  resolveCountry,
+} from "../data/countryCatalog";
 
 const messages = {
   zh: {
@@ -418,6 +424,7 @@ function getInitialAgencyInfoForm() {
   return {
     agency_name: "",
     country: "",
+    country_code: "",
     company_founded_year: "",
     business_license_no: "",
     legal_representative: "",
@@ -949,15 +956,16 @@ const handleDeleteManagedUnit = async (unit) => {
 
   const handleOpenAgencyInfoEdit = () => {
     setAgencyInfoForm({
-      agency_name: agencyInfo?.agency_name || "",
-      country: agencyInfo?.country || "",
-      company_founded_year: agencyInfo?.company_founded_year || "",
-      business_license_no: agencyInfo?.business_license_no || "",
-      legal_representative: agencyInfo?.legal_representative || "",
-      contact_name: agencyInfo?.contact_name || "",
-      phone: agencyInfo?.phone || "",
-      email: agencyInfo?.email || "",
-    });
+  agency_name: agencyInfo?.agency_name || "",
+  country: agencyInfo?.country || "",
+  country_code: agencyInfo?.country_code || "",
+  company_founded_year: agencyInfo?.company_founded_year || "",
+  business_license_no: agencyInfo?.business_license_no || "",
+  legal_representative: agencyInfo?.legal_representative || "",
+  contact_name: agencyInfo?.contact_name || "",
+  phone: agencyInfo?.phone || "",
+  email: agencyInfo?.email || "",
+});
     setShowAgencyInfoModal(true);
   };
 
@@ -990,8 +998,29 @@ const handleDeleteManagedUnit = async (unit) => {
         return;
       }
 
-      if (!agencyInfoForm.agency_name.trim()) {
-        alert(language === "en" ? "Please enter the agency name" : language === "ko" ? "기관명을 입력해 주세요" : "请填写机构名称");
+         if (!agencyInfoForm.agency_name.trim()) {
+        alert(
+          language === "en"
+            ? "Please enter the agency name"
+            : language === "ko"
+            ? "기관명을 입력해 주세요"
+            : "请填写机构名称"
+        );
+        return;
+      }
+
+      const selectedCountry =
+        getCountryByNumericCode(agencyInfoForm.country_code) ||
+        resolveCountry(agencyInfoForm.country);
+
+      if (!selectedCountry) {
+        alert(
+          language === "en"
+            ? "Please select a valid country"
+            : language === "ko"
+            ? "올바른 국가를 선택해 주세요"
+            : "请选择有效的国家"
+        );
         return;
       }
 
@@ -1001,8 +1030,9 @@ const handleDeleteManagedUnit = async (unit) => {
         .from("agencies")
                 .update({
           agency_name: agencyInfoForm.agency_name.trim(),
-          country: agencyInfoForm.country.trim() || null,
-          company_founded_year:
+country: selectedCountry.names.en,
+country_code: selectedCountry.numeric,
+company_founded_year:
             agencyInfoForm.company_founded_year &&
             /^\d+$/.test(String(agencyInfoForm.company_founded_year).trim())
               ? Number(String(agencyInfoForm.company_founded_year).trim())
@@ -1414,8 +1444,14 @@ const handleDeleteManagedUnit = async (unit) => {
               {language === "en" ? "Country" : language === "ko" ? "국가" : "国家"}
             </div>
             <div className="mt-2 min-h-[24px] text-sm font-semibold text-slate-800 break-all">
-              {agencyInfo?.country || "-"}
-            </div>
+  {getCountryLabel(
+    getCountryByNumericCode(agencyInfo?.country_code) ||
+      resolveCountry(agencyInfo?.country),
+    language
+  ) ||
+    agencyInfo?.country ||
+    "-"}
+</div>
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -2349,15 +2385,27 @@ const handleDeleteManagedUnit = async (unit) => {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  {language === "en" ? "Country" : language === "ko" ? "국가" : "国家"}
-                </label>
-                <input
-                  value={agencyInfoForm.country}
-                  onChange={(e) => handleAgencyInfoChange("country", e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-                />
-              </div>
+  <CountrySearchSelect
+    label={
+      language === "en"
+        ? "Country"
+        : language === "ko"
+        ? "국가"
+        : "国家"
+    }
+    language={language}
+    value={agencyInfoForm.country_code}
+    legacyValue={agencyInfoForm.country}
+    required
+    onChange={({ code, name }) => {
+      setAgencyInfoForm((previous) => ({
+        ...previous,
+        country: name,
+        country_code: code,
+      }));
+    }}
+  />
+</div>
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
