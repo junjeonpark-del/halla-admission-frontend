@@ -674,6 +674,21 @@ function ReviewMenuItem({ item, active, checked, onClick, onCheck }) {
     }
   };
 
+  const incomeBreakMarkers = [
+    "收入证明",
+    "Income Certificate",
+    "소득증명",
+  ];
+
+  const incomeBreakMarker =
+    item.key === "guarantorEmploymentIncome"
+      ? incomeBreakMarkers.find((marker) => item.label.includes(marker))
+      : "";
+
+  const incomeBreakIndex = incomeBreakMarker
+    ? item.label.indexOf(incomeBreakMarker)
+    : -1;
+
   return (
     <div
       role="button"
@@ -687,26 +702,35 @@ function ReviewMenuItem({ item, active, checked, onClick, onCheck }) {
           : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50"
       }`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <input
           type="checkbox"
           checked={checked}
           onClick={(event) => event.stopPropagation()}
           onChange={(event) => onCheck(item.key, event.target.checked)}
-          className="mt-[3px] h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300"
+          className="h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300"
         />
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 break-words text-sm font-semibold leading-6 text-slate-900">
-              {item.label}
-            </div>
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+          <div className="min-w-0 break-words text-sm font-semibold leading-6 text-slate-900">
+            {incomeBreakIndex > 0 ? (
+              <>
+                <span className="block">
+                  {item.label.slice(0, incomeBreakIndex)}
+                </span>
+                <span className="block">
+                  {item.label.slice(incomeBreakIndex)}
+                </span>
+              </>
+            ) : (
+              item.label
+            )}
+          </div>
 
-            <div className="shrink-0">
-              <StatusBadge type={item.statusType}>
-                {item.statusLabel}
-              </StatusBadge>
-            </div>
+          <div className="shrink-0">
+            <StatusBadge type={item.statusType}>
+              {item.statusLabel}
+            </StatusBadge>
           </div>
         </div>
       </div>
