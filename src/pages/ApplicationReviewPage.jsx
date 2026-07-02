@@ -665,37 +665,50 @@ function StatusBadge({ type = "default", children }) {
 }
 
 function ReviewMenuItem({ item, active, checked, onClick, onCheck }) {
+  const handleKeyDown = (event) => {
+    if (event.target !== event.currentTarget) return;
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <div
-      className={`rounded-2xl border p-4 transition ${
+      role="button"
+      tabIndex={0}
+      aria-pressed={active}
+      onClick={onClick}
+      onKeyDown={handleKeyDown}
+      className={`cursor-pointer rounded-2xl border p-4 text-left outline-none transition focus:ring-2 focus:ring-blue-200 ${
         active
           ? "border-blue-500 bg-blue-50"
-          : "border-slate-200 bg-white hover:border-slate-300"
+          : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50"
       }`}
     >
       <div className="flex items-start gap-3">
         <input
           type="checkbox"
           checked={checked}
-          onChange={(e) => onCheck(item.key, e.target.checked)}
-          className="mt-[3px] h-4 w-4 shrink-0 rounded border-slate-300"
+          onClick={(event) => event.stopPropagation()}
+          onChange={(event) => onCheck(item.key, event.target.checked)}
+          className="mt-[3px] h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300"
         />
 
-        <button
-          type="button"
-          onClick={onClick}
-          className="review-material-menu-button min-w-0 flex-1 text-left"
-        >
+        <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 break-words text-sm font-semibold leading-6 text-slate-900">
               {item.label}
             </div>
+
             <div className="shrink-0">
-              <StatusBadge type={item.statusType}>{item.statusLabel}</StatusBadge>
+              <StatusBadge type={item.statusType}>
+                {item.statusLabel}
+              </StatusBadge>
             </div>
           </div>
-          
-        </button>
+        </div>
       </div>
     </div>
   );
