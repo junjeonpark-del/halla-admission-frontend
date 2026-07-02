@@ -341,9 +341,9 @@ export default function ApplicationFormPreview({ student, photoUrl = "" }) {
           <HeadCell small>지원학과 (Major)</HeadCell>
           <Cell small>{major}</Cell>
 
-          <div className="grid grid-cols-[66px_minmax(0,1fr)]">
+                    <div className="grid grid-cols-[66px_minmax(0,1fr)]">
             <HeadCell center small>수험번호</HeadCell>
-            <Cell small />
+            <Cell small>{student.examinee_number || ""}</Cell>
           </div>
         </div>
 

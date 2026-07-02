@@ -147,6 +147,7 @@ function buildSchoolSystemRow({
     E: getIntakeMonthCode(intake),
     F: getIntakeRoundCode(intake),
     G: getSchoolTrackCode(student.program_track),
+    H: asText(student.examinee_number),
 
     M: normalizeLevel(student.topik, 1, 6),
     O: normalizeLevel(student.kiip, 1, 5),

@@ -343,9 +343,9 @@ export default function LanguageApplicationFormPreview({ student, photoUrl = "" 
           <HeadCell small>과정 언어 (Program Language)</HeadCell>
           <Cell small>{programLanguageLabel}</Cell>
 
-          <div className="grid grid-cols-[66px_minmax(0,1fr)]">
+                    <div className="grid grid-cols-[66px_minmax(0,1fr)]">
             <HeadCell center small>수험번호</HeadCell>
-            <Cell small />
+            <Cell small>{student.examinee_number || ""}</Cell>
           </div>
         </div>
 
