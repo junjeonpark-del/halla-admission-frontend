@@ -826,12 +826,9 @@ function PreviewPlaceholder({
 
   return (
     <div className="flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="shrink-0 flex items-center justify-between border-b border-slate-100 px-6 py-5">
+            <div className="shrink-0 flex items-center justify-between border-b border-slate-100 px-6 py-5">
         <div>
           <h3 className="text-lg font-bold text-slate-900">{item.label}</h3>
-          <p className="mt-1 text-sm text-slate-500">
-            {t.materials.currentMaterialTitle}
-          </p>
         </div>
 
         <div className="flex gap-3">

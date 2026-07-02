@@ -400,7 +400,10 @@ const [page, setPage] = useState(1);
 const [pageSize, setPageSize] = useState(10);
 const [jumpPage, setJumpPage] = useState("");
 
-  const [selectedNode, setSelectedNode] = useState({ type: "all" });
+    const [selectedNode, setSelectedNode] = useState({
+    type: "year",
+    year: String(new Date().getFullYear()),
+  });
   const [expandedYears, setExpandedYears] = useState({});
   const [expandedTypes, setExpandedTypes] = useState({});
   const [expandedMonths, setExpandedMonths] = useState({});
