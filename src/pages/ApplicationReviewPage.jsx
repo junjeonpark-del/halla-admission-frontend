@@ -69,6 +69,29 @@ const messages = {
       saving: "保存中...",
       saved: "申请状态已更新",
     },
+        auditLog: {
+      title: "最近操作日志",
+      desc: "仅记录信息修改和审核状态变化",
+      loading: "正在加载操作日志...",
+      empty: "暂无操作记录",
+      loadFailed: "操作日志加载失败",
+      unknownMaterial: "申请材料",
+      infoUpdated: (fields) =>
+        fields
+          ? `修改了申请信息：${fields}`
+          : "修改了申请信息",
+      statusChanged: (from, to) =>
+        `将申请状态从“${from}”修改为“${to}”`,
+      reviewNoteUpdated: "修改了申请审核备注",
+      statusAndNoteChanged: (from, to) =>
+        `将申请状态从“${from}”修改为“${to}”，并修改了审核备注`,
+      materialStatusChanged: (material, status) =>
+        `将“${material}”材料状态修改为“${status}”`,
+      materialNoteUpdated: (material) =>
+        `修改了“${material}”的审核备注`,
+      materialStatusAndNoteChanged: (material, status) =>
+        `将“${material}”材料状态修改为“${status}”，并修改了审核备注`,
+    },
     applicationForm: {
       title: "申请信息",
       desc: "管理员可直接修改申请表中的关键信息",
@@ -249,6 +272,29 @@ fields: {
       saveButton: "Save Application Status and Review Note",
       saving: "Saving...",
       saved: "Application status updated",
+    },
+        auditLog: {
+      title: "Recent Operation Logs",
+      desc: "Only information edits and review changes are recorded",
+      loading: "Loading operation logs...",
+      empty: "No operation records",
+      loadFailed: "Failed to load operation logs",
+      unknownMaterial: "Application Material",
+      infoUpdated: (fields) =>
+        fields
+          ? `Updated application information: ${fields}`
+          : "Updated application information",
+      statusChanged: (from, to) =>
+        `Changed application status from "${from}" to "${to}"`,
+      reviewNoteUpdated: "Updated the application review note",
+      statusAndNoteChanged: (from, to) =>
+        `Changed application status from "${from}" to "${to}" and updated the review note`,
+      materialStatusChanged: (material, status) =>
+        `Changed "${material}" material status to "${status}"`,
+      materialNoteUpdated: (material) =>
+        `Updated the review note for "${material}"`,
+      materialStatusAndNoteChanged: (material, status) =>
+        `Changed "${material}" material status to "${status}" and updated its review note`,
     },
     applicationForm: {
       title: "Application Information",
@@ -431,6 +477,29 @@ fields: {
       saveButton: "지원 상태 및 심사 메모 저장",
       saving: "저장 중...",
       saved: "지원 상태가 업데이트되었습니다",
+    },
+        auditLog: {
+      title: "최근 작업 로그",
+      desc: "정보 수정 및 심사 상태 변경만 기록합니다",
+      loading: "작업 로그를 불러오는 중...",
+      empty: "작업 기록이 없습니다",
+      loadFailed: "작업 로그를 불러오지 못했습니다",
+      unknownMaterial: "지원 서류",
+      infoUpdated: (fields) =>
+        fields
+          ? `지원 정보를 수정했습니다: ${fields}`
+          : "지원 정보를 수정했습니다",
+      statusChanged: (from, to) =>
+        `지원 상태를 “${from}”에서 “${to}”(으)로 변경했습니다`,
+      reviewNoteUpdated: "지원 심사 메모를 수정했습니다",
+      statusAndNoteChanged: (from, to) =>
+        `지원 상태를 “${from}”에서 “${to}”(으)로 변경하고 심사 메모를 수정했습니다`,
+      materialStatusChanged: (material, status) =>
+        `“${material}” 서류 상태를 “${status}”(으)로 변경했습니다`,
+      materialNoteUpdated: (material) =>
+        `“${material}”의 심사 메모를 수정했습니다`,
+      materialStatusAndNoteChanged: (material, status) =>
+        `“${material}” 서류 상태를 “${status}”(으)로 변경하고 심사 메모를 수정했습니다`,
     },
     applicationForm: {
       title: "지원 정보",
@@ -889,7 +958,10 @@ function ApplicationReviewPage() {
   const [, setLockChecked] = useState(false);
   const ADMIN_LOCK_TIMEOUT_MINUTES = 20;
   const [savingApplicationStatus, setSavingApplicationStatus] = useState(false);
-  const [applicationReviewNote, setApplicationReviewNote] = useState("");
+    const [applicationReviewNote, setApplicationReviewNote] = useState("");
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
+  const [auditLogError, setAuditLogError] = useState("");
   const [selectedKey, setSelectedKey] = useState("applicationForm");
   const [checkedMap, setCheckedMap] = useState({});
 
@@ -1258,8 +1330,10 @@ function ApplicationReviewPage() {
       try {
         setLoading(true);
         setLoadError("");
-        setStudent(null);
+                setStudent(null);
         setUploadedFiles([]);
+        setAuditLogs([]);
+        setAuditLogError("");
         setPreviewUrl("");
         setCheckedMap({});
         setSelectedKey("applicationForm");
@@ -1381,12 +1455,13 @@ function ApplicationReviewPage() {
           } else {
             setAgencyName(agencyRow?.agency_name || "");
           }
-        } else {
+                } else {
           setAgencyName("");
         }
 
         const files = await fetchApplicationFiles(id);
         setUploadedFiles(files || []);
+        await loadAuditLogs(currentRow.id);
       } catch (error) {
         console.error("ApplicationReviewPage loadData error:", error);
 
@@ -1559,6 +1634,202 @@ function ApplicationReviewPage() {
     const s = String(status || "").toLowerCase();
     return t.statusLabels[s] || status || "-";
   };
+
+  const formatAuditLogTime = (value) => {
+    if (!value) return "-";
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    const locale =
+      language === "en"
+        ? "en-US"
+        : language === "ko"
+        ? "ko-KR"
+        : "zh-CN";
+
+    return date.toLocaleString(locale, {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  };
+
+  const getAuditFieldLabel = (field) => {
+    const labelMap = {
+      english_name: formFieldTexts.englishName,
+      full_name_passport: formFieldTexts.englishName,
+      gender: formFieldTexts.gender,
+      nationality_applicant: formFieldTexts.nationality,
+      date_of_birth: formFieldTexts.birth,
+      tel: formFieldTexts.tel,
+      email: formFieldTexts.email,
+      address: formFieldTexts.address,
+      passport_no: formFieldTexts.passportNo,
+      major: formFieldTexts.major,
+      degree_level:
+        language === "en"
+          ? "Degree Level"
+          : language === "ko"
+          ? "학위 과정"
+          : "学位类型",
+      admission_type: formFieldTexts.admissionType,
+      program_track: formFieldTexts.programTrack,
+      dormitory: formFieldTexts.dormitory,
+      examinee_number: formFieldTexts.examineeNumber,
+    };
+
+    return labelMap[field] || field;
+  };
+
+  const getMaterialAuditStatusLabel = (status) => {
+    if (status === "approved") {
+      return materialStatusTexts.approved;
+    }
+
+    if (status === "missing_documents") {
+      return materialStatusTexts.needMore;
+    }
+
+    return formatApplicationStatusLabel(status);
+  };
+
+  const formatAuditLogSummary = (log) => {
+    const details = log?.details || {};
+    const changedFields = Array.isArray(log?.changed_fields)
+      ? log.changed_fields
+      : [];
+
+    if (log?.action_type === "application_info_updated") {
+      const labels = [
+        ...new Set(
+          changedFields
+            .filter(
+              (field) =>
+                field !== "status" &&
+                field !== "review_note"
+            )
+            .map(getAuditFieldLabel)
+        ),
+      ];
+
+      return t.auditLog.infoUpdated(
+        labels.join(language === "en" ? ", " : "、")
+      );
+    }
+
+    if (log?.action_type === "application_review_updated") {
+      const statusChanged =
+        details.old_status !== details.new_status;
+      const noteChanged =
+        details.review_note_changed === true;
+
+      const oldStatus =
+        formatApplicationStatusLabel(details.old_status);
+      const newStatus =
+        formatApplicationStatusLabel(details.new_status);
+
+      if (statusChanged && noteChanged) {
+        return t.auditLog.statusAndNoteChanged(
+          oldStatus,
+          newStatus
+        );
+      }
+
+      if (statusChanged) {
+        return t.auditLog.statusChanged(
+          oldStatus,
+          newStatus
+        );
+      }
+
+      return t.auditLog.reviewNoteUpdated;
+    }
+
+    if (log?.action_type === "material_review_updated") {
+      const materialName =
+        materialLabels[details.file_type] ||
+        details.file_name ||
+        t.auditLog.unknownMaterial;
+
+      const statusChanged =
+        details.old_review_status !==
+        details.new_review_status;
+
+      const noteChanged =
+        details.review_note_changed === true;
+
+      const newStatus = getMaterialAuditStatusLabel(
+        details.new_review_status
+      );
+
+      if (statusChanged && noteChanged) {
+        return t.auditLog.materialStatusAndNoteChanged(
+          materialName,
+          newStatus
+        );
+      }
+
+      if (statusChanged) {
+        return t.auditLog.materialStatusChanged(
+          materialName,
+          newStatus
+        );
+      }
+
+      return t.auditLog.materialNoteUpdated(materialName);
+    }
+
+    return "-";
+  };
+
+  const loadAuditLogs = async (applicationId) => {
+    if (!applicationId) {
+      setAuditLogs([]);
+      return;
+    }
+
+    try {
+      setLoadingAuditLogs(true);
+      setAuditLogError("");
+
+      const response = await fetch(
+        `/api/application-audit-logs?application_id=${encodeURIComponent(
+          applicationId
+        )}&language=${language}`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.message || t.auditLog.loadFailed
+        );
+      }
+
+      setAuditLogs(result.logs || []);
+    } catch (error) {
+      console.error("loadAuditLogs error:", error);
+      setAuditLogs([]);
+      setAuditLogError(
+        error.message || t.auditLog.loadFailed
+      );
+    } finally {
+      setLoadingAuditLogs(false);
+    }
+  };
+
 
   const getApplicationStatusBadgeType = (status) => {
     const s = String(status || "").toLowerCase();
@@ -2037,7 +2308,7 @@ function ApplicationReviewPage() {
     const getAdminOperatorName = () =>
     adminSession?.name || adminSession?.username || "Admin";
 
-  const buildAdminOperationPayload = () => {
+    const buildAdminOperationPayload = (operationType) => {
     const nowIso = new Date().toISOString();
     const operatorId = adminSession?.admin_id || null;
     const operatorName = getAdminOperatorName();
@@ -2048,7 +2319,8 @@ function ApplicationReviewPage() {
       admin_first_operated_by_name: student?.admin_first_operated_by_name || operatorName,
       admin_last_operated_at: nowIso,
       admin_last_operated_by_id: operatorId,
-      admin_last_operated_by_name: operatorName,
+            admin_last_operated_by_name: operatorName,
+      admin_operation_type: operationType,
     };
   };
 
@@ -2078,7 +2350,7 @@ function ApplicationReviewPage() {
         dormitory: applicationForm.dormitory || null,
         examinee_number:
           applicationForm.examinee_number.trim() || null,
-        ...buildAdminOperationPayload(),
+                ...buildAdminOperationPayload("application_info"),
         admin_editing_by_account_id: adminSession?.admin_id || null,
         admin_editing_by_account_name: getAdminOperatorName(),
         admin_editing_started_at: new Date().toISOString(),
@@ -2122,6 +2394,7 @@ function ApplicationReviewPage() {
         examinee_number: data.examinee_number || "",
       });
 
+            await loadAuditLogs(data.id);
       alert(formTexts.saved);
     } catch (error) {
       console.error("handleSaveApplicationForm error:", error);
@@ -2162,7 +2435,7 @@ const payload = {
 
             const updatePayload = {
         ...payload,
-        ...buildAdminOperationPayload(),
+                ...buildAdminOperationPayload("application_review"),
         admin_editing_by_account_id: adminSession?.admin_id || null,
         admin_editing_by_account_name: getAdminOperatorName(),
         admin_editing_started_at: new Date().toISOString(),
@@ -2185,7 +2458,8 @@ const payload = {
       setLoadedUpdatedAt(data.updated_at || "");
       const normalizedData = await withLinkedIntakeTitle(data);
             setStudent(normalizedData);
-      window.dispatchEvent(new Event("admin-pending-counts-refresh"));
+            window.dispatchEvent(new Event("admin-pending-counts-refresh"));
+      await loadAuditLogs(data.id);
 
       alert(t.applicationReview.saved);
     } catch (error) {
@@ -2263,8 +2537,12 @@ if (!lockResult.ok) {
   return;
 }
 
-    const payload = {
+        const payload = {
       review_note: reviewNote || null,
+      reviewed_by_admin_id:
+        adminSession?.admin_id || null,
+      reviewed_by_admin_name:
+        getAdminOperatorName(),
     };
 
         if (nextStatus) {
@@ -2277,7 +2555,7 @@ if (!lockResult.ok) {
       nextStatus === "missing_documents" || nextStatus === "rejected";
 
     const applicationOperationPayload = {
-      ...buildAdminOperationPayload(),
+            ...buildAdminOperationPayload("material_review"),
       admin_editing_by_account_id: adminSession?.admin_id || null,
       admin_editing_by_account_name: getAdminOperatorName(),
       admin_editing_started_at: new Date().toISOString(),
@@ -2315,7 +2593,11 @@ if (!lockResult.ok) {
     );
 
         await reloadFiles();
-    window.dispatchEvent(new Event("admin-pending-counts-refresh"));
+        await reloadFiles();
+    await loadAuditLogs(student.id);
+    window.dispatchEvent(
+      new Event("admin-pending-counts-refresh")
+    );
 
     alert(t.materials.saveSuccess);
   } catch (error) {
@@ -2898,36 +3180,53 @@ if (!lockResult.ok) {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-slate-900">{t.applicationReview.title}</h3>
-            <p className="mt-1 text-sm text-slate-500">
-              {t.applicationReview.desc}
-            </p>
+            <div className="grid items-stretch gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-900">
+            {t.applicationReview.title}
+          </h3>
 
-            <div className="mt-4">
-              <StatusBadge type={getApplicationStatusBadgeType(student?.status)}>
-                {t.applicationReview.currentStatus}：{formatApplicationStatusLabel(student?.status)}
-              </StatusBadge>
-            </div>
+          <p className="mt-1 text-sm text-slate-500">
+            {t.applicationReview.desc}
+          </p>
+
+          <div className="mt-4">
+            <StatusBadge
+              type={getApplicationStatusBadgeType(student?.status)}
+            >
+              {t.applicationReview.currentStatus}：
+              {formatApplicationStatusLabel(student?.status)}
+            </StatusBadge>
           </div>
 
-          <div className="grid w-full gap-4 lg:max-w-2xl lg:grid-cols-2">
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">
                 {t.applicationReview.changeStatus}
               </label>
+
               <select
                 value={applicationStatus}
-                onChange={(e) => setApplicationStatus(e.target.value)}
+                onChange={(e) =>
+                  setApplicationStatus(e.target.value)
+                }
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               >
-                <option value="submitted">{t.statusLabels.submitted}</option>
-                <option value="under_review">{t.statusLabels.under_review}</option>
-                <option value="missing_documents">{t.statusLabels.missing_documents}</option>
-                <option value="approved">{t.statusLabels.approved}</option>
-                <option value="rejected">{t.statusLabels.rejected}</option>
+                <option value="submitted">
+                  {t.statusLabels.submitted}
+                </option>
+                <option value="under_review">
+                  {t.statusLabels.under_review}
+                </option>
+                <option value="missing_documents">
+                  {t.statusLabels.missing_documents}
+                </option>
+                <option value="approved">
+                  {t.statusLabels.approved}
+                </option>
+                <option value="rejected">
+                  {t.statusLabels.rejected}
+                </option>
               </select>
             </div>
 
@@ -2935,26 +3234,82 @@ if (!lockResult.ok) {
               <label className="mb-2 block text-sm font-medium text-slate-700">
                 {t.applicationReview.reviewNote}
               </label>
+
               <textarea
                 rows={3}
                 value={applicationReviewNote}
-                onChange={(e) => setApplicationReviewNote(e.target.value)}
-                placeholder={t.applicationReview.reviewPlaceholder}
+                onChange={(e) =>
+                  setApplicationReviewNote(e.target.value)
+                }
+                placeholder={
+                  t.applicationReview.reviewPlaceholder
+                }
                 className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               />
             </div>
           </div>
+
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={handleSaveApplicationStatus}
+              disabled={savingApplicationStatus}
+              className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+            >
+              {savingApplicationStatus
+                ? t.applicationReview.saving
+                : t.applicationReview.saveButton}
+            </button>
+          </div>
         </div>
 
-        <div className="mt-4">
-          <button
-            type="button"
-            onClick={handleSaveApplicationStatus}
-            disabled={savingApplicationStatus}
-            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-          >
-            {savingApplicationStatus ? t.applicationReview.saving : t.applicationReview.saveButton}
-          </button>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-900">
+            {t.auditLog.title}
+          </h3>
+
+          <p className="mt-1 text-sm text-slate-500">
+            {t.auditLog.desc}
+          </p>
+
+          <div className="mt-5">
+            {loadingAuditLogs ? (
+              <div className="py-8 text-center text-sm text-slate-500">
+                {t.auditLog.loading}
+              </div>
+            ) : auditLogError ? (
+              <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                {auditLogError}
+              </div>
+            ) : auditLogs.length === 0 ? (
+              <div className="py-8 text-center text-sm text-slate-500">
+                {t.auditLog.empty}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {auditLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="relative border-l-2 border-blue-200 pl-4"
+                  >
+                    <span className="absolute -left-[5px] top-1.5 h-2 w-2 rounded-full bg-blue-500" />
+
+                    <div className="text-sm font-semibold text-slate-800">
+                      {log.operator_name || "Admin"}
+                    </div>
+
+                    <div className="mt-1 text-sm leading-6 text-slate-600">
+                      {formatAuditLogSummary(log)}
+                    </div>
+
+                    <div className="mt-1 text-xs text-slate-400">
+                      {formatAuditLogTime(log.created_at)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
