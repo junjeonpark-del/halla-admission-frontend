@@ -8,6 +8,10 @@ import {
   resolveCountry,
 } from "../data/countryCatalog";
 import {
+  getLocalizedMajorLabel,
+  getMajorCatalog,
+} from "../data/majorCatalog";
+import {
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -30,6 +34,13 @@ const STATUS_COLORS = {
   missing_documents: "#ef4444",
   approved: "#10b981",
   rejected: "#64748b",
+};
+
+const TREND_MONTH_COLORS = {
+  3: "#2563eb",
+  6: "#10b981",
+  9: "#f97316",
+  12: "#8b5cf6",
 };
 
 const ACTIVE_APPLICATION_STATUSES = [
@@ -256,16 +267,17 @@ openIntakesDesc: "显示当前开放与即将开放的申请批次",
     statusPieTitle: "申请状态分布",
     statusPieDesc: "当前筛选范围内各状态占比",
     noStatusStats: "暂无状态统计数据",
-        trendTitle: "近 5 年申请趋势",
-    trendDesc: "当前筛选范围内按年份统计的新增申请数",
-    mapTitle: "国家分布说明",
-    mapDesc: "地图组件暂未接入，这里先用说明区占位",
-    mapText1: "当前由于 React 19 与地图包版本兼容问题，世界地图先不接第三方组件。",
-    mapText2: "现阶段先保留：",
-    mapList1: "国家 TOP 10 柱状图",
-    mapList2: "申请状态环形图",
-    mapList3: "近 6 个月趋势图",
-    mapText3: "后续换兼容 React 19 的地图方案后，这块可以直接替换成世界地图热力分布。",
+    trendTitle: "近 5 年入学月份申请趋势",
+trendDesc: "按照申请所属批次的年份和入学月份统计",
+trendMonthLabels: {
+  3: "3月入学",
+  6: "6月入学",
+  9: "9月入学",
+  12: "12月入学",
+},
+    majorStatsTitle: "申请专业 TOP 10",
+majorStatsDesc: "当前筛选范围内申请人数最多的专业或语言课程",
+noMajorStats: "暂无专业统计数据",
     statusLabels: {
       draft: "草稿",
       submitted: "已提交",
@@ -362,16 +374,17 @@ openIntakesDesc: "Shows currently open and upcoming application intakes",
     statusPieTitle: "Application Status Distribution",
     statusPieDesc: "Status breakdown within the current filter",
     noStatusStats: "No status statistics available",
-        trendTitle: "Application Trend in the Last 5 Years",
-    trendDesc: "Annual new applications within the current filter",
-    mapTitle: "Country Distribution Notes",
-    mapDesc: "Map component is not connected yet, so this area is used as a placeholder",
-    mapText1: "Due to compatibility issues between React 19 and the map package, the world map is not connected for now.",
-    mapText2: "Currently retained:",
-    mapList1: "Top 10 Countries bar chart",
-    mapList2: "Application status donut chart",
-    mapList3: "6-month trend chart",
-    mapText3: "After switching to a map solution compatible with React 19, this section can be replaced directly with a world heat map.",
+    trendTitle: "Application Trends by Intake Month",
+trendDesc: "Applications grouped by intake year and admission month",
+trendMonthLabels: {
+  3: "March Intake",
+  6: "June Intake",
+  9: "September Intake",
+  12: "December Intake",
+},
+    majorStatsTitle: "Top 10 Majors",
+majorStatsDesc: "Most popular majors or language programs within the current filter",
+noMajorStats: "No major statistics available",
     statusLabels: {
       draft: "Draft",
       submitted: "Submitted",
@@ -468,16 +481,17 @@ openIntakesDesc: "현재 오픈 중이거나 곧 오픈될 신청 차수를 표�
     statusPieTitle: "지원 상태 분포",
     statusPieDesc: "현재 필터 범위 내 상태 비율",
     noStatusStats: "상태 통계 데이터가 없습니다",
-        trendTitle: "최근 5년 지원 추세",
-    trendDesc: "현재 필터 범위 내 연도별 신규 지원 수",
-    mapTitle: "국가 분포 안내",
-    mapDesc: "지도 컴포넌트가 아직 연결되지 않아 이 영역은 임시 안내 영역입니다",
-    mapText1: "현재 React 19와 지도 패키지 버전 호환 문제로 세계 지도는 우선 연결하지 않습니다.",
-    mapText2: "현 단계에서는 다음만 유지합니다:",
-    mapList1: "국가 TOP 10 막대 그래프",
-    mapList2: "지원 상태 도넛 차트",
-    mapList3: "최근 6개월 추세 차트",
-    mapText3: "향후 React 19와 호환되는 지도 솔루션으로 교체하면 이 영역을 바로 세계 열지도 분포로 바꿀 수 있습니다.",
+    trendTitle: "최근 5년 입학 월별 지원 추세",
+trendDesc: "지원 차수의 연도와 입학 월을 기준으로 집계합니다",
+trendMonthLabels: {
+  3: "3월 입학",
+  6: "6월 입학",
+  9: "9월 입학",
+  12: "12월 입학",
+},
+    majorStatsTitle: "지원 전공 TOP 10",
+majorStatsDesc: "현재 필터 범위에서 지원자가 가장 많은 전공 또는 어학 과정",
+noMajorStats: "전공 통계 데이터가 없습니다",
     statusLabels: {
       draft: "초안",
       submitted: "제출 완료",
@@ -1124,29 +1138,169 @@ function DashboardPage() {
 
   const topCountries = useMemo(() => countryStats.slice(0, 10), [countryStats]);
 
-    const annualTrendData = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    const buckets = [];
+const majorStats = useMemo(() => {
+  const statsMap = new Map();
 
-    for (let year = currentYear - 4; year <= currentYear; year += 1) {
-      buckets.push({
-        key: String(year),
-        label: String(year),
-        count: 0,
-      });
+  const normalizeValue = (value) =>
+    String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[\s\-_.·/()[\]]+/g, "");
+
+  const getProgramTrackLabel = (value) => {
+    const normalized = normalizeValue(value);
+
+    const isEnglish =
+      normalized === "englishtrack" ||
+      normalized === "englishlanguageprogram" ||
+      normalized === "영어트랙" ||
+      normalized === "英语课程";
+
+    if (isEnglish) {
+      if (language === "en") return "English Language Program";
+      if (language === "ko") return "영어 과정";
+      return "英语课程";
     }
 
-    activeApplications.forEach((item) => {
-      const created = item.created_at ? new Date(item.created_at) : null;
-      if (!created || Number.isNaN(created.getTime())) return;
+    if (language === "en") return "Korean Language Program";
+    if (language === "ko") return "한국어 과정";
+    return "韩语课程";
+  };
 
-      const key = String(created.getFullYear());
-      const bucket = buckets.find((b) => b.key === key);
-      if (bucket) bucket.count += 1;
+  activeApplications.forEach((item) => {
+    const applicationType = getApplicationType(item);
+
+    if (applicationType === "language") {
+      const programTrack = String(item.program_track || "").trim();
+      if (!programTrack) return;
+
+      const key = `language:${normalizeValue(programTrack)}`;
+      const name = getProgramTrackLabel(programTrack);
+
+      if (!statsMap.has(key)) {
+        statsMap.set(key, { name, count: 0 });
+      }
+
+      statsMap.get(key).count += 1;
+      return;
+    }
+
+    const rawMajor = String(item.major || "").trim();
+    if (!rawMajor) return;
+
+    const catalog = getMajorCatalog(applicationType);
+    const normalizedMajor = normalizeValue(rawMajor);
+
+    const matchedMajor = catalog.find((major) =>
+      [major.id, major.ko, major.zh, major.en].some(
+        (value) => normalizeValue(value) === normalizedMajor
+      )
+    );
+
+    const key = matchedMajor
+      ? `${applicationType}:${matchedMajor.id}`
+      : `${applicationType}:${normalizedMajor}`;
+
+    const name = matchedMajor
+      ? getLocalizedMajorLabel(matchedMajor, language)
+      : rawMajor;
+
+    if (!statsMap.has(key)) {
+      statsMap.set(key, { name, count: 0 });
+    }
+
+    statsMap.get(key).count += 1;
+  });
+
+  return Array.from(statsMap.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+}, [activeApplications, language]);
+
+const trendMonthKeys = useMemo(() => {
+  if (selectedIntake !== "all") {
+    const selectedRow = intakes.find(
+      (item) => String(item.id || "") === String(selectedIntake)
+    );
+
+    if (selectedRow?.intake_month) {
+      return [String(selectedRow.intake_month)];
+    }
+  }
+
+  if (selectedApplicationType === "language") {
+    return ["3", "6", "9", "12"];
+  }
+
+  if (
+    selectedApplicationType === "undergraduate" ||
+    selectedApplicationType === "graduate"
+  ) {
+    return ["3", "9"];
+  }
+
+  const existingMonths = new Set();
+
+  activeApplications.forEach((item) => {
+    const linkedIntake = getLinkedIntake(item);
+    const month = linkedIntake?.intake_month || item.intake_month;
+
+    if (month) {
+      existingMonths.add(String(month));
+    }
+  });
+
+  const orderedMonths = ["3", "6", "9", "12"].filter((month) =>
+    existingMonths.has(month)
+  );
+
+  return orderedMonths.length > 0 ? orderedMonths : ["3", "9"];
+}, [
+  activeApplications,
+  intakes,
+  selectedApplicationType,
+  selectedIntake,
+]);
+
+const annualTrendData = useMemo(() => {
+  const currentYear = new Date().getFullYear();
+  const buckets = [];
+
+  for (let year = currentYear - 4; year <= currentYear; year += 1) {
+    const bucket = {
+      key: String(year),
+      label: String(year),
+    };
+
+    trendMonthKeys.forEach((month) => {
+      bucket[`month_${month}`] = 0;
     });
 
-    return buckets;
-  }, [activeApplications]);
+    buckets.push(bucket);
+  }
+
+  activeApplications.forEach((item) => {
+    const linkedIntake = getLinkedIntake(item);
+    const source = linkedIntake || item;
+
+    const intakeYear = Number(source.year || source.intake_year);
+    const intakeMonth = String(source.intake_month || "");
+
+    if (!Number.isInteger(intakeYear) || !trendMonthKeys.includes(intakeMonth)) {
+      return;
+    }
+
+    const bucket = buckets.find(
+      (entry) => entry.key === String(intakeYear)
+    );
+
+    if (!bucket) return;
+
+    bucket[`month_${intakeMonth}`] += 1;
+  });
+
+  return buckets;
+}, [activeApplications, trendMonthKeys, intakes]);
 
   return (
     <div className="space-y-6">
@@ -1573,39 +1727,70 @@ function DashboardPage() {
                     margin={{ top: 10, right: 24, left: 0, bottom: 10 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="count"
-                      stroke="#2563eb"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                      activeDot={{ r: 6 }}
-                    />
+<XAxis dataKey="label" />
+<YAxis allowDecimals={false} />
+<Tooltip />
+<Legend />
+
+{trendMonthKeys.map((month) => (
+  <Line
+    key={month}
+    type="monotone"
+    dataKey={`month_${month}`}
+    name={t.trendMonthLabels[month] || `${month}`}
+    stroke={TREND_MONTH_COLORS[month] || "#64748b"}
+    strokeWidth={3}
+    dot={{ r: 4 }}
+    activeDot={{ r: 6 }}
+  />
+))}
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="mb-4">
-                <h3 className="text-lg font-bold text-slate-900">{t.mapTitle}</h3>
-                <p className="mt-1 text-sm text-slate-500">{t.mapDesc}</p>
-              </div>
+  <div className="mb-4">
+    <h3 className="text-lg font-bold text-slate-900">
+      {t.majorStatsTitle}
+    </h3>
+    <p className="mt-1 text-sm text-slate-500">
+      {t.majorStatsDesc}
+    </p>
+  </div>
 
-              <div className="space-y-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6">
-                <div className="text-sm text-slate-700">{t.mapText1}</div>
-                <div className="text-sm text-slate-700">{t.mapText2}</div>
-                <ul className="list-disc pl-5 text-sm leading-7 text-slate-600">
-                  <li>{t.mapList1}</li>
-                  <li>{t.mapList2}</li>
-                  <li>{t.mapList3}</li>
-                </ul>
-                <div className="text-sm text-slate-700">{t.mapText3}</div>
-              </div>
-            </div>
+  <div className="h-[360px]">
+    {majorStats.length === 0 ? (
+      <div className="flex h-full items-center justify-center text-sm text-slate-500">
+        {t.noMajorStats}
+      </div>
+    ) : (
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={majorStats}
+          layout="vertical"
+          margin={{ top: 10, right: 24, left: 40, bottom: 10 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis type="number" allowDecimals={false} />
+          <YAxis
+            dataKey="name"
+            type="category"
+            width={180}
+            tick={{ fontSize: 12 }}
+          />
+          <Tooltip />
+          <Bar
+            dataKey="count"
+            name={t.majorStatsTitle}
+            fill="#6366f1"
+            radius={[0, 6, 6, 0]}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    )}
+  </div>
+</div>
           </section>
         </>
       )}
