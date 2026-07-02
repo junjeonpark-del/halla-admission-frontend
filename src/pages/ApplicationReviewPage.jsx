@@ -4,6 +4,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { fetchApplicationById } from "../data/applicationsApi";
 import {
   filterAdmissionTypeOptions,
+  getLocalizedMajorLabel,
+  getMajorCatalog,
   getMajorOptions,
   isAdmissionTypeAllowedForTrack,
   isMajorAllowedForTrack,
@@ -984,8 +986,33 @@ function ApplicationReviewPage() {
     examinee_number: "",
   });
 
+    const applicationType =
+    student?.application_type || "undergraduate";
 
-  const applicationType = student?.application_type || "undergraduate";
+  const localizedMajorLabel = useMemo(() => {
+    const rawMajor = String(student?.major || "").trim();
+
+    if (!rawMajor) return "-";
+
+    const catalog = getMajorCatalog(
+      applicationType === "graduate"
+        ? "graduate"
+        : "undergraduate"
+    );
+
+    const matchedMajor = catalog.find((major) =>
+      [major.id, major.zh, major.en, major.ko]
+        .filter(Boolean)
+        .some(
+          (value) =>
+            String(value).trim() === rawMajor
+        )
+    );
+
+    return matchedMajor
+      ? getLocalizedMajorLabel(matchedMajor, language)
+      : rawMajor;
+  }, [student?.major, applicationType, language]);
   const isLanguageApplication = applicationType === "language";
   const applicationTypeLabel =
     applicationType === "language"
@@ -1459,9 +1486,9 @@ function ApplicationReviewPage() {
           setAgencyName("");
         }
 
-        const files = await fetchApplicationFiles(id);
+                const files = await fetchApplicationFiles(id);
         setUploadedFiles(files || []);
-        await loadAuditLogs(currentRow.id);
+        void loadAuditLogs(currentRow.id);
       } catch (error) {
         console.error("ApplicationReviewPage loadData error:", error);
 
@@ -2394,7 +2421,7 @@ function ApplicationReviewPage() {
         examinee_number: data.examinee_number || "",
       });
 
-            await loadAuditLogs(data.id);
+           void loadAuditLogs(data.id);
       alert(formTexts.saved);
     } catch (error) {
       console.error("handleSaveApplicationForm error:", error);
@@ -2458,8 +2485,10 @@ const payload = {
       setLoadedUpdatedAt(data.updated_at || "");
       const normalizedData = await withLinkedIntakeTitle(data);
             setStudent(normalizedData);
-            window.dispatchEvent(new Event("admin-pending-counts-refresh"));
-      await loadAuditLogs(data.id);
+           window.dispatchEvent(
+        new Event("admin-pending-counts-refresh")
+      );
+      void loadAuditLogs(data.id);
 
       alert(t.applicationReview.saved);
     } catch (error) {
@@ -2593,8 +2622,8 @@ if (!lockResult.ok) {
     );
 
         await reloadFiles();
-        await reloadFiles();
-    await loadAuditLogs(student.id);
+    void loadAuditLogs(student.id);
+
     window.dispatchEvent(
       new Event("admin-pending-counts-refresh")
     );
@@ -3103,10 +3132,12 @@ if (!lockResult.ok) {
               <span className="font-semibold text-slate-800">{t.page.applicationType}：</span>
               {applicationTypeLabel}
             </div>
-            {!isLanguageApplication ? (
+                        {!isLanguageApplication ? (
               <div>
-                <span className="font-semibold text-slate-800">{t.page.major}：</span>
-                {student.major || "-"}
+                <span className="font-semibold text-slate-800">
+                  {t.page.major}：
+                </span>
+                {localizedMajorLabel}
               </div>
             ) : null}
             <div>
