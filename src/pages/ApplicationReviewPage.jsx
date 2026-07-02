@@ -1444,32 +1444,17 @@ function ApplicationReviewPage() {
 
         if (adminLockError) throw adminLockError;
 
-        const currentRow = lockedRow || data;
-        const normalizedData = await withLinkedIntakeTitle(currentRow);
-        setStudent(normalizedData);
-        setLoadedUpdatedAt(currentRow.updated_at || "");
-        setApplicationStatus(currentRow.status || "submitted");
-        setApplicationReviewNote(currentRow.review_note || "");
-        setApplicationForm({
-          english_name: currentRow.english_name || currentRow.full_name_passport || "",
-          gender: currentRow.gender || "",
-          nationality_applicant: currentRow.nationality_applicant || currentRow.nationality || "",
-          date_of_birth: currentRow.date_of_birth || "",
-          tel: currentRow.tel || currentRow.phone || "",
-          email: currentRow.email || "",
-          address: currentRow.address || "",
-          passport_no: currentRow.passport_no || "",
-          major: currentRow.major || "",
-          degree_level: currentRow.degree_level || "",
-          admission_type: currentRow.admission_type || "",
-                    program_track: currentRow.program_track || "",
-          dormitory: currentRow.dormitory || "",
-          examinee_number: currentRow.examinee_number || "",
-        });
+                const currentRow = lockedRow || data;
 
-        if (data.agency_name && String(data.agency_name).trim() !== "") {
-          setAgencyName(data.agency_name);
-        } else if (data.agency_id) {
+        const agencyNamePromise = (async () => {
+          if (data.agency_name && String(data.agency_name).trim() !== "") {
+            return data.agency_name;
+          }
+
+          if (!data.agency_id) {
+            return "";
+          }
+
           const { data: agencyRow, error: agencyError } = await supabase
             .from("agencies")
             .select("agency_name")
@@ -1478,16 +1463,44 @@ function ApplicationReviewPage() {
 
           if (agencyError) {
             console.error("load agency name error:", agencyError);
-            setAgencyName("");
-          } else {
-            setAgencyName(agencyRow?.agency_name || "");
+            return "";
           }
-                } else {
-          setAgencyName("");
-        }
 
-                const files = await fetchApplicationFiles(id);
+          return agencyRow?.agency_name || "";
+        })();
+
+        const [normalizedData, resolvedAgencyName, files] = await Promise.all([
+          withLinkedIntakeTitle(currentRow),
+          agencyNamePromise,
+          fetchApplicationFiles(id),
+        ]);
+
+        setStudent(normalizedData);
+        setLoadedUpdatedAt(currentRow.updated_at || "");
+        setApplicationStatus(currentRow.status || "submitted");
+        setApplicationReviewNote(currentRow.review_note || "");
+        setApplicationForm({
+          english_name:
+            currentRow.english_name || currentRow.full_name_passport || "",
+          gender: currentRow.gender || "",
+          nationality_applicant:
+            currentRow.nationality_applicant || currentRow.nationality || "",
+          date_of_birth: currentRow.date_of_birth || "",
+          tel: currentRow.tel || currentRow.phone || "",
+          email: currentRow.email || "",
+          address: currentRow.address || "",
+          passport_no: currentRow.passport_no || "",
+          major: currentRow.major || "",
+          degree_level: currentRow.degree_level || "",
+          admission_type: currentRow.admission_type || "",
+          program_track: currentRow.program_track || "",
+          dormitory: currentRow.dormitory || "",
+          examinee_number: currentRow.examinee_number || "",
+        });
+
+        setAgencyName(resolvedAgencyName);
         setUploadedFiles(files || []);
+
         void loadAuditLogs(currentRow.id);
       } catch (error) {
         console.error("ApplicationReviewPage loadData error:", error);
