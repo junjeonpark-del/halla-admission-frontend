@@ -1,3 +1,5 @@
+import { getMajorCatalog } from "../../data/majorCatalog";
+
 function getApplicationFormDate(student) {
   return (
     student?.application_form_updated_at ||
@@ -58,10 +60,39 @@ function getGuarantorSignatureImage(student, guarantorName) {
   return "";
 }
 
+function getFinancialGuaranteeMajor(student) {
+  const applicationType =
+    student?.application_type === "graduate"
+      ? "graduate"
+      : "undergraduate";
+
+  const rawMajor = String(
+    student?.guarantor_department_major ||
+      student?.major ||
+      student?.major_zh ||
+      student?.majorZh ||
+      student?.major_ko ||
+      student?.majorKo ||
+      student?.major_en ||
+      student?.majorEn ||
+      ""
+  ).trim();
+
+  if (!rawMajor) return "";
+
+  const matchedMajor = getMajorCatalog(applicationType).find((major) =>
+    [major.id, major.zh, major.ko, major.en]
+      .filter(Boolean)
+      .some((value) => String(value).trim() === rawMajor)
+  );
+
+  return matchedMajor?.ko || rawMajor;
+}
+
 export default function FinancialGuaranteePreview({ student }) {
   if (!student) return null;
 
-  const major = student.major || "";
+    const major = getFinancialGuaranteeMajor(student);
   const fullName =
     student.english_name ||
     student.full_name_passport ||

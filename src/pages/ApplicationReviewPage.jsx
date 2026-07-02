@@ -93,8 +93,9 @@ fields: {
         passportNo: "护照号",
         major: "专业",
         admissionType: "申请类型",
-        programTrack: "课程轨道",
+                programTrack: "课程轨道",
         dormitory: "宿舍申请",
+        examineeNumber: "考号",
       },
       genderMale: "男",
       genderFemale: "女",
@@ -274,7 +275,8 @@ fields: {
         major: "Major",
         admissionType: "Admission Type",
         programTrack: "Program Track",
-        dormitory: "Dormitory",
+                dormitory: "Dormitory",
+        examineeNumber: "Examinee No.",
         degreeLevel: "Degree Level",
       },
       genderMale: "Male",
@@ -454,8 +456,9 @@ fields: {
         passportNo: "여권번호",
         major: "전공",
         admissionType: "지원 유형",
-        programTrack: "과정 트랙",
+                programTrack: "과정 트랙",
         dormitory: "기숙사 신청",
+        examineeNumber: "수험번호",
       },
       genderMale: "남",
       genderFemale: "여",
@@ -904,8 +907,9 @@ function ApplicationReviewPage() {
     major: "",
     degree_level: "",
     admission_type: "",
-    program_track: "",
+        program_track: "",
     dormitory: "",
+    examinee_number: "",
   });
 
 
@@ -1357,8 +1361,9 @@ function ApplicationReviewPage() {
           major: currentRow.major || "",
           degree_level: currentRow.degree_level || "",
           admission_type: currentRow.admission_type || "",
-          program_track: currentRow.program_track || "",
+                    program_track: currentRow.program_track || "",
           dormitory: currentRow.dormitory || "",
+          examinee_number: currentRow.examinee_number || "",
         });
 
         if (data.agency_name && String(data.agency_name).trim() !== "") {
@@ -2069,8 +2074,10 @@ function ApplicationReviewPage() {
         major: applicationForm.major || null,
         degree_level: applicationForm.degree_level || null,
         admission_type: applicationForm.admission_type || null,
-        program_track: applicationForm.program_track || null,
-                dormitory: applicationForm.dormitory || null,
+                program_track: applicationForm.program_track || null,
+        dormitory: applicationForm.dormitory || null,
+        examinee_number:
+          applicationForm.examinee_number.trim() || null,
         ...buildAdminOperationPayload(),
         admin_editing_by_account_id: adminSession?.admin_id || null,
         admin_editing_by_account_name: getAdminOperatorName(),
@@ -2110,8 +2117,9 @@ function ApplicationReviewPage() {
         major: data.major || "",
         degree_level: data.degree_level || "",
         admission_type: data.admission_type || "",
-        program_track: data.program_track || "",
+                program_track: data.program_track || "",
         dormitory: data.dormitory || "",
+        examinee_number: data.examinee_number || "",
       });
 
       alert(formTexts.saved);
@@ -2987,8 +2995,10 @@ if (!lockResult.ok) {
                       major: student?.major || "",
                       degree_level: student?.degree_level || "",
                       admission_type: student?.admission_type || "",
-                      program_track: student?.program_track || "",
+                                            program_track: student?.program_track || "",
                       dormitory: student?.dormitory || "",
+                      examinee_number:
+                        student?.examinee_number || "",
                     });
                   }}
                   className="rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200"
@@ -3178,11 +3188,15 @@ if (!lockResult.ok) {
             </select>
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">{formFieldTexts.dormitory}</label>
+                    <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              {formFieldTexts.dormitory}
+            </label>
             <select
               value={applicationForm.dormitory}
-              onChange={(e) => handleApplicationFormChange("dormitory", e.target.value)}
+              onChange={(e) =>
+                handleApplicationFormChange("dormitory", e.target.value)
+              }
               disabled={!isEditingApplication}
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition disabled:bg-slate-50"
             >
@@ -3190,6 +3204,25 @@ if (!lockResult.ok) {
               <option value="YES">{t.common.yes}</option>
               <option value="NO">{t.common.no}</option>
             </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              {formFieldTexts.examineeNumber}
+            </label>
+            <input
+              type="text"
+              value={applicationForm.examinee_number}
+              onChange={(e) =>
+                handleApplicationFormChange(
+                  "examinee_number",
+                  e.target.value
+                )
+              }
+              disabled={!isEditingApplication}
+              maxLength={50}              
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition disabled:bg-slate-50"
+            />
           </div>
         </div>
       </div>

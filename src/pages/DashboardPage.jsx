@@ -3,6 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAdminSession } from "../contexts/AdminSessionContext";
 import {
+  getCountryByNumericCode,
+  getCountryLabel,
+  resolveCountry,
+} from "../data/countryCatalog";
+import {
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -691,9 +696,20 @@ function DashboardPage() {
     return t.intakeProgress.ongoing;
   };
 
-  const normalizeCountry = (value) => {
+    const normalizeCountry = (countryCode, value) => {
     const raw = String(value || "").trim();
-    if (!raw) return t.countryUnknown;
+
+    const matchedCountry =
+      getCountryByNumericCode(countryCode) ||
+      resolveCountry(raw);
+
+    if (matchedCountry) {
+      return getCountryLabel(matchedCountry, language);
+    }
+
+    if (!raw) {
+      return t.countryUnknown;
+    }
 
     const normalized = raw
       .toLowerCase()
@@ -704,11 +720,15 @@ function DashboardPage() {
 
     for (const group of COUNTRY_GROUPS) {
       if (group.aliases.includes(normalized)) {
-        return group.canonical;
+        const legacyCountry = resolveCountry(group.canonical);
+
+        return legacyCountry
+          ? getCountryLabel(legacyCountry, language)
+          : group.canonical;
       }
     }
 
-    return raw.trim();
+    return raw;
   };
 
   useEffect(() => {
@@ -1078,9 +1098,16 @@ function DashboardPage() {
   const countryStats = useMemo(() => {
     const map = new Map();
 
-    activeApplications.forEach((item) => {
-      const rawCountry = item.nationality_applicant || item.nationality || "";
-      const countryName = normalizeCountry(rawCountry);
+        activeApplications.forEach((item) => {
+      const rawCountry =
+        item.nationality_applicant ||
+        item.nationality ||
+        "";
+
+      const countryName = normalizeCountry(
+        item.nationality_applicant_code,
+        rawCountry
+      );
 
       if (!map.has(countryName)) {
         map.set(countryName, {
