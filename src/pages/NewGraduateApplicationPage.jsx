@@ -3003,9 +3003,39 @@ clearUploadedMaterialSelections();
     window.location.href = "/agency/applications";
     return;
 
-  } catch (error) {
+    } catch (error) {
     console.error(error);
-    alert((language === "en" ? "Submission failed: " : language === "ko" ? "제출 실패: " : "提交失败：") + error.message);
+
+    const errorText = [
+      error?.message,
+      error?.details,
+      error?.hint,
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const isDuplicatePassport =
+      error?.code === "23505" &&
+      errorText.includes("applications_intake_passport_unique");
+
+    if (isDuplicatePassport) {
+      alert(
+        language === "en"
+          ? "This passport number has already been submitted for the selected intake. Duplicate applications are not allowed."
+          : language === "ko"
+          ? "선택한 차수에 동일한 여권번호로 제출된 지원서가 이미 있습니다. 중복 제출할 수 없습니다."
+          : "该护照号码在当前批次中已经提交过申请，不能重复提交。"
+      );
+      return;
+    }
+
+    alert(
+      (language === "en"
+        ? "Submission failed: "
+        : language === "ko"
+        ? "제출 실패: "
+        : "提交失败：") + error.message
+    );
   }
 };
 
