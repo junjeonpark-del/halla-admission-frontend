@@ -222,14 +222,11 @@ const messages = {
       todayNew: "今日新增",
       deadline: "7天内截止批次",
     },
-    quickTitle: "快捷入口",
-    quickDesc: "常用管理操作快速跳转",
-    quickLinks: {
-      applications: "申请列表",
-      intakes: "批次管理",
-      agencies: "机构管理",
-      missing: "去补件处理",
-    },
+    agencyRankTitle: "机构申请活跃度 TOP 5",
+agencyRankDesc: "当前筛选范围内申请数量最多的机构",
+agencyRankApplications: "申请",
+agencyRankApproved: "通过",
+noAgencyRank: "暂无机构申请数据",
     recentTitle: "最近申请记录",
     recentDesc: "点击学生姓名或审核按钮可进入审核页",
     viewAll: "查看全部",
@@ -329,14 +326,11 @@ noMajorStats: "暂无专业统计数据",
       todayNew: "New Today",
       deadline: "Closing Within 7 Days",
     },
-    quickTitle: "Quick Access",
-    quickDesc: "Shortcuts to common management actions",
-    quickLinks: {
-      applications: "Applications",
-      intakes: "Intakes",
-      agencies: "Agencies",
-      missing: "Handle Missing Docs",
-    },
+    agencyRankTitle: "Top 5 Active Agencies",
+agencyRankDesc: "Agencies with the most applications in the current filter",
+agencyRankApplications: "Applications",
+agencyRankApproved: "Approved",
+noAgencyRank: "No agency application data",
     recentTitle: "Recent Applications",
     recentDesc: "Click the student name or review button to open the review page",
     viewAll: "View All",
@@ -436,14 +430,11 @@ noMajorStats: "No major statistics available",
       todayNew: "오늘 신규",
       deadline: "7일 이내 마감 차수",
     },
-    quickTitle: "빠른 이동",
-    quickDesc: "자주 사용하는 관리 기능으로 바로 이동",
-    quickLinks: {
-      applications: "지원 목록",
-      intakes: "차수 관리",
-      agencies: "기관 관리",
-      missing: "보완 처리",
-    },
+    agencyRankTitle: "기관 지원 활동 TOP 5",
+agencyRankDesc: "현재 필터 범위에서 지원 건수가 가장 많은 기관",
+agencyRankApplications: "지원",
+agencyRankApproved: "승인",
+noAgencyRank: "기관 지원 데이터가 없습니다",
     recentTitle: "최근 지원 기록",
     recentDesc: "학생 이름 또는 심사 버튼을 누르면 심사 페이지로 이동합니다",
     viewAll: "전체 보기",
@@ -930,7 +921,57 @@ function DashboardPage() {
       missingDocuments,
       upcomingDeadline,
     };
-  }, [filteredApplications, activeApplications, intakes]);
+    }, [filteredApplications, activeApplications, intakes]);
+
+  const agencyRanking = useMemo(() => {
+    const rankingMap = new Map();
+
+    activeApplications.forEach((item) => {
+      const agencyId = String(item.agency_id || "").trim();
+      const agencyName = getAgency(item, agencyMap);
+
+      if (!agencyId && (!agencyName || agencyName === "-")) {
+        return;
+      }
+
+      const key = agencyId || `name:${agencyName}`;
+
+      if (!rankingMap.has(key)) {
+        rankingMap.set(key, {
+          key,
+          name: agencyName,
+          applications: 0,
+          approved: 0,
+        });
+      }
+
+      const stat = rankingMap.get(key);
+      stat.applications += 1;
+
+      if (String(item.status || "").toLowerCase() === "approved") {
+        stat.approved += 1;
+      }
+    });
+
+    return Array.from(rankingMap.values())
+      .sort((a, b) => {
+        if (b.applications !== a.applications) {
+          return b.applications - a.applications;
+        }
+
+        if (b.approved !== a.approved) {
+          return b.approved - a.approved;
+        }
+
+        return a.name.localeCompare(b.name);
+      })
+      .slice(0, 5);
+  }, [activeApplications, agencyMap]);
+
+  const agencyRankingMax = Math.max(
+    1,
+    ...agencyRanking.map((item) => item.applications)
+  );
 
   const recentApplications = useMemo(() => {
     return [...activeApplications]
@@ -1422,38 +1463,71 @@ const annualTrendData = useMemo(() => {
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">{t.quickTitle}</h3>
-                <p className="mt-1 text-sm text-slate-500">{t.quickDesc}</p>
-              </div>
+  <div>
+    <h3 className="text-lg font-bold text-slate-900">
+      {t.agencyRankTitle}
+    </h3>
+    <p className="mt-1 text-sm text-slate-500">
+      {t.agencyRankDesc}
+    </p>
+  </div>
 
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <Link
-                  to="/applications"
-                  className="rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-blue-700"
-                >
-                  {t.quickLinks.applications}
-                </Link>
-                <Link
-                  to="/intakes"
-                  className="rounded-xl bg-emerald-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-emerald-700"
-                >
-                  {t.quickLinks.intakes}
-                </Link>
-                <Link
-                  to="/agencies"
-                  className="rounded-xl bg-slate-800 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-slate-900"
-                >
-                  {t.quickLinks.agencies}
-                </Link>
-                <Link
-                  to="/applications"
-                  className="rounded-xl bg-amber-500 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-amber-600"
-                >
-                  {t.quickLinks.missing}
-                </Link>
+  {agencyRanking.length === 0 ? (
+    <div className="flex min-h-[180px] items-center justify-center text-sm text-slate-500">
+      {t.noAgencyRank}
+    </div>
+  ) : (
+    <div className="mt-5 space-y-4">
+      {agencyRanking.map((item, index) => (
+        <Link
+          key={item.key}
+          to="/agencies"
+          className="block rounded-xl border border-slate-100 p-3 transition hover:border-blue-200 hover:bg-blue-50/50"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
+                  {index + 1}
+                </span>
+
+                <span className="truncate text-sm font-semibold text-slate-800">
+                  {item.name}
+                </span>
               </div>
             </div>
+
+            <div className="shrink-0 text-right text-xs text-slate-500">
+              <span className="font-semibold text-blue-700">
+                {item.applications}
+              </span>{" "}
+              {t.agencyRankApplications}
+              <span className="mx-1.5 text-slate-300">/</span>
+              <span className="font-semibold text-emerald-700">
+                {item.approved}
+              </span>{" "}
+              {t.agencyRankApproved}
+            </div>
+          </div>
+
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-blue-500"
+              style={{
+                width: `${Math.max(
+                  6,
+                  Math.round(
+                    (item.applications / agencyRankingMax) * 100
+                  )
+                )}%`,
+              }}
+            />
+          </div>
+        </Link>
+      ))}
+    </div>
+  )}
+</div>
           </section>
 
           <section className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
