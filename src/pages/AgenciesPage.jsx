@@ -11,7 +11,20 @@ import {
 } from "../utils/generateCommissionClaimDocument";
 import { getLocalizedMajorLabel, getMajorCatalog } from "../data/majorCatalog";
 import CountrySearchSelect from "../components/CountrySearchSelect";
-import { getCountryByNumericCode } from "../data/countryCatalog";
+import {
+  getCountryByNumericCode,
+  getCountryLabel,
+} from "../data/countryCatalog";
+
+function getLocalizedAgencyCountry(agency, language = "zh") {
+  const country = getCountryByNumericCode(agency?.country_code);
+
+  if (country) {
+    return getCountryLabel(country, language);
+  }
+
+  return agency?.country || "-";
+}
 
 const messages = {
   zh: {
@@ -1439,10 +1452,10 @@ const exportAgencies = allExportAgencies;
       );
 
       const row = {
-        [headers.index]: index + 1,
-        [headers.agencyName]: agency.agency_name || "",
-        [headers.country]: agency.country || "",
-        [headers.legalRepresentative]: agency.legal_representative || "",
+  [headers.index]: index + 1,
+  [headers.agencyName]: agency.agency_name || "",
+  [headers.country]: getLocalizedAgencyCountry(agency, language),
+  [headers.legalRepresentative]: agency.legal_representative || "",
         [headers.contactName]: agency.contact_name || "",
         [headers.phone]: agency.phone || primaryAccount?.phone || "",
         [headers.email]: agency.email || primaryAccount?.email || "",
@@ -1643,11 +1656,11 @@ const exportAgencies = allExportAgencies;
                         <EllipsisText text={agency.agency_name || "-"} widthClass="max-w-[180px]" />
                       </td>
                       <td className="px-6 py-4 text-slate-600">
-                        <EllipsisText
-                          text={agency.country || "-"}
-                          widthClass="max-w-[120px]"
-                        />
-                      </td>
+  <EllipsisText
+    text={getLocalizedAgencyCountry(agency, language)}
+    widthClass="max-w-[120px]"
+  />
+</td>
                       <td className="px-6 py-4 text-slate-600">
                         <EllipsisText
                           text={agency.contact_name || primaryAccount?.account_name || "-"}
@@ -2069,7 +2082,14 @@ const exportAgencies = allExportAgencies;
                 <h4 className="text-base font-bold text-slate-900">{t.detail.basicInfo}</h4>
                                 <div className="mt-4 space-y-2 text-sm text-slate-700">
                   <div>{t.detail.fields.agencyName}: {detailAgency.agency_name || "-"}</div>
-                  <div>{language === "en" ? "Country" : language === "ko" ? "국가" : "国家"}: {detailAgency.country || "-"}</div>
+                  <div>
+  {language === "en"
+    ? "Country"
+    : language === "ko"
+    ? "국가"
+    : "国家"}
+  : {getLocalizedAgencyCountry(detailAgency, language)}
+</div>
                   <div>{t.detail.fields.foundedYear}: {detailAgency.company_founded_year || "-"}</div>
                   <div>{t.detail.fields.licenseNo}: {detailAgency.business_license_no || "-"}</div>
                   <div>{t.detail.fields.legalRep}: {detailAgency.legal_representative || "-"}</div>
